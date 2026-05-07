@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./mvnw clean *)",
+      "Bash(curl -o mvnw https://raw.githubusercontent.com/takari/maven-wrapper/master/mvnw)",
+      "Bash(curl -o .mvn/wrapper/maven-wrapper.jar https://repo.maven.apache.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar)",
+      "Bash(chmod +x mvnw)",
+      "Bash(curl -s \"https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot-starter-kafka/maven-metadata.xml\")"
+    ]
+  }
+}

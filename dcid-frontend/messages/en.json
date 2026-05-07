@@ -1,0 +1,12 @@
+{
+  "Index": {
+    "title": "DCID Digital Citizen Platform"
+  },
+  "Common": {
+    "login": "Login",
+    "logout": "Logout",
+    "dashboard": "Dashboard",
+    "save": "Save",
+    "cancel": "Cancel"
+  }
+}
