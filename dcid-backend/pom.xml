@@ -15,7 +15,7 @@
     <groupId>vn.dcid</groupId>
     <artifactId>dcid-backend</artifactId>
     <version>1.0.0</version>
-    <name>CongDanSo Backend</name>
+    <name>DCID Backend</name>
     <description>DCID Platform - Vietnamese e-Government Backend</description>
 
     <properties>
