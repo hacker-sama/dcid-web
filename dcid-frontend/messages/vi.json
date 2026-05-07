@@ -1,0 +1,12 @@
+{
+  "Index": {
+    "title": "Nền tảng Công dân số DCID"
+  },
+  "Common": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "dashboard": "Tổng quan",
+    "save": "Lưu",
+    "cancel": "Hủy"
+  }
+}
