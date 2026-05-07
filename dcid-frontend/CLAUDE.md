@@ -1,31 +1,71 @@
 # DCID Frontend Project Notes
 
 ## Project Overview
-This is the Next.js 14 frontend for the DCID e-Government Platform. It uses the App Router, TailwindCSS, shadcn/ui, TanStack Query, and NextAuth.js (Keycloak).
+DCID Frontend is a Next.js 14 application that serves the DCID e‑Government platform UI. It uses the App Router, React Server Components, TailwindCSS, shadcn/ui components, TanStack Query for server data fetching, and NextAuth.js for authentication against Keycloak.
 
-## How to run
-1. Ensure you have Node.js 20+ installed.
-2. Install dependencies: `npm install`
-3. Copy `.env.example` to `.env` and configure it.
-4. Run dev server: `npm run dev`
-5. Access at `http://localhost:3000`
+## How to Run Locally
+```bash
+# 1. Install Node 20+ (LTS)
+# 2. Install dependencies
+npm install
+# 3. Copy environment variables
+cp .env.example .env # Edit secrets
+# 4. Start dev server
+npm run dev
+# 5. Access at http://localhost:3000
+```
+
+## Dependencies & Key Libraries
+- **Next.js 14** – App Router & React Server Components
+- **TailwindCSS** & **shadcn/ui** – UI styling and components
+- **TanStack Query v5** – GraphQL‑ish query/mutation abstraction
+- **NextAuth.js** (Keycloak provider) – JWT auth, session handling
+- **React Hook Form + Zod** – form state and validation
+- **Axios** – API client (via wrapper in `lib/apiClient.ts`)
+- **Recharts** – charts for Officer dashboards
 
 ## Architecture Guide
-- **Server Components (Default):** Use for data fetching (if direct to DB) or layout. But since we use a Spring Boot backend, we mostly use Client Components with React Query for data fetching.
-- **Client Components (`"use client"`):** Used almost everywhere since we heavily rely on React Hooks, React Query, and interactive UI (shadcn/ui).
+- **Server Components** – Used for layout & data‑loading where possible; most page logic is Client Components due to interaction.
+- **Client Components (`"use client"`)** – almost every page/action; hooks utilising TanStack Query.
+- **App Router** – `app/` directory contains layouts, pages, and API routes.
+- **Hooks** – `hooks/` contains data‑loading and mutations (e.g., `useProcedures`, `useApplications`).
+- **Components** – `components/` subfolders per role (citizen/officer) and shared.
+- **Routes** – Centralized in `constants/routes.ts` for type‑safe navigation.
+- **Environment** – `.env.example` provides required variables (`NEXTAUTH_*`, `KEYCLOAK_*`, `NEXT_PUBLIC_API_URL`).
 
-## How to add a new page
-1. Determine if it belongs to `/citizen` or `/officer`.
-2. Create `app/[role]/[feature]/page.tsx`.
-3. Add the route to `constants/routes.ts`.
-4. Add a navigation link in the layout if necessary.
+## Adding a New Page
+1. Decide the role: citizen or officer.
+2. Create the file in `app/[role]/[feature]/page.tsx`.
+3. Import layout and necessary hooks.
+4. Register route in `constants/routes.ts` if needed.
+5. Add navigation link in the appropriate layout.
 
-## How to add a new API hook
-1. Define types in `types/`.
-2. Add query keys in `constants/query-keys.ts`.
-3. Create a new hook in `hooks/` using `useQuery` or `useMutation` with `apiClient`.
+## Adding a New API Hook
+1. Define TypeScript types in `types/` for request/response.
+2. Create a query key in `constants/query-keys.ts`.
+3. Implement the hook in `hooks/` using `useQuery` or `useMutation`.
+4. Export the hook for use in pages.
 
-## TypeScript Notes
-- We enforce Strict Mode.
-- No `any` type allowed for new code unless strictly necessary for generic utilities.
-- Always define proper interfaces for API responses and component props.
+## TypeScript Rules
+- **Strict mode** is enforced.
+- **No `any`** unless absolutely required.
+- Prefer interfaces or type aliases for API shapes.
+- Keep component props strongly typed.
+
+## Security & Authentication
+- Auth is handled by NextAuth.js with Keycloak provider.
+- Use the `useSession` hook to guard client routes.
+- Server components use `await getServerSession()` for protected data.
+- All secrets reside in environment variables; never commit `.env`.
+
+## Testing & Linting
+- Uses ESLint (`next lint`).
+- No explicit unit test framework present yet; consider adding Jest/React Testing Library in future.
+
+## Known Missing or Incomplete Logic
+- API client (`lib/apiClient.ts`) is a thin wrapper around Axios; verify request/response types with the backend.
+- OAuth2 token refresh handling is managed by NextAuth, but custom hooks for token introspection are not yet implemented.
+- Some cache invalidation strategies for TanStack Query are pending.
+
+## Conflict Notes
+- None currently. If a legacy page becomes outdated, replace with a server/client component pattern to align with the rest of the codebase.
