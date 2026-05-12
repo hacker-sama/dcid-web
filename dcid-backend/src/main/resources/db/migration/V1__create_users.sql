@@ -1,69 +1,58 @@
 -- V1__create_users.sql
 
--- Utility function for auto-updating updated_at timestamps
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
+    NEW.updated_at = now();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    keycloak_id VARCHAR(255) UNIQUE NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('CITIZEN', 'OFFICER', 'SUPERVISOR', 'ADMIN')),
+    keycloak_id VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    full_name VARCHAR(200) NOT NULL,
+    role VARCHAR(50) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
-
-CREATE INDEX idx_users_keycloak_id ON users(keycloak_id);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role ON users(role);
 
 CREATE TABLE citizen_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL UNIQUE REFERENCES users(id),
-    full_name VARCHAR(255) NOT NULL,
-    id_number VARCHAR(20) UNIQUE,
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     date_of_birth DATE,
-    phone_number VARCHAR(20),
+    phone_number VARCHAR(15),
     address TEXT,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    identity_number VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
 CREATE TABLE officer_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL UNIQUE REFERENCES users(id),
-    full_name VARCHAR(255) NOT NULL,
-    employee_code VARCHAR(50) UNIQUE NOT NULL,
-    department VARCHAR(255),
-    position VARCHAR(255),
-    phone_number VARCHAR(20),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    department_code VARCHAR(100),
+    department_name VARCHAR(255),
+    position VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_citizen_profiles_user_id ON citizen_profiles(user_id);
-CREATE INDEX idx_citizen_profiles_id_number ON citizen_profiles(id_number);
-CREATE INDEX idx_officer_profiles_user_id ON officer_profiles(user_id);
-CREATE INDEX idx_officer_profiles_employee_code ON officer_profiles(employee_code);
+CREATE TRIGGER trg_users_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_citizen_profiles_updated_at
+BEFORE UPDATE ON citizen_profiles
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_citizen_profiles_updated_at
-    BEFORE UPDATE ON citizen_profiles
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_officer_profiles_updated_at
-    BEFORE UPDATE ON officer_profiles
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trg_officer_profiles_updated_at
+BEFORE UPDATE ON officer_profiles
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
