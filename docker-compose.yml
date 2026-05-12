@@ -72,6 +72,26 @@
         - "8080:8080"
       restart: unless-stopped
 
+    frontend:
+      build:
+        context: ./dcid-frontend
+        dockerfile: Dockerfile
+      container_name: dcid-frontend
+      environment:
+        NEXTAUTH_URL: http://localhost:3000
+        NEXTAUTH_SECRET: change-me-in-production
+        KEYCLOAK_ISSUER: http://keycloak:8080/realms/dcid
+        KEYCLOAK_CLIENT_ID: dcid-frontend
+        KEYCLOAK_CLIENT_SECRET: change-me
+        NEXT_PUBLIC_API_URL: http://backend:8080
+        NEXT_PUBLIC_WS_URL: ws://backend:8080
+      ports:
+        - "3000:3000"
+      depends_on:
+        - backend
+        - keycloak
+      restart: unless-stopped
+
     kafka:
       # We use the official Confluent Kafka image for a single‑node broker
       image: confluentinc/cp-kafka:7.5.0

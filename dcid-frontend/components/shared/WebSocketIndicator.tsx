@@ -1,4 +1,3 @@
-import React from "react";
 import { cn } from "@/lib/utils";
 
 interface WebSocketIndicatorProps {
@@ -8,18 +7,24 @@ interface WebSocketIndicatorProps {
 
 export function WebSocketIndicator({ isConnected, className }: WebSocketIndicatorProps) {
   return (
-    <div className={cn("flex items-center gap-2", className)} title={isConnected ? "Đã kết nối trực tiếp" : "Đang kết nối lại..."}>
-      <div className="relative flex h-3 w-3">
+    <div
+      className={cn("flex items-center gap-2", className)}
+      title={isConnected ? "Đang kết nối realtime" : "Mất kết nối realtime"}
+      aria-label={isConnected ? "Đang kết nối realtime" : "Mất kết nối realtime"}
+    >
+      <div className="relative flex h-2.5 w-2.5">
         {isConnected && (
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 animate-ping" />
         )}
-        <span className={cn(
-          "relative inline-flex rounded-full h-3 w-3",
-          isConnected ? "bg-success" : "bg-warning"
-        )}></span>
+        <span
+          className={cn(
+            "relative inline-flex h-2.5 w-2.5 rounded-full",
+            isConnected ? "bg-emerald-500" : "bg-slate-400"
+          )}
+        />
       </div>
-      <span className="text-xs text-muted-foreground hidden sm:inline-block">
-        {isConnected ? "Trực tiếp" : "Mất kết nối"}
+      <span className="text-xs text-muted-foreground">
+        {isConnected ? "Đang kết nối realtime" : "Mất kết nối realtime"}
       </span>
     </div>
   );

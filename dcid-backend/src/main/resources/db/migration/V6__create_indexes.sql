@@ -6,8 +6,7 @@ CREATE INDEX idx_applications_officer_status ON applications(assigned_officer_id
     WHERE assigned_officer_id IS NOT NULL;
 
 -- Applications: Find overdue applications
-CREATE INDEX idx_applications_overdue ON applications(status, estimated_completion_at)
-    WHERE status IN ('IN_REVIEW', 'PENDING_SUPPLEMENT') AND estimated_completion_at < CURRENT_TIMESTAMP;
+CREATE INDEX idx_applications_overdue ON applications(status, estimated_completion_at);
 
 -- Applications: Find urgent applications
 CREATE INDEX idx_applications_urgent ON applications(is_urgent, status)
@@ -21,17 +20,13 @@ CREATE INDEX idx_notifications_user_unread ON notifications(user_id, is_read, cr
     WHERE is_read = false;
 
 -- Appointments: Find upcoming appointments for an officer
-CREATE INDEX idx_appointments_officer_upcoming ON appointments(officer_id, scheduled_at, status)
-    WHERE scheduled_at > CURRENT_TIMESTAMP AND status = 'SCHEDULED';
+CREATE INDEX idx_appointments_officer_upcoming ON appointments(officer_id, scheduled_at, status);
 
 -- Appointments: Find upcoming appointments for a citizen
-CREATE INDEX idx_appointments_citizen_upcoming ON appointments(citizen_id, scheduled_at, status)
-    WHERE scheduled_at > CURRENT_TIMESTAMP AND status = 'SCHEDULED';
+CREATE INDEX idx_appointments_citizen_upcoming ON appointments(citizen_id, scheduled_at, status);
 
 -- Audit logs: Find recent activity for a specific resource
-CREATE INDEX idx_audit_logs_resource_recent ON audit_logs(resource_type, resource_id, created_at DESC)
-    WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '30 days';
+CREATE INDEX idx_audit_logs_resource_recent ON audit_logs(resource_type, resource_id, created_at DESC);
 
 -- Status history: Find recent status changes for an application
-CREATE INDEX idx_status_history_app_recent ON application_status_history(application_id, changed_at DESC)
-    WHERE changed_at > CURRENT_TIMESTAMP - INTERVAL '30 days';
+CREATE INDEX idx_status_history_app_recent ON application_status_history(application_id, changed_at DESC);

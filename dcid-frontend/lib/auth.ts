@@ -2,12 +2,21 @@ import NextAuth from "next-auth";
 import KeycloakProvider from "next-auth/providers/keycloak";
 import { UserRole } from "@/types/user";
 
+const keycloakClientId = process.env.KEYCLOAK_CLIENT_ID;
+const keycloakIssuer = process.env.KEYCLOAK_ISSUER;
+const keycloakClientSecret =
+  process.env.KEYCLOAK_CLIENT_SECRET &&
+  process.env.KEYCLOAK_CLIENT_SECRET !== "change-me"
+    ? process.env.KEYCLOAK_CLIENT_SECRET
+    : undefined;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     KeycloakProvider({
-      clientId: process.env.KEYCLOAK_CLIENT_ID,
-      clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,
-      issuer: process.env.KEYCLOAK_ISSUER,
+      clientId: keycloakClientId,
+      clientSecret: keycloakClientSecret,
+      issuer: keycloakIssuer,
+      authorization: { params: { scope: "openid profile email" } },
     }),
   ],
   callbacks: {

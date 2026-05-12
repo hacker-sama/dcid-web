@@ -7,6 +7,7 @@ COPY pom.xml .
 COPY .mvn .mvn
 COPY mvnw .
 
+ENV MAVEN_CONFIG=""
 RUN ./mvnw dependency:go-offline -B
 
 COPY src ./src

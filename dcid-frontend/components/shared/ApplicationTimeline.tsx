@@ -1,55 +1,86 @@
-import { StatusHistoryItem } from "@/types/application";
-import { STATUS_CONFIG } from "@/constants/application-status";
 import { formatDate, cn } from "@/lib/utils";
+import { STATUS_CONFIG } from "@/constants/application-status";
+import { EmptyState } from "./EmptyState";
+import { ApplicationStatus } from "@/types/application";
 
-interface ApplicationTimelineProps {
-  history: StatusHistoryItem[];
+export interface TimelineItem {
+  id: string;
+  fromStatus: ApplicationStatus | null;
+  toStatus: ApplicationStatus;
+  changedBy: string | null;
+  note: string | null;
+  changedAt: string;
 }
 
-export function ApplicationTimeline({ history }: ApplicationTimelineProps) {
-  if (!history || history.length === 0) return null;
+interface StatusHistoryItem {
+  id: string;
+  status: ApplicationStatus;
+  changedByName: string;
+  note?: string;
+  timestamp: string;
+}
 
-  // Sort history ascending by timestamp
-  const sortedHistory = [...history].sort((a, b) => 
-    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+interface ApplicationTimelineProps {
+  items?: TimelineItem[];
+  history?: StatusHistoryItem[];
+}
+
+export function ApplicationTimeline({ items, history }: ApplicationTimelineProps) {
+  const normalizedItems: TimelineItem[] = items
+    ? items
+    : history
+    ? history.map((entry) => ({
+        id: entry.id,
+        fromStatus: null,
+        toStatus: entry.status,
+        changedBy: entry.changedByName,
+        note: entry.note ?? null,
+        changedAt: entry.timestamp,
+      }))
+    : [];
+
+  if (!normalizedItems || normalizedItems.length === 0) {
+    return <EmptyState message="Chưa có lịch sử xử lý" />;
+  }
+
+  const sortedItems = [...normalizedItems].sort(
+    (a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime()
   );
 
   return (
-    <div className="space-y-4">
-      {sortedHistory.map((item, index) => {
-        const isLast = index === sortedHistory.length - 1;
-        const config = STATUS_CONFIG[item.status];
-        // simple mapping for dot color based on background color class
-        const dotColor = config?.colorClass.split(' ')[0].replace('bg-', 'bg-').replace('text-', 'bg-') || 'bg-gray-400';
+    <div className="space-y-6">
+      {sortedItems.map((item, index) => {
+        const isLast = index === sortedItems.length - 1;
+        const config = STATUS_CONFIG[item.toStatus];
+        const dotTextClass =
+          config?.colorClass.split(" ").find((cls: string) => cls.startsWith("bg-")) ?? "bg-gray-500";
 
         return (
-          <div key={item.id} className="relative pl-6 pb-4">
+          <div key={item.id} className="relative pl-8">
             {!isLast && (
-              <div className="absolute left-[11px] top-3 bottom-0 w-0.5 bg-border" />
+              <span className="absolute left-2 top-3 h-[calc(100%-1.25rem)] w-px bg-border"></span>
             )}
-            <div 
-              className={cn(
-                "absolute left-0 top-1.5 h-6 w-6 rounded-full border-4 border-background",
-                config?.colorClass.split(' ')[0] || "bg-gray-400"
-              )} 
-            />
-            <div>
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-foreground">
-                  {config?.label || item.status}
-                </p>
+            <div className="absolute left-0 top-3">
+              <span className={cn("inline-flex h-3 w-3 rounded-full bg-current", dotTextClass)} />
+            </div>
+
+            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-foreground">{config?.label ?? item.toStatus}</p>
                 <time className="text-sm text-muted-foreground">
-                  {formatDate(item.timestamp)}
+                  {formatDate(item.changedAt, "HH:mm, dd/MM/yyyy")}
                 </time>
               </div>
+
               <p className="text-sm text-muted-foreground mt-1">
-                Bởi: <span className="font-medium text-foreground">{item.changedByName}</span>
+                bởi <span className="font-medium text-foreground">{item.changedBy ?? "Hệ thống"}</span>
               </p>
-              {item.note && (
-                <div className="mt-2 p-3 bg-muted rounded-md text-sm border">
+
+              {item.note ? (
+                <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-sm text-slate-700 shadow-sm">
                   {item.note}
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         );
