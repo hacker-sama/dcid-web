@@ -186,3 +186,216 @@ Callback AI → Spring Boot: `POST /api/internal/ingest-callback` (bảo vệ b�
 - Build xanh: `./mvnw -DskipTests test-compile` + unit test health.
 
 Chi tiết vận hành backend: xem `dcid-backend/CLAUDE.md`.
+
+---
+---
+
+# Phần B — Kiến trúc chi tiết (Complete Architecture)
+
+> Quyết định đã chốt: **monorepo** (AI ở `dcid-ai/`) · **VI+EN trước** (CN/JP ở M2) ·
+> **llama-cpp-python** cho LLM serving.
+
+## B1. Cấu trúc thư mục toàn dự án
+
+```
+dcid-web/                      (monorepo)
+├── dcid-backend/              Spring Boot — governance/control plane
+│   └── src/main/java/vn/dcid/ {api, service, repository, domain, security, config, ...}
+├── dcid-frontend/             Next.js — Web console + Kiosk UI
+├── dcid-mobile/               Flutter — app hiện trường (Snap & Ask)   ← TẠO Ở M2–M4
+├── dcid-ai/                   Python (FastAPI + Celery) — AI plane   ← TẠO Ở M1
+├── docs/                      ARCHITECTURE.md, ROADMAP.md, FRONTEND.md
+└── docker-compose.yml         postgres · redis · minio · kafka · backend (+ ai, chroma ở M1)
+```
+
+## B2. Kiến trúc nội bộ `dcid-ai` (Python)
+
+```
+dcid-ai/
+├── app/
+│   ├── main.py               # FastAPI app + router
+│   ├── config.py             # pydantic-settings (env)
+│   ├── api/
+│   │   ├── health.py         # GET  /ai/health
+│   │   ├── ingest.py         # POST /ai/ingest   → enqueue Celery task
+│   │   └── query.py          # POST /ai/query    → RAG + guardrails (đồng bộ)
+│   ├── pipeline/
+│   │   ├── ocr.py            # PaddleOCR (multi-lang, TSR bảng biểu)
+│   │   ├── chunk.py          # structure-aware chunking (giữ cấu trúc bảng)
+│   │   ├── embed.py          # multilingual-e5-small (ONNX qua optimum)
+│   │   ├── index.py          # ChromaDB upsert
+│   │   ├── retrieve.py       # top-k + filter (role, version=ACTIVE)
+│   │   └── bbox.py           # cắt bounding-box crop → MinIO
+│   ├── llm/
+│   │   ├── engine.py         # llama-cpp-python (Qwen2.5-1.5B Q4_K_M)
+│   │   └── prompt.py         # system prompt + format trích dẫn
+│   ├── guardrails/
+│   │   ├── confidence.py     # cosine < 0.60 → khóa câu trả lời
+│   │   └── numeric.py        # rule-based trích số liệu (điện áp/áp suất/…)
+│   ├── clients/
+│   │   ├── minio_client.py   # đọc PDF gốc / ghi crop
+│   │   └── backend_client.py # callback → dcid-backend (token nội bộ)
+│   └── tasks.py              # Celery: ingest bất đồng bộ
+├── models/                   # GGUF + ONNX weights (đóng gói offline)
+├── tests/
+├── pyproject.toml
+└── Dockerfile
+```
+
+**Vì sao đồng bộ cho `query`, bất đồng bộ cho `ingest`:** hỏi–đáp cần trả ngay (<5s); còn OCR+embed
+một tài liệu nhiều trang là việc nặng → đẩy vào Celery worker, báo kết quả qua callback.
+
+## B3. Mô hình dữ liệu quan hệ (chi tiết — PostgreSQL)
+
+Đã có: `users`, `audit_logs` (baseline `V1__init.sql`). Domain thêm ở M1–M3:
+
+**`documents`** — 1 tài liệu logic của 1 máy/loại thiết bị
+| cột | kiểu | ghi chú |
+|---|---|---|
+| id | UUID PK | |
+| title | varchar | |
+| machine_code | varchar | mã máy/chuyền (khớp CMMS) |
+| category | varchar | SOP / bản vẽ / sơ đồ mạch / nhật ký |
+| min_role | varchar | vai tối thiểu được xem (OPERATOR/ENGINEER/…) |
+| created_at/by, updated_at | | audit |
+
+**`document_versions`** — mỗi lần upload = 1 version
+| cột | kiểu | ghi chú |
+|---|---|---|
+| id | UUID PK | |
+| document_id | UUID FK | |
+| version_no | int | |
+| storage_key | varchar | key PDF gốc trong MinIO |
+| status | varchar | PROCESSING/READY/ACTIVE/SUPERSEDED/OBSOLETE |
+| lang | varchar | vi,en,… |
+| checksum | varchar | chống trùng |
+| page_count | int | |
+
+**`document_pages`** — map trang ↔ ảnh (để vẽ bbox)
+| id, version_id FK, page_no, image_key (MinIO), width, height |
+
+**`query_logs`** — nhật ký hỏi–đáp (ISO + đo hallucination)
+| id, actor_id, question, matched_version_id, confidence(float), numeric_rule_hit(bool), locked(bool), created_at |
+
+**`work_orders`** — lệnh từ CMMS/MES
+| id, cmms_ref, machine_code, document_version_id FK, deep_link, status, created_at |
+
+> Vector + chunk **không** ở Postgres — sống trong **ChromaDB** (collection theo tài liệu, metadata:
+> version_id, page_no, bbox_key, lang, min_role).
+
+## B4. Toàn bộ REST API surface
+
+**Public / JWT (dcid-backend):**
+| Method | Path | Vai | Mục đích |
+|---|---|---|---|
+| POST | `/api/auth/login` | public | lấy JWT |
+| GET | `/api/auth/me` | any | hồ sơ hiện tại |
+| GET | `/api/health` | public | health |
+| POST | `/api/documents` | QA_ADMIN | tạo tài liệu + upload version đầu |
+| POST | `/api/documents/{id}/versions` | QA_ADMIN | upload version mới |
+| POST | `/api/documents/{versionId}/obsolete` | QA_ADMIN | đánh dấu obsolete |
+| GET | `/api/documents` | any (lọc theo role) | danh sách/tra cứu |
+| POST | `/api/query` | OPERATOR+ | hỏi–đáp (forward AI, ghi query_log) |
+| POST | `/api/integration/work-orders` | (token CMMS) | nhận Work Order |
+| GET | `/api/admin/audit-logs` | ADMIN | xem audit |
+
+**Nội bộ Backend ↔ AI (token nội bộ, không ra ngoài LAN):**
+| Hướng | Endpoint | Payload |
+|---|---|---|
+| BE→AI | `POST /ai/ingest` | `{versionId, storageKey, langs}` |
+| BE→AI | `POST /ai/query` | `{userId, role, question, filters:{machineCode?}}` |
+| AI→BE | `POST /api/internal/ingest-callback` | `{versionId, status, pageCount, error?}` |
+| — | `GET /ai/health` | readiness model |
+
+`POST /ai/query` → response:
+```json
+{ "answer": "…", "confidence": 0.83,
+  "citations": [{"versionId":"…","pageNo":12,"bboxKey":"crops/…png"}],
+  "guard": { "locked": false, "numericRule": true } }
+```
+
+## B5. Sequence diagrams
+
+**Ingest (bất đồng bộ):**
+```mermaid
+sequenceDiagram
+    participant QA as QA/Admin (UI)
+    participant BE as Spring Boot
+    participant MINIO as MinIO
+    participant AI as dcid-ai (+Celery)
+    participant CH as ChromaDB
+    QA->>BE: POST /api/documents (PDF)
+    BE->>MINIO: put PDF gốc
+    BE->>BE: tạo document_version (PROCESSING)
+    BE->>AI: POST /ai/ingest {versionId, storageKey}
+    AI-->>BE: 202 accepted (queued)
+    AI->>MINIO: get PDF
+    AI->>AI: OCR → chunk → embed → crop bbox
+    AI->>CH: upsert vectors + metadata
+    AI->>MINIO: put bbox crops
+    AI->>BE: POST /api/internal/ingest-callback {status: READY}
+    BE->>BE: version = READY, ghi audit_log
+```
+
+**Query + Guardrail (đồng bộ):**
+```mermaid
+sequenceDiagram
+    participant U as Kỹ sư (UI)
+    participant BE as Spring Boot
+    participant AI as dcid-ai
+    participant CH as ChromaDB
+    U->>BE: POST /api/query {question}
+    BE->>AI: POST /ai/query {userId, role, question}
+    AI->>CH: retrieve top-k (filter role + version ACTIVE)
+    alt cosine < 0.60
+        AI-->>BE: {locked:true, cảnh báo đỏ}
+    else chạm số liệu (điện áp/áp suất/…)
+        AI->>AI: rule-based trích số liệu từ metadata gốc
+        AI-->>BE: {answer(số liệu), numericRule:true, citations}
+    else bình thường
+        AI->>AI: LLM sinh câu trả lời + citation
+        AI-->>BE: {answer, citations, confidence}
+    end
+    BE->>BE: ghi query_log
+    BE-->>U: answer + bbox crop + trang
+```
+
+## B6. Model & tài nguyên Edge
+
+| Thành phần | Định dạng | ~Dung lượng | ~RAM khi chạy |
+|---|---|---|---|
+| Qwen2.5-1.5B-Instruct | GGUF Q4_K_M | ~1.1 GB | ~2–3 GB |
+| multilingual-e5-small | ONNX | <400 MB | vài trăm MB |
+| PaddleOCR mobile (multi-lang) | — | vài trăm MB | ~1 GB khi OCR |
+| ChromaDB | persistent dir | theo dữ liệu | thấp |
+
+**Yêu cầu Edge tối thiểu:** CPU Core i5, **RAM 8 GB**, SSD. Không cần GPU. Đạt latency <5s/truy vấn
+là **mục tiêu cần đo sớm ở M1** (rủi ro #2 trong ROADMAP).
+
+## B7. Triển khai & đóng gói offline cho Edge
+
+- **Không internet lúc chạy:** models (GGUF/ONNX/PaddleOCR) đóng vào image `dcid-ai` hoặc volume
+  `models/`; không tải runtime.
+- **Đóng gói:** `docker save` các image (backend, ai, postgres, redis, minio, chroma) → chuyển USB/registry nội bộ.
+- **Persistence Edge:** volume cho Postgres, MinIO, ChromaDB (survive restart).
+- **2 kiểu deploy pilot (còn mở):** (a) full-stack trên 1 Edge; (b) Central (PG+MinIO+BE) + Edge (AI+Chroma+UI).
+
+## B8. Cấu hình · Secrets · Observability · Backup
+
+- **Secrets:** `APP_JWT_SECRET` (≥32B), DB creds, MinIO keys, **token nội bộ BE↔AI** — qua env/`.env`
+  (đã có trong `.gitignore`), không hardcode.
+- **Observability:** backend đã expose Prometheus (`/actuator/prometheus`) + JSON logs (traceId).
+  `dcid-ai` bổ sung `/metrics` + log latency từng stage (ocr/embed/retrieve/llm).
+- **Audit ISO:** mọi hành động ghi `audit_logs`; mọi truy vấn ghi `query_logs` (phục vụ KPI hallucination = 0%).
+- **Backup:** `pg_dump` định kỳ · mirror MinIO · snapshot thư mục ChromaDB.
+
+## B9. Non-functional & KPI gate (điều kiện nghiệm thu)
+
+| KPI (Business Case §5) | Ngưỡng | Đo bằng |
+|---|---|---|
+| OCR đa ngôn ngữ | ≥ 95% | golden set 500 trang thực tế |
+| Recall@3 | ≥ 92% | bộ câu hỏi eval, kiểm top-3 |
+| Latency | < 5 s/truy vấn | đo trên Edge Core i5 |
+| Hallucination số liệu | 0% | hậu kiểm `query_logs` (zero-tolerance) |
+
+> Các KPI này là **cổng nghiệm thu M5 (Pilot/UAT)**; harness đo (golden set + eval set) phải sẵn từ **M1**.
