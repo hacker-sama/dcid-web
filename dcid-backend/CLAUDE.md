@@ -1,111 +1,130 @@
-# CLAUDE.md — CongDanSo (DCID) Backend
+# CLAUDE.md — Smart KCN Docs Backend
 
 ## Project Overview
 
-CongDanSo (DCID Platform) is a Vietnamese e-Government platform backend built with Spring Boot 3.3.x.
-It serves as a two-sided platform where citizens submit administrative applications and officers
-review and process them. The backend uses OAuth2/JWT (Keycloak) for authentication, PostgreSQL for
-persistence, Kafka for event-driven processing, Redis for caching/rate-limiting, and MinIO for
-document storage.
+Smart KCN Docs backend is the **on-premise governance / control plane** for an industrial
+document assistant used inside factories (KCN = Khu Công Nghiệp). Built with Spring Boot 3.3.x
+on Java 21. It owns everything that is *not* AI inference:
+
+- **AuthN/AuthZ** — self-issued JWT (HMAC) + role-based access control (no external IdP).
+- **Document & version lifecycle** — metadata, versioning workflow, obsolete marking (planned).
+- **Object storage** — original PDFs and bounding-box crops in MinIO.
+- **Audit logging** — immutable ISO-traceable trail (who / when / what / version).
+- **Integration** — REST surface for CMMS/MES work orders (planned).
+- **Orchestration** — calls out to a separate Python AI service for OCR / RAG / LLM (planned).
+
+> The AI plane (PaddleOCR, embeddings, ChromaDB, llama.cpp/GGUF, guardrails) lives in a
+> **separate Python (FastAPI/Celery) service** and is intentionally NOT in this repo yet.
+> See `docs/ARCHITECTURE.md` at the repo root for the full target architecture and roadmap.
+
+**Current state:** the codebase was reset to a clean skeleton. The old e-government
+(citizen/officer) domain has been removed. What remains is cross-cutting infrastructure plus a
+working self-JWT auth flow. Business domain (documents, versions, query logs, work orders) is
+**not built yet** — it is designed in `docs/ARCHITECTURE.md` and should be added incrementally.
 
 ## How to Run Locally
 
 ```bash
-# Prerequisites: JDK 21, Docker (for PostgreSQL, Redis, Kafka, MinIO, Keycloak)
+# Prerequisites: JDK 21+, Docker (PostgreSQL, Redis, Kafka, MinIO)
 
-# 1. Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your local configuration
+# 1. Start infra (from repo root)
+docker-compose up -d postgres redis minio kafka zookeeper
 
-# 2. Start infrastructure services (if you have docker-compose elsewhere)
-# docker-compose up -d
-
-# 3. Build the project
-./mvnw clean compile
-
-# 4. Run tests
-./mvnw test
-
-# 5. Run the application
+# 2. Build & run (dev profile)
+cd dcid-backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+
+# 3. Log in with the seeded bootstrap admin (change the password!)
+curl -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}'
+# → { "data": { "token": "<jwt>", "tokenType": "Bearer", ... } }
+
+curl http://localhost:8080/api/auth/me -H "Authorization: Bearer <jwt>"
 ```
+
+Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 ## Package Structure
 
 ```
-vn.dcid/
-├── DCIDApplication.java          — Spring Boot entry point
-├── config/                       — Configuration classes (Security, Kafka, Redis, MinIO, etc.)
-├── common/                       — Shared records: ApiResponse, ErrorResponse, PagedResponse, AuditableEntity
+vn.dcid/                          — (package name kept from the original repo)
+├── DCIDApplication.java          — Spring Boot entry point (@EnableJpaAuditing, @EnableAsync)
+├── config/                       — Security (self-JWT), Kafka, Redis, MinIO, OpenAPI, WebSocket,
+│                                    Flyway, JwtProperties, DataInitializer (seeds bootstrap admin)
+├── common/                       — Shared records: ApiResponse, ErrorResponse, PagedResponse,
+│                                    PageRequest, ValidationError, AuditableEntity
 ├── exception/                    — Exception hierarchy + GlobalExceptionHandler
-├── security/                     — JWT UserPrincipal, SecurityContextHelper
-├── filter/                       — Request filters (tracing, rate limiting)
+├── security/                     — JwtService (issue/verify), JwtAuthenticationFilter,
+│                                    UserPrincipal, SecurityContextHelper
+├── filter/                       — RequestTracingFilter, RateLimitFilter (Redis; disabled until
+│                                    write endpoints exist)
 ├── domain/
-│   ├── enums/                    — ApplicationStatus (state machine), UserRole, NotificationType
-│   └── entity/                   — JPA entities (User, Application, ProcedureType, etc.)
-├── repository/                   — Spring Data JPA repositories
+│   ├── enums/                    — UserRole (OPERATOR, ENGINEER, QA_ADMIN, ADMIN)
+│   └── entity/                   — User, AuditLog
+├── repository/                   — UserRepository, AuditLogRepository
 ├── dto/
-│   ├── request/                  — Inbound DTOs with Bean Validation
-│   └── response/                 — Outbound DTOs (records)
-├── service/                      — Business logic stubs + ApplicationPolicy
-├── messaging/
-│   ├── event/                    — Kafka event records
-│   ├── ApplicationEventProducer  — Kafka producer
-│   └── ApplicationEventConsumer  — Kafka consumer with DLQ pattern
-├── websocket/                    — STOMP WebSocket handler for real-time updates
+│   ├── request/                  — LoginRequest
+│   └── response/                 — LoginResponse, UserProfileDTO
+├── service/                      — AuthService, UserService, AuditLogService, MinioService
 └── api/
-    ├── HealthController           — Public health check
-    ├── AuthController             — GET /api/auth/me
-    ├── citizen/                   — Citizen-facing endpoints
-    └── officer/                   — Officer/admin endpoints
+    ├── HealthController          — public GET /api/health
+    └── AuthController            — POST /api/auth/login, GET /api/auth/me
 ```
+
+## Authentication & RBAC
+
+- **Self-issued JWT** (HS256 via jjwt). No Keycloak / no external IdP → fits air-gapped factories.
+- `AuthService.login` verifies BCrypt password, `JwtService.issueToken` mints the token
+  (subject = user id; claims `username`, `role`).
+- `JwtAuthenticationFilter` validates `Authorization: Bearer <jwt>` and populates the
+  `SecurityContext` with a `UserPrincipal` + a `ROLE_<role>` authority.
+- Protect endpoints with `@PreAuthorize("hasRole('ENGINEER')")` (method security is enabled) or
+  path rules in `SecurityConfig`.
+- Config lives under `app.jwt.*` — **always override `APP_JWT_SECRET`** (>= 32 bytes) per env.
 
 ## Coding Conventions
 
 ### Naming
 - **Packages**: lowercase, singular (`domain.entity`, not `domain.entities`)
 - **Entities**: PascalCase, singular (`User`, not `Users`)
-- **DTOs**: Suffix with `DTO` for responses, `Request` for inputs
-- **Controllers**: Prefix with role context (`CitizenApplicationController`, `OfficerApplicationController`)
+- **DTOs**: Suffix `DTO` for responses, `Request` for inputs
+- **Controllers**: name by resource/context (`AuthController`, later e.g. `DocumentController`)
 
 ### Error Handling
-- All custom exceptions extend `AppException` which carries a `code` field
-- `GlobalExceptionHandler` maps exceptions to HTTP status codes
-- Never return `null` — throw `NotFoundException` instead
-- Validation uses Jakarta Bean Validation annotations on request DTOs
-
-### Stub Pattern
-- All service methods throw `UnsupportedOperationException("TODO: ...")` until implemented
-- This ensures compilation succeeds and makes unfinished work easy to grep for
+- Custom exceptions extend `AppException` (carries a `code`); `GlobalExceptionHandler` maps them.
+- Never return `null` — throw `NotFoundException` instead.
+- Validation uses Jakarta Bean Validation annotations on request DTOs.
 
 ### Database
-- Flyway manages schema migrations in `db/migration/V{N}__description.sql`
-- JPA ddl-auto is set to `validate` — schema changes go through Flyway only
-- Use `Instant` for timestamps, never `LocalDateTime`
+- Flyway manages schema in `db/migration/V{N}__description.sql`; baseline is `V1__init.sql`.
+- JPA `ddl-auto=validate` — schema changes go through Flyway only.
+- Use `Instant` for timestamps, never `LocalDateTime`.
 
-### Security
-- All endpoints require JWT authentication except health/actuator/swagger
-- Roles extracted from Keycloak `realm_access.roles` claim
-- Use `SecurityContextHelper` to get current user info in services
+### Stub Pattern (for not-yet-built domain)
+- New service methods that aren't implemented yet should throw
+  `UnsupportedOperationException("TODO: ...")` so compilation succeeds and work is greppable.
 
-## How to Add a New Feature
+## How to Add a New Feature (e.g. Documents)
 
-1. **Entity**: Create JPA entity in `domain/entity/`, extending `AuditableEntity` if needed
-2. **Migration**: Add Flyway migration `V{next}__description.sql`
-3. **Repository**: Create Spring Data repository in `repository/`
-4. **DTO**: Create request/response records in `dto/request/` and `dto/response/`
-5. **Service**: Create service class with constructor injection, add stub methods
-6. **Policy** (if needed): Add authorization checks in a policy class
-7. **Controller**: Create REST controller in `api/citizen/` or `api/officer/`
-8. **Test**: Add unit test for business logic, `@WebMvcTest` for controllers
+1. **Entity** in `domain/entity/`, extending `AuditableEntity` if it needs id/timestamps.
+2. **Migration** `V{next}__description.sql`.
+3. **Repository** in `repository/`.
+4. **DTOs** in `dto/request` and `dto/response` (records).
+5. **Service** with constructor injection (stub methods first).
+6. **Controller** in `api/`, guard with `@PreAuthorize`.
+7. **Test** — unit-test business logic; keep web-slice tests infra-free (see `HealthControllerTest`).
+
+## Testing Notes
+- `HealthControllerTest` is a plain unit test (no context) — always green.
+- `DCIDApplicationTests` is `@SpringBootTest` (context load) and **requires the infra stack**
+  (Postgres/Redis/Kafka/MinIO) to be up. Run it only with `docker-compose up -d` first.
 
 ## Common Pitfalls to Avoid
-
-- **DO NOT** use `javax.*` imports — use `jakarta.*` only (Spring Boot 3.x)
-- **DO NOT** hardcode URLs, credentials, or environment-specific values
-- **DO NOT** use Lombok — write getters/setters explicitly
-- **DO NOT** implement business logic before the skeleton is complete
-- **DO NOT** use `LocalDateTime` — use `Instant` for all timestamps
-- **DO NOT** modify schema directly — always use Flyway migrations
-- **DO NOT** return `null` from service methods — throw appropriate exceptions
-- **DO NOT** catch exceptions silently — log them or rethrow
+- **DO NOT** use `javax.*` — use `jakarta.*` (Spring Boot 3.x).
+- **DO NOT** reintroduce Keycloak/OAuth2 — auth is self-contained JWT by design.
+- **DO NOT** put AI inference (OCR/RAG/LLM) in this service — it belongs in the Python plane.
+- **DO NOT** use Lombok — write getters/setters explicitly.
+- **DO NOT** use `LocalDateTime` — use `Instant`.
+- **DO NOT** modify schema directly — always use Flyway.
+- **DO NOT** hardcode secrets — override `APP_JWT_SECRET` and DB creds via env.

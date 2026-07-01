@@ -37,37 +37,27 @@
         - "9000:9000"
       restart: unless-stopped
 
-    keycloak:
-      image: quay.io/keycloak/keycloak:26.0
-      container_name: dcid-keycloak
-      environment:
-        KEYCLOAK_ADMIN: admin
-        KEYCLOAK_ADMIN_PASSWORD: admin
-      command: ["start-dev"]
-      ports:
-        - "8180:8080"
-      restart: unless-stopped
-
     backend:
       build:
         context: ./dcid-backend
         dockerfile: Dockerfile
       container_name: dcid-backend
       environment:
-        SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/dcid
-        SPRING_DATASOURCE_USERNAME: dcid
-        SPRING_DATASOURCE_PASSWORD: dcid
-        SPRING_REDIS_HOST: redis
-        SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+        POSTGRES_URL: jdbc:postgresql://postgres:5432/dcid
+        POSTGRES_USER: dcid
+        POSTGRES_PASSWORD: dcid
+        REDIS_HOST: redis
+        KAFKA_BOOTSTRAP_SERVERS: kafka:9092
         MINIO_ENDPOINT: http://minio:9000
         MINIO_ACCESS_KEY: minio
         MINIO_SECRET_KEY: minio123
-        KEYCLOAK_ISSUER: http://keycloak:8080/realms/dcid
+        # Self-issued JWT — override with a strong 32+ byte secret in real deployments
+        APP_JWT_SECRET: change-me-in-prod-please-use-a-long-random-secret
+        APP_BOOTSTRAP_ADMIN_PASSWORD: admin123
       depends_on:
         - postgres
         - redis
         - minio
-        - keycloak
       ports:
         - "8080:8080"
       restart: unless-stopped

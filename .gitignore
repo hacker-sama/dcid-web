@@ -1,0 +1,28 @@
+# ---- Java / Maven (backend) ----
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+
+# ---- Node / Next.js (frontend) ----
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+
+# ---- Env & secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- Logs & OS ----
+*.log
+.DS_Store
+Thumbs.db

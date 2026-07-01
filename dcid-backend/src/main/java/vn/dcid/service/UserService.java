@@ -2,6 +2,7 @@ package vn.dcid.service;
 
 import org.springframework.stereotype.Service;
 import vn.dcid.domain.entity.User;
+import vn.dcid.exception.NotFoundException;
 import vn.dcid.repository.UserRepository;
 import vn.dcid.security.SecurityContextHelper;
 
@@ -19,19 +20,18 @@ public class UserService {
     public User getCurrentUser() {
         String userId = SecurityContextHelper.getCurrentUserId();
         if (userId == null) {
-            throw new UnsupportedOperationException("TODO: User not authenticated");
+            throw new NotFoundException("No authenticated user in context");
         }
-        return userRepository.findById(UUID.fromString(userId))
-                .orElseThrow(() -> new UnsupportedOperationException("TODO: User not found"));
+        return getUserById(UUID.fromString(userId));
     }
 
     public User getUserById(UUID id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new UnsupportedOperationException("TODO: User not found"));
+                .orElseThrow(() -> new NotFoundException("User", id.toString()));
     }
 
-    public User getUserByKeycloakId(String keycloakId) {
-        return userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new UnsupportedOperationException("TODO: User not found"));
+    public User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User", username));
     }
 }

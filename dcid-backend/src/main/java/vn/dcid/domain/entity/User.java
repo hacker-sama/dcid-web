@@ -4,16 +4,24 @@ import jakarta.persistence.*;
 import vn.dcid.common.AuditableEntity;
 import vn.dcid.domain.enums.UserRole;
 
-import java.util.UUID;
-
+/**
+ * Application user, authenticated by a self-issued JWT (no external IdP).
+ * Credentials are stored on-premise: {@code passwordHash} is a BCrypt hash.
+ */
 @Entity
 @Table(name = "users")
 public class User extends AuditableEntity {
 
-    @Column(name = "keycloak_id", unique = true, nullable = false, length = 255)
-    private String keycloakId;
+    @Column(name = "username", unique = true, nullable = false, length = 100)
+    private String username;
 
-    @Column(name = "email", nullable = false, length = 255)
+    @Column(name = "password_hash", nullable = false, length = 100)
+    private String passwordHash;
+
+    @Column(name = "full_name", length = 255)
+    private String fullName;
+
+    @Column(name = "email", length = 255)
     private String email;
 
     @Enumerated(EnumType.STRING)
@@ -23,12 +31,28 @@ public class User extends AuditableEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
-    public String getKeycloakId() {
-        return keycloakId;
+    public String getUsername() {
+        return username;
     }
 
-    public void setKeycloakId(String keycloakId) {
-        this.keycloakId = keycloakId;
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
     public String getEmail() {
