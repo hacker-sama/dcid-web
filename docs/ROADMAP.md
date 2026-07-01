@@ -19,10 +19,11 @@
 ```
 dcid-web/
 ├── dcid-backend/     ✅ Spring Boot — governance/control plane (đã có)
-├── dcid-frontend/    🟡 Next.js — Web console + Kiosk (cần format)
-├── dcid-mobile/      ⬜ Flutter — app hiện trường Snap & Ask (SẼ TẠO ở M2–M4)
+├── dcid-app/         ⬜ Flutter — Kiosk (Windows) + Mobile (Android) (SẼ TẠO; thay dcid-frontend)
 ├── dcid-ai/          ⬜ Python (FastAPI + Celery) — AI plane (SẼ TẠO ở M1)
 └── docs/             ✅ ARCHITECTURE.md, ROADMAP.md, FRONTEND.md
+
+# dcid-frontend (Next.js, domain cũ) → GỠ, thay bằng dcid-app. Xem FRONTEND.md §10.
 ```
 
 ---
@@ -55,8 +56,8 @@ dcid-web/
 - [ ] `POST /ai/query`: retrieve top-k → **Qwen2.5-1.5B (GGUF/llama.cpp)** sinh câu trả lời + citation.
 - [ ] Guardrail tối thiểu: cosine threshold.
 
-**Frontend (`dcid-frontend`)**
-- [ ] Màn upload tài liệu; màn hỏi–đáp hiển thị câu trả lời + trang trích dẫn.
+**Frontend (`dcid-app` — Flutter, tạo mới)**
+- [ ] Khung Flutter (login self-JWT); màn upload tài liệu; màn hỏi–đáp + trang trích dẫn (chạy Android hoặc Windows).
 
 **Đo lường:** latency query trên Core i5, độ đúng top-3 trên ~20 câu hỏi mẫu.
 
@@ -76,9 +77,10 @@ dcid-web/
 - [ ] **Rate limit** upload/query qua `RateLimitFilter` (Redis) — bật lại đúng endpoint.
 - [ ] **CMMS/MES**: `POST /api/integration/work-orders` nhận Work Order → tạo deep-link tới đúng trang.
 
-### M4 — Kiosk/Mobile UI hiện trường
-- [ ] **Snap & Ask** (chụp ảnh → hỏi), **side-by-side** bản vẽ, nút to, thao tác găng tay.
-- [ ] Auth + UI theo role (Operator chỉ thấy SOP/an toàn; Engineer thấy bản vẽ/log).
+### M4 — Kiosk/Mobile UI hiện trường (`dcid-app` Flutter)
+- [ ] **Snap & Ask** (camera → hỏi), **side-by-side** + overlay bbox, nút to, thao tác găng tay.
+- [ ] **Kiosk Windows** fullscreen (`window_manager`); UI ẩn/hiện theo role (Operator SOP/an toàn; Engineer bản vẽ/log).
+- [ ] Admin/QA console (upload, versioning, audit) trên màn lớn.
 
 ### M5 — Pilot & UAT + Hardening
 - [ ] Deploy **1 dây chuyền trọng điểm**; thu feedback kỹ sư; hiệu chỉnh.
@@ -114,7 +116,7 @@ Response `query`: `{ answer, citations[{page,bboxKey,docVersion}], confidence, g
 | Embedding | multilingual-e5-small (ONNX qua `optimum`) | |
 | Vector DB | ChromaDB (persistent, trên edge) | |
 | LLM serving | **llama-cpp-python** (Qwen2.5-1.5B Q4_K_M) ✅ *đã chốt* | nhúng thẳng, dễ đóng gói offline cho edge |
-| Frontend | Next.js (đã có) | |
+| Frontend | **Flutter** (`dcid-app`) — Android + Windows | 1 codebase cho kiosk + mobile |
 
 ---
 
@@ -125,7 +127,7 @@ Response `query`: `{ answer, citations[{page,bboxKey,docVersion}], confidence, g
 | PM/BA | KPI, golden set, nghiệp vụ ISO, nghiệm thu từng milestone |
 | AI Engineer | `dcid-ai`: OCR, chunking, embed, LLM, guardrails, đo KPI |
 | Backend Dev | `dcid-backend`: domain, `AiPipelineClient`, RBAC, audit, CMMS/MES |
-| FE/Mobile Dev | `dcid-frontend`: Kiosk UI, Snap & Ask, side-by-side |
+| Flutter Dev | `dcid-app`: Kiosk (Windows) + Mobile (Android), Snap & Ask, side-by-side, admin |
 | QA/QC | test dữ liệu kỹ thuật, load test, đo hallucination |
 
 ---

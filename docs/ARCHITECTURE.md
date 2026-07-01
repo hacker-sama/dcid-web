@@ -28,7 +28,7 @@
 ```mermaid
 flowchart TB
     subgraph Edge["🏭 Edge Device / Kiosk (CPU, phân xưởng)"]
-        UI["Next.js Kiosk/Mobile UI\n(Snap & Ask, side-by-side)"]
+        UI["Flutter app (dcid-app)\nKiosk (Windows) + Mobile (Android)\nSnap & Ask, side-by-side"]
         AISVC["AI Service (Python, FastAPI + Celery)\nPaddleOCR · e5-small(ONNX) · llama.cpp(Qwen2.5-1.5B)\nRAG retrieval + Guardrails"]
         CHROMA[("ChromaDB\nvector store")]
     end
@@ -68,7 +68,7 @@ flowchart TB
 | **Object storage** | MinIO | PDF gốc, ảnh trang, **bounding-box crop** (bằng chứng số liệu) |
 | **Cache/Broker** | Redis 7 | cache, rate-limit, (tùy chọn) Celery broker |
 | **Event bus** | Kafka (tùy chọn) | phát sự kiện ingest/audit bất đồng bộ |
-| **Frontend** | Next.js (thư mục `dcid-frontend`) | Kiosk/Mobile UI, Snap & Ask, đối chiếu bản vẽ |
+| **Frontend** | **Flutter** (`dcid-app`) — Android + Windows | Kiosk + Mobile UI, Snap & Ask, đối chiếu bản vẽ |
 
 **Ranh giới rõ ràng:** AI plane **không** giữ quyền/RBAC/audit gốc — nó gọi Spring Boot để kiểm tra
 quyền và ghi log. Spring Boot **không** chạy model — nó gọi AI plane để OCR/embed/query.
@@ -140,7 +140,7 @@ AI Service → Spring Boot: ghi query_log (user, timestamp, query, doc version, 
 ## 7. Topology triển khai
 
 - **Central Server (1 máy x86 phổ thông):** Postgres + MinIO + Redis + (Kafka) + Spring Boot.
-- **Edge Device (Mini/Industrial PC, Core i5/RAM 8GB):** Next.js UI + AI Service + ChromaDB cục bộ.
+- **Edge Device (Mini/Industrial PC, Core i5/RAM 8GB):** Flutter kiosk (Windows) + AI Service + ChromaDB cục bộ.
   → LLM/OCR chạy cục bộ, không cần GPU server; dữ liệu nhạy cảm không rời nhà máy.
 - Nhiều Edge có thể chia sẻ 1 Central; hoặc chạy full-stack trên 1 Edge cho pilot.
 
@@ -170,7 +170,7 @@ Callback AI → Spring Boot: `POST /api/internal/ingest-callback` (bảo vệ b�
 | P1–P2 | AI Core & OCR & RAG (Python) | ⬜ Repo riêng / service Python |
 | P3 | Backend Governance: Document/Version/Query/WorkOrder + Admin | ⬜ Thêm domain vào Spring Boot (theo §5) |
 | P3 | `AiPipelineClient` + ingest callback | ⬜ Theo §8 |
-| P4 | Kiosk/Mobile UI (Snap & Ask, side-by-side) | 🟡 `dcid-frontend` (Next.js) — cần chỉnh |
+| P4 | Kiosk/Mobile UI (Snap & Ask, side-by-side) | ⬜ `dcid-app` (Flutter, Android + Windows) — tạo mới |
 | P5 | Pilot & UAT 01 dây chuyền | ⬜ |
 
 ---
@@ -201,8 +201,7 @@ Chi tiết vận hành backend: xem `dcid-backend/CLAUDE.md`.
 dcid-web/                      (monorepo)
 ├── dcid-backend/              Spring Boot — governance/control plane
 │   └── src/main/java/vn/dcid/ {api, service, repository, domain, security, config, ...}
-├── dcid-frontend/             Next.js — Web console + Kiosk UI
-├── dcid-mobile/               Flutter — app hiện trường (Snap & Ask)   ← TẠO Ở M2–M4
+├── dcid-app/                  Flutter — Kiosk (Windows) + Mobile (Android)   ← TẠO MỚI
 ├── dcid-ai/                   Python (FastAPI + Celery) — AI plane   ← TẠO Ở M1
 ├── docs/                      ARCHITECTURE.md, ROADMAP.md, FRONTEND.md
 └── docker-compose.yml         postgres · redis · minio · kafka · backend (+ ai, chroma ở M1)

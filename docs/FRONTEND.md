@@ -1,191 +1,166 @@
-# Smart KCN Docs — Frontend & Mobile (đề xuất triển khai)
+# Smart KCN Docs — Frontend (Flutter, đa nền tảng)
 
 > Đọc kèm [`ARCHITECTURE.md`](ARCHITECTURE.md) và [`ROADMAP.md`](ROADMAP.md).
-> **Quyết định đã chốt:** Web/Kiosk = **Next.js** (repo `dcid-frontend`) · Mobile hiện trường =
-> **Flutter native** (repo `dcid-mobile`) · chung một **backend REST + self-JWT**.
+> **Quyết định đã chốt:** **Flutter-only** — MỘT project `dcid-app` build ra **cả 3 mặt** từ 1 codebase:
+> **Mobile** (Android, Snap & Ask) · **Kiosk** (Windows desktop, fullscreen) · **Admin console**
+> (Windows/màn lớn). **Bỏ Next.js/React** — `dcid-frontend` cũ sẽ được gỡ (mục §10).
 
 ---
 
-## 0. Hiện trạng & phạm vi
+## 0. Vì sao Flutter-only
 
-- `dcid-frontend` là **Next.js 14** nhưng **vẫn thuộc domain cũ** (pages `citizen/*`, `officer/*`,
-  auth NextAuth + **Keycloak**) → cần **format** (xem *Phần B*).
-- Mobile: làm **app Flutter riêng** cho tablet/điện thoại hiện trường (camera Snap & Ask, native, offline).
-- Hai client, **một hợp đồng API** (mục 6) — logic quyền/nghiệp vụ nằm ở backend.
+- Team nhỏ (1 dev) → **1 codebase, 1 ngôn ngữ (Dart)**, rẻ & dễ bảo trì.
+- Kiosk và Mobile đều là **touch/UX xưởng** → dùng chung ~90% code, chỉ đổi layout theo form factor.
+- `dcid-frontend` (Next.js) là app **domain cũ**, kiểu gì cũng viết lại → gỡ luôn, không "format".
+- Kiosk = **Flutter Windows native** (không phải Flutter Web): offline mạnh, khởi động nhanh, truy cập
+  phần cứng, tránh điểm yếu Flutter Web (CanvasKit nặng, text/accessibility yếu).
+
+**Đánh đổi đã chấp nhận:** màn **Admin/QA dày dữ liệu** (bảng version, audit, dashboard, viewer PDF) là
+điểm yếu tương đối của Flutter → dùng `data_table_2`/`pluto_grid`, `fl_chart`, `pdfx`/Syncfusion; tốn công
+hơn React nhưng chấp nhận được ở quy mô này.
+
+---
+
+## 1. Nền tảng target & chiến lược responsive
+
+Một Flutter project, nhiều target:
+
+| Target build | Thiết bị | Vai chính |
+|---|---|---|
+| **Android** (APK) | tablet/điện thoại hiện trường | OPERATOR, ENGINEER lưu động — **Snap & Ask** |
+| **Windows** (exe) | Industrial/Mini PC | Kiosk tra cứu tại trạm + **Admin/QA console** |
+| *(Web — tùy chọn sau)* | — | chỉ mở nếu cần truy cập trình duyệt |
+
+- **Responsive/adaptive:** `LayoutBuilder` + breakpoints (hoặc `flutter_adaptive_scaffold`): phone = 1 cột,
+  điều hướng dưới; màn lớn/kiosk = master-detail, **side-by-side viewer**, navigation rail.
+- **Điều hướng:** `go_router` + guard theo role.
+- **Kiosk mode (Windows):** `window_manager`/`bitsdojo_window` → fullscreen, frameless, auto-start,
+  chặn thoát; chạy trên Industrial PC như một app chuyên dụng.
+
+---
+
+## 2. Kiến trúc app (`dcid-app`)
+
+**Gói đề xuất:** `dio` (HTTP + interceptor Bearer) · `flutter_riverpod` (state) · `go_router` (routing) ·
+`flutter_secure_storage` (JWT — chạy cả Android/Windows) · `camera`/`image_picker` (Snap & Ask) ·
+`cached_network_image` · `isar`/`hive` (offline cache đa nền tảng) · `intl`+gen-l10n (đa ngôn ngữ) ·
+`fl_chart` (biểu đồ) · `data_table_2`/`pluto_grid` (bảng admin) · `pdfx`/`syncfusion_flutter_pdfviewer` (PDF) ·
+`window_manager` (kiosk Windows).
 
 ```
-dcid-web/
-├── dcid-frontend/   Next.js — Web console + Kiosk (Operator/Engineer/QA/Admin)
-├── dcid-mobile/     Flutter — App hiện trường (Snap & Ask)          ← TẠO MỚI
-├── dcid-backend/    Spring Boot (đã có)
-└── dcid-ai/         Python (M1)
-```
-
----
-
-## 1. Phân vai hai client
-
-| Client | Thiết bị | Vai chính | Điểm mạnh |
-|---|---|---|---|
-| **Next.js (web/kiosk)** | Industrial/Mini PC, màn lớn | QA_ADMIN (upload/versioning), ADMIN (user/audit), Engineer tra cứu tại trạm | màn rộng cho **side-by-side**, quản trị, bàn phím |
-| **Flutter (mobile)** | Tablet/điện thoại | OPERATOR & ENGINEER lưu động | **camera Snap & Ask**, offline, rung/haptic, dùng 1 tay/găng tay |
-
-> Cùng hỗ trợ tra cứu + Ask; nhưng **upload/versioning/admin** ưu tiên web, **Snap & Ask lưu động** ưu tiên mobile.
-
-**Đánh đổi đã chấp nhận:** 2 codebase (React + Dart) → cần kỹ năng Flutter; bù lại app native
-camera/offline mạnh hơn PWA và phân phối APK nội bộ chủ động.
-
----
-
-## 2. Web (Next.js) — kiến trúc
-
-- **Tái dùng nguyên stack:** App Router, TailwindCSS, **shadcn/ui**, **TanStack Query**, RHF+Zod,
-  Axios (`lib/apiClient`), **next-intl** (UI đa ngôn ngữ), next-themes.
-- **Auth self-JWT:** login → `POST /api/auth/login` → lưu token ở **httpOnly cookie** (qua Route Handler);
-  `middleware.ts` chặn route theo role đọc từ JWT. *(Có thể giữ NextAuth với **Credentials provider**
-  gọi backend login để tái dùng session — xem Phần B.)*
-- **Kiosk mode:** Chromium `--kiosk --app=<url>` fullscreen trên Industrial PC.
-- Viewer **side-by-side + overlay bbox** bằng canvas/SVG; ảnh trang lấy qua endpoint proxy backend.
-
----
-
-## 3. Mobile (Flutter) — kiến trúc
-
-**Gói đề xuất:** `dio` (HTTP + interceptor gắn Bearer) · `flutter_riverpod` (state) · `go_router` (điều hướng
-+ guard theo role) · `camera`/`image_picker` (Snap & Ask) · `flutter_secure_storage` (lưu JWT an toàn) ·
-`cached_network_image` · `hive`/`sqflite` (offline cache) · `intl`/`easy_localization` (đa ngôn ngữ).
-
-```
-dcid-mobile/  (Flutter)
+dcid-app/  (Flutter)
 ├── lib/
 │   ├── main.dart
-│   ├── core/            # env, theme (touch/glove), router (go_router), di
+│   ├── core/
+│   │   ├── env.dart              # API_BASE_URL theo build flavor
+│   │   ├── theme.dart            # touch/glove: target ≥48dp, font lớn, dark
+│   │   ├── router.dart           # go_router + role guard
+│   │   ├── responsive.dart       # breakpoints phone / kiosk-desktop
+│   │   └── kiosk.dart            # window_manager (Windows fullscreen)
 │   ├── data/
-│   │   ├── api_client.dart      # Dio + interceptor JWT + 401 refresh
+│   │   ├── api_client.dart       # Dio + interceptor JWT + 401
 │   │   ├── auth_repository.dart  # login → secure storage
-│   │   └── docs_repository.dart  # query / documents
+│   │   └── docs_repository.dart  # query / documents / versions
 │   ├── features/
-│   │   ├── auth/         # login, role guard
-│   │   ├── search/       # tra cứu + Ask
-│   │   ├── snap_ask/     # camera → gửi ảnh + câu hỏi
-│   │   ├── viewer/       # ảnh trang + CustomPaint vẽ bbox
-│   │   └── answer/       # câu trả lời + citation + guardrail banner
-│   └── l10n/            # vi, en (mở zh/ja)
+│   │   ├── auth/                 # login, role guard, /me
+│   │   ├── search/               # tra cứu + Ask
+│   │   ├── snap_ask/             # camera → ảnh + câu hỏi (mobile)
+│   │   ├── answer/               # câu trả lời + citation + guardrail banner
+│   │   ├── viewer/               # ảnh trang + CustomPaint vẽ bbox; PDF
+│   │   └── admin/                # upload, versioning, users, audit (màn lớn)
+│   └── l10n/                     # vi, en (mở zh/ja)
 ├── assets/
+├── android/  ├── windows/        # target build
 └── pubspec.yaml
 ```
 
-- **Auth:** login → nhận JWT → `flutter_secure_storage`; Dio interceptor gắn `Authorization: Bearer`.
-- **Snap & Ask:** `camera`/`image_picker` chụp → upload multipart tới `POST /api/query` (kèm ảnh) →
-  backend forward `dcid-ai` (OCR ad-hoc + retrieve).
-- **Side-by-side/bbox:** `Stack` + `CustomPaint` vẽ khoanh đỏ theo toạ độ chuẩn hoá.
-- **Guardrail UI:** `locked=true` → banner đỏ, ẩn câu trả lời tự sinh (giống web).
-- **Offline:** cache tài liệu vừa xem (Hive/sqflite); hàng đợi khi mất mạng.
-- **UX xưởng:** nút ≥ 48dp, chữ lớn, theme tối, haptic khi cảnh báo.
+---
+
+## 3. Bản đồ màn hình theo vai (UI ẩn/hiện theo role)
+
+| Vai | Màn hình | Ưu tiên surface |
+|---|---|---|
+| **Chung** | login, 403, chọn ngôn ngữ, hồ sơ (`/me`) | mọi target |
+| **OPERATOR** | tra cứu **SOP & cảnh báo an toàn**; Search + Ask; **Snap & Ask** | mobile |
+| **ENGINEER** | + **bản vẽ / sơ đồ mạch / nhật ký bảo trì**; **side-by-side viewer** | mobile + kiosk |
+| **QA_ADMIN** | **upload** tài liệu; **quản lý version** (ACTIVE/SUPERSEDED/OBSOLETE) | kiosk/desktop (màn lớn) |
+| **ADMIN** | quản lý user/role; **audit log viewer** | kiosk/desktop |
+
+> Chốt chặn quyền thật ở backend `@PreAuthorize`; UI chỉ ẩn/hiện cho gọn.
 
 ---
 
-## 4. Bản đồ màn hình theo vai (áp cho cả 2 client, UI ẩn/hiện theo role)
+## 4. Luồng UX đặc thù hiện trường
 
-| Vai | Màn hình |
-|---|---|
-| **Chung** | login, 403, chọn ngôn ngữ, hồ sơ (`/me`) |
-| **OPERATOR** | tra cứu **SOP & cảnh báo an toàn**; Search + Ask; **Snap & Ask** (mobile); xem tài liệu + citation |
-| **ENGINEER** | + **bản vẽ / sơ đồ mạch / nhật ký bảo trì**; **side-by-side viewer** |
-| **QA_ADMIN** | **upload** tài liệu; **quản lý version** (ACTIVE/SUPERSEDED/OBSOLETE) — *ưu tiên web* |
-| **ADMIN** | quản lý user/role; **audit log viewer** — *ưu tiên web* |
-
-> Chốt chặn thật ở backend `@PreAuthorize`; UI chỉ ẩn/hiện cho gọn.
-
----
-
-## 5. Luồng UX đặc thù (cả 2 client)
-
-- **Snap & Ask** (mobile mạnh nhất): camera → ảnh + câu hỏi → answer + citation.
-- **Side-by-side + overlay khoanh đỏ bbox** số liệu (kỹ sư "mắt thấy tai nghe").
-- **Guardrail:** cosine < 0.60 → banner đỏ "Yêu cầu kỹ sư xác minh", ẩn câu trả lời tự sinh.
+- **Snap & Ask** (mobile): `camera`/`image_picker` chụp → upload multipart tới `POST /api/query` (kèm ảnh)
+  → backend forward `dcid-ai` → answer + citation.
+- **Side-by-side + overlay bbox:** `Stack` + `CustomPaint` vẽ khoanh đỏ theo toạ độ chuẩn hoá
+  (dựa `width/height` trong `document_pages`).
+- **Guardrail UI:** `locked=true` (cosine < 0.60) → **banner đỏ** "Yêu cầu kỹ sư xác minh", ẩn câu trả lời tự sinh.
+- **Touch/glove:** target ≥ 48dp, chữ lớn, ít gõ phím, theme tối, haptic khi cảnh báo.
 - **Luôn hiển thị nguồn:** tên tài liệu + version + số trang kèm mọi câu trả lời.
 
 ---
 
-## 6. Hợp đồng API dùng chung (web + mobile)
+## 5. Auth self-JWT (đa nền tảng)
 
-`POST /api/auth/login` · `GET /api/auth/me` · `POST /api/query` *(hỗ trợ multipart khi Snap & Ask)* ·
+- Login → `POST /api/auth/login` → JWT lưu ở **`flutter_secure_storage`** (Keystore Android / DPAPI Windows).
+- `Dio` interceptor gắn `Authorization: Bearer <jwt>`; 401 → logout/redirect.
+- Role đọc từ JWT → `go_router` guard + ẩn/hiện menu.
+
+---
+
+## 6. Hợp đồng API dùng chung
+
+`POST /api/auth/login` · `GET /api/auth/me` · `POST /api/query` *(multipart khi Snap & Ask)* ·
 `GET /api/documents` · `POST /api/documents` · `POST /api/documents/{id}/versions` ·
 `POST /api/documents/{versionId}/obsolete` · `GET /api/admin/audit-logs` ·
-`GET /api/files/...` (proxy ảnh/crop từ MinIO, có auth). Base URL qua env
-(`NEXT_PUBLIC_API_URL` / `API_BASE_URL`).
+`GET /api/files/...` (proxy ảnh/crop từ MinIO, có auth). Base URL qua build flavor (`API_BASE_URL`).
 
 ---
 
 ## 7. Triển khai
 
-| Client | Cách deploy |
+| Target | Cách deploy |
 |---|---|
-| **Web/Kiosk** | Docker (đã có `Dockerfile`) phục vụ từ Edge; Industrial PC chạy Chromium **kiosk mode** |
-| **Mobile** | Build **APK** → **phân phối nội bộ** (air-gapped): MDM nội bộ / cài tay / internal store. Camera native (không vướng ràng buộc HTTPS như PWA) |
+| **Android** | build **APK** → phân phối nội bộ (air-gapped): MDM nội bộ / cài tay. Camera native |
+| **Windows (kiosk)** | build **exe** → cài trên Industrial PC, `window_manager` fullscreen + auto-start |
 
-Cả hai trỏ tới backend qua LAN; offline cache phía client cho tài liệu vừa xem.
+- Offline: cache tài liệu vừa xem (Isar/Hive); hàng đợi khi mất mạng.
+- Cả hai trỏ tới backend qua LAN (`API_BASE_URL` theo môi trường).
 
 ---
 
 ## 8. Vị trí trong roadmap
 
-| Milestone | Web (Next.js) | Mobile (Flutter) |
-|---|---|---|
-| *Trước M1* | **Format `dcid-frontend`** (Phần B) | — |
-| **M1** (thin) | login + Search/Ask + Upload (QA) — đủ chứng minh vertical slice | *(chưa; dùng web để test lõi)* |
-| **M2–M3** | versioning, admin, audit viewer | **khởi tạo `dcid-mobile`**: login + Search/Ask |
-| **M4** (đầy đủ) | side-by-side + bbox, kiosk | **Snap & Ask**, side-by-side + bbox, offline |
+| Milestone | `dcid-app` (Flutter) |
+|---|---|
+| *Trước M1* | **Gỡ `dcid-frontend` (Next.js)** — §10 |
+| **M1** (thin) | khởi tạo `dcid-app`: **login (self-JWT) + Search/Ask + Upload** (đủ demo vertical slice, chạy Android hoặc Windows) |
+| **M2–M3** | versioning, admin/QA console (màn lớn), audit viewer |
+| **M4** (đầy đủ) | **Snap & Ask** (camera), side-by-side + bbox, **kiosk Windows fullscreen**, offline |
 
-> Chiến lược: **web trước để khoá lõi RAG (M1)**, Flutter vào cuộc từ M2–M4 khi API đã ổn định →
-> tránh sửa app native nhiều lần.
+> Vì chỉ 1 codebase, không còn tách "web trước / mobile sau" — làm thẳng trên `dcid-app`,
+> ưu tiên chạy target tiện nhất ở M1 (Android hoặc Windows) rồi hoàn thiện dần.
 
 ---
+
+## 9. Rủi ro riêng của hướng Flutter-only & giảm thiểu
+
+| Rủi ro | Giảm thiểu |
+|---|---|
+| Admin/bảng biểu dày dữ liệu kém "webby" | `data_table_2`/`pluto_grid` + `fl_chart`; giữ admin gọn, phân trang server-side |
+| Viewer PDF/chọn text | thử `pdfx`/Syncfusion **sớm ở M2**; nếu cần chỉ hiển thị ảnh trang + bbox |
+| Kỹ năng Dart của team | 1 người học Dart trước M1; dùng Material sẵn có, tránh custom nặng |
+| Camera trên desktop | Snap & Ask ưu tiên Android; kiosk Windows chủ yếu tra cứu/admin |
+
 ---
 
-# Phần B — Kế hoạch "format" `dcid-frontend` (chưa code)
+## 10. Xử lý `dcid-frontend` (Next.js) cũ
 
-> Mục tiêu: đưa Next.js app về **khung sạch KCN + self-JWT**, giữ hạ tầng tái dùng — tương tự cách đã làm với backend.
+- **Gỡ khỏi repo** (còn trong git history nếu cần tra cứu): xóa thư mục `dcid-frontend/`.
+- Cập nhật `README.md` (bỏ dòng frontend Next.js), thêm `dcid-app` (Flutter).
+- **Không "format"** app Next.js nữa (kế hoạch format trước đây đã hủy do đổi hướng).
 
-### B1. XÓA (domain e-gov cũ)
-- [ ] `app/citizen/**` (dashboard, applications, appointments, notifications, procedures…)
-- [ ] `app/officer/**` (dashboard, applications, procedures, reports, users, audit-log)
-- [ ] `components/citizen/**`, `components/officer/**`
-- [ ] `hooks/` của các domain trên (useApplications, useProcedures, useAppointments…)
-- [ ] Route/type/query-key tương ứng trong `constants/`, `types/`
-- [ ] Chuỗi i18n cũ trong `messages/*.json`
-
-### B2. ĐỔI AUTH: Keycloak → self-JWT
-- [ ] Bỏ Keycloak provider trong `app/api/auth/[...nextauth]/route.ts`
-- [ ] **Phương án khuyến nghị:** giữ **NextAuth** nhưng dùng **Credentials provider** gọi
-      `POST /api/auth/login` → lưu JWT vào session (httpOnly cookie), tái dùng `middleware.ts` + `useSession`.
-      *(Phương án nhẹ thay thế: bỏ hẳn NextAuth, tự lưu JWT ở httpOnly cookie qua Route Handler.)*
-- [ ] Gỡ biến môi trường `KEYCLOAK_*`; rà lại `NEXTAUTH_*` theo phương án chọn
-- [ ] `lib/apiClient.ts`: gắn `Authorization: Bearer <jwt>`, xử lý 401 (logout/redirect)
-
-### B3. ĐỔI RBAC & điều hướng
-- [ ] Vai `citizen/officer` → **`OPERATOR / ENGINEER / QA_ADMIN / ADMIN`**
-- [ ] Gộp route theo nhóm `app/(app)/...` + layout guard theo role (đọc từ JWT)
-- [ ] `middleware.ts`: chặn theo role mới
-
-### B4. GIỮ (hạ tầng tái dùng)
-- [ ] `components/ui/**` (shadcn), `lib/`, Tailwind config, `next-intl` scaffolding, providers
-- [ ] Mẫu hook TanStack Query, `constants/query-keys` pattern
-
-### B5. THÊM (khung KCN tối thiểu)
-- [ ] `app/(auth)/login` (self-JWT) · `app/403`
-- [ ] `app/(app)/search` (tra cứu + Ask) · `app/(app)/documents` (QA upload/versioning) · `app/(app)/admin`
-- [ ] `hooks/useAuth`, `useAskQuery`, `useDocuments`
-- [ ] Cập nhật `dcid-frontend/CLAUDE.md` cho khớp (bỏ mô tả Keycloak/citizen/officer)
-
-### B6. Cây thư mục mục tiêu (sau format)
-```
-app/(auth)/login · app/403 · app/(app)/{search, ask/[id], documents, admin} · app/layout.tsx
-components/{search, viewer, upload, shared, ui}
-hooks/{useAuth, useAskQuery, useDocuments, useAuditLogs}
-lib/apiClient.ts · constants/{routes, query-keys} · messages/{vi,en}.json · middleware.ts
-```
-
-> Đây là **plan, chưa thực thi**. Khi bạn duyệt, có thể chạy "format FE" tương tự backend
-> (xóa domain cũ + chuyển self-JWT) trước khi vào M1.
+> Trạng thái: **plan, chưa thực thi**. Khi bạn duyệt, mình có thể (a) gỡ `dcid-frontend`, và/hoặc
+> (b) tạo khung `dcid-app` Flutter (login + Search/Ask + Upload) cho M1.
