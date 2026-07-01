@@ -57,7 +57,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean isSubmissionEndpoint(String method, String path) {
-        return "POST".equalsIgnoreCase(method) && path.startsWith("/api/citizens/applications");
+        // TODO(Smart KCN Docs): wire this to the write-heavy endpoints that need throttling
+        //  (e.g. document upload, /api/query). Disabled until the new domain exists.
+        return false;
     }
 
     private void checkSubmissionRateLimit(String userId) {
