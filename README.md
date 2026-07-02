@@ -13,7 +13,12 @@ Monorepo:
 ## Tài liệu
 
 - **[Kiến trúc dự án](docs/ARCHITECTURE.md)** — sơ đồ tổng thể, luồng nghiệp vụ, data model, API.
-- [Kế hoạch triển khai](docs/ROADMAP.md) — 5 milestone, phân công, rủi ro.
+- **[ERD & Database](docs/ERD.md)** — schema quan hệ, phân tách Postgres/Chroma/MinIO, vòng đời version.
+- **[API Contract BE↔AI](docs/API-CONTRACT.md)** — nguồn sự thật ranh giới ingest/query/callback.
+- [Work order: dựng khung dcid-ai](docs/PLAN-DCID-AI.md) — plan tự chứa cho agent thực thi.
+- **[Kế hoạch Khóa luận 8 tuần (nhóm 5 người)](docs/PLAN-THESIS.md)** — đóng khung đề tài, dataset, thực nghiệm, lịch tuần. ← **dùng cái này**
+- [Kế hoạch 6 tuần (product)](docs/PLAN-6-WEEKS.md) — bản định hướng sản phẩm, đã thay thế.
+- [Roadmap 18 tuần](docs/ROADMAP.md) — 5 milestone, phân công, rủi ro.
 - [Frontend (Flutter)](docs/FRONTEND.md) — kiến trúc `dcid-app`, kiosk/mobile.
 - [Backend dev guide](dcid-backend/CLAUDE.md) — cách chạy, quy ước, auth.
 

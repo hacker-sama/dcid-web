@@ -54,12 +54,33 @@
         # Self-issued JWT — override with a strong 32+ byte secret in real deployments
         APP_JWT_SECRET: change-me-in-prod-please-use-a-long-random-secret
         APP_BOOTSTRAP_ADMIN_PASSWORD: admin123
+        # dcid-ai (thêm service `ai` khi dcid-ai sẵn sàng — xem docs/API-CONTRACT.md)
+        AI_BASE_URL: http://ai:8000
+        AI_INTERNAL_TOKEN: change-me-internal-token
       depends_on:
         - postgres
         - redis
         - minio
       ports:
         - "8080:8080"
+      restart: unless-stopped
+
+    ai:
+      build:
+        context: ./dcid-ai
+        dockerfile: Dockerfile
+      container_name: dcid-ai
+      environment:
+        AI_INTERNAL_TOKEN: change-me-internal-token
+        BE_BASE_URL: http://backend:8080
+        MINIO_ENDPOINT: minio:9000
+        MINIO_ACCESS_KEY: minio
+        MINIO_SECRET_KEY: minio123
+        MINIO_BUCKET: kcn-docs
+      depends_on:
+        - minio
+      ports:
+        - "8000:8000"
       restart: unless-stopped
 
     kafka:

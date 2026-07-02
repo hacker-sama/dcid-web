@@ -91,6 +91,13 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailableException(ServiceUnavailableException ex) {
+        log.error("Dependent service unavailable: {}", ex.getMessage());
+        ErrorResponse response = ErrorResponse.of(ex.getCode(), ex.getMessage(), getTraceId());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex) {
         ErrorResponse response = ErrorResponse.of("FORBIDDEN", ex.getMessage(), getTraceId());
