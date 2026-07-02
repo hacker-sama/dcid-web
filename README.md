@@ -7,33 +7,43 @@ Monorepo:
 | Thư mục | Vai trò |
 |---|---|
 | [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, quản lý tài liệu & version, audit ISO, storage MinIO, tích hợp CMMS/MES. |
-| [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Kiosk (Windows) + Mobile (Android), Snap & Ask. |
-| _`dcid-ai` (Python)_ | OCR/RAG/LLM — **tách riêng**, sẽ tạo ở M1. Xem kiến trúc. |
+| [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Web (Kiosk/Admin) + Mobile (Android), Snap & Ask. |
+| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM. Hiện là **skeleton** (pipeline mock, đúng contract). |
 
 ## Tài liệu
 
+- **[Cài đặt & chạy dự án](docs/SETUP.md)** — hướng dẫn đầy đủ cho người mới clone repo. ← **bắt đầu ở đây**
 - **[Kiến trúc dự án](docs/ARCHITECTURE.md)** — sơ đồ tổng thể, luồng nghiệp vụ, data model, API.
 - **[ERD & Database](docs/ERD.md)** — schema quan hệ, phân tách Postgres/Chroma/MinIO, vòng đời version.
 - **[API Contract BE↔AI](docs/API-CONTRACT.md)** — nguồn sự thật ranh giới ingest/query/callback.
-- [Work order: dựng khung dcid-ai](docs/PLAN-DCID-AI.md) — plan tự chứa cho agent thực thi.
+- [Work order: dựng khung dcid-ai](docs/PLAN-DCID-AI.md) — plan tự chứa cho agent thực thi. ✅ đã xong
+- [Work order: Flutter màn Tài liệu + Upload](docs/PLAN-FLUTTER-DOCS.md) — plan tự chứa cho agent thực thi. ✅ đã xong
 - **[Kế hoạch Khóa luận 8 tuần (nhóm 5 người)](docs/PLAN-THESIS.md)** — đóng khung đề tài, dataset, thực nghiệm, lịch tuần. ← **dùng cái này**
 - [Kế hoạch 6 tuần (product)](docs/PLAN-6-WEEKS.md) — bản định hướng sản phẩm, đã thay thế.
 - [Roadmap 18 tuần](docs/ROADMAP.md) — 5 milestone, phân công, rủi ro.
-- [Frontend (Flutter)](docs/FRONTEND.md) — kiến trúc `dcid-app`, kiosk/mobile.
+- [Frontend (Flutter)](docs/FRONTEND.md) — kiến trúc `dcid-app`, web (kiosk/admin) + mobile.
 - [Backend dev guide](dcid-backend/CLAUDE.md) — cách chạy, quy ước, auth.
 
 ## Chạy nhanh
 
-**Backend**
+Hướng dẫn đầy đủ (yêu cầu công cụ, từng bước, kiểm tra, troubleshooting):
+**[docs/SETUP.md](docs/SETUP.md)**. Tóm tắt 3 service:
+
 ```bash
-docker-compose up -d postgres redis minio kafka zookeeper
+# 1. Hạ tầng
+docker-compose up -d postgres minio
+
+# 2. Backend — terminal riêng
 cd dcid-backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 # Login: POST http://localhost:8080/api/auth/login  {"username":"admin","password":"admin123"}
-```
 
-**Frontend (Flutter)**
-```bash
-cd dcid-app
-flutter pub get
-flutter run --dart-define=API_BASE_URL=http://localhost:8080   # Android/Windows
+# 3. AI service — terminal riêng
+cd dcid-ai && python -m venv .venv && .venv\Scripts\activate
+pip install -r requirements.txt && copy .env.example .env
+uvicorn app.main:app --port 8000
+
+# 4. Frontend — terminal riêng
+cd dcid-app && flutter pub get
+flutter run -d chrome --web-port=3000 --dart-define=API_BASE_URL=http://localhost:8080   # web (kiosk/admin)
+flutter run --dart-define=API_BASE_URL=http://localhost:8080                             # mobile (Android)
 ```

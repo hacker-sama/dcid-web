@@ -6,9 +6,10 @@ spring:
       max-file-size: ${MAX_UPLOAD_SIZE:50MB}
       max-request-size: ${MAX_UPLOAD_SIZE:50MB}
   datasource:
-    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/dcid}
+    # Host port 5433 (không phải 5432) — xem ghi chú trong docker-compose.yml.
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5433/dcid}
     username: ${POSTGRES_USER:dcid}
-    password: ${POSTGRES_PASSWORD:dcid_password}
+    password: ${POSTGRES_PASSWORD:dcid}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -56,12 +57,14 @@ app:
     admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:admin123}
   ai:
     # dcid-ai (FastAPI) — hợp đồng: docs/API-CONTRACT.md
-    base-url: ${AI_BASE_URL:http://localhost:8000}
+    # 127.0.0.1 (không phải "localhost") — uvicorn mặc định chỉ bind IPv4 loopback;
+    # JDK HttpClient có thể ưu tiên thử ::1 (IPv6) trước và bị connection refused.
+    base-url: ${AI_BASE_URL:http://127.0.0.1:8000}
     internal-token: ${AI_INTERNAL_TOKEN:change-me-internal-token}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
-    access-key: ${MINIO_ACCESS_KEY:minioadmin}
-    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    access-key: ${MINIO_ACCESS_KEY:minio}
+    secret-key: ${MINIO_SECRET_KEY:minio123}
     bucket: ${MINIO_BUCKET:kcn-docs}
   rate-limit:
     submissions-per-hour: ${RATE_LIMIT_SUBMISSIONS:10}

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/admin/admin_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/common/forbidden_screen.dart';
+import '../features/documents/document_detail_screen.dart';
 import '../features/documents/documents_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/shell/home_shell.dart';
@@ -46,6 +47,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/search', builder: (_, _) => const SearchScreen()),
           GoRoute(path: '/snap', builder: (_, _) => const SnapAskScreen()),
           GoRoute(path: '/documents', builder: (_, _) => const DocumentsScreen()),
+          GoRoute(
+            path: '/documents/:id',
+            builder: (_, state) =>
+                DocumentDetailScreen(documentId: state.pathParameters['id']!),
+          ),
           GoRoute(path: '/admin', builder: (_, _) => const AdminScreen()),
           GoRoute(
             path: '/viewer/:versionId',

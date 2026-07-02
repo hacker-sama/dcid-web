@@ -15,6 +15,11 @@
         POSTGRES_PASSWORD: dcid
       volumes:
         - postgres_data:/var/lib/postgresql/data
+      ports:
+        # Host port 5433 (không phải 5432 mặc định) — tránh đụng độ với PostgreSQL
+        # cài sẵn trên máy dev (rất hay gặp). Container backend dùng service name
+        # `postgres:5432` qua mạng nội bộ compose, không bị ảnh hưởng bởi mapping này.
+        - "5433:5432"
       restart: unless-stopped
 
     redis:

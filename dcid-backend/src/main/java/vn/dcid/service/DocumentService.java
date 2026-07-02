@@ -137,9 +137,12 @@ public class DocumentService {
             aiPipelineClient.ingest(new AiIngestRequest(
                     version.getId(), doc.getId(), version.getStorageKey(), langs, metadata));
         } catch (Exception e) {
-            log.error("Không gọi được AI ingest cho version {}: {}", version.getId(), e.getMessage());
+            // Log kèm exception object (không chỉ getMessage()) để SLF4J in đủ stack trace +
+            // cause chain — thiếu việc này từng khiến lỗi thật (HTTP/1.1 vs 2) bị che mất.
+            log.error("Không gọi được AI ingest cho version {}", version.getId(), e);
+            String reason = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
             version.setStatus(VersionStatus.FAILED);
-            version.setErrorMessage("Không gọi được AI service: " + e.getMessage());
+            version.setErrorMessage("Không gọi được AI service: " + reason);
             versionRepository.save(version);
         }
     }
