@@ -36,7 +36,7 @@ Hallucination Control)*
 
 | ✅ GIỮ (ra điểm) | ⛔ CẮT (plumbing, không ra điểm) |
 |---|---|
-| Pipeline OCR→chunk→embed→retrieve→LLM | Kiosk Windows fullscreen |
+| Pipeline OCR→chunk→embed→retrieve→LLM | Kiosk fullscreen native (dùng web + F11/Chromium `--kiosk` là đủ) |
 | Guardrail + benchmark + ablation | CMMS/MES, work-order flow |
 | Golden set + eval harness tự động | Versioning workflow đầy đủ (chỉ giữ status cơ bản) |
 | BE: auth/RBAC/audit/upload/query (đã có ~60%) | Admin console sâu, biểu đồ |
@@ -117,7 +117,7 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
 
 | Tuần | Cột mốc | 1 – PM/Bút | 2 – BE | 3 – AI | 4 – Flutter | 5 – Data/Eval |
 |---|---|---|---|---|---|---|
-| **T1** | Chốt contract + dataset kickoff | Outline luận văn ⬜, API contract ✅ | `AiPipelineClient` + callback ✅ | Khung `dcid-ai` ✅, spike PaddleOCR ⬜ | Màn Documents/Upload (mock) ⬜ | Sưu tầm tài liệu đợt 1 ⬜ |
+| **T1** | Chốt contract + dataset kickoff | Outline luận văn ⬜, API contract ✅ | `AiPipelineClient` + callback ✅ | Khung `dcid-ai` ✅, spike PaddleOCR ⬜ | Màn Documents/Upload ✅ | Sưu tầm tài liệu đợt 1 ⬜ |
 | **T2** | Skeleton khép kín | **Viết chương 1–2** | `POST /api/query` + `query_logs` | Ingest: OCR→chunk→embed→Chroma | Nối upload API thật | Degradation set + draft eval set |
 | **T3** | **Ingest E2E chạy thông** | Chương 2 (related work) | `GET /api/files` proxy | Query: retrieve + LLM + citation | Màn tra cứu + answer UI | Eval set v1 + harness v1 |
 | **T4** | **Query E2E + baseline đầu tiên** | Review kết quả baseline | RBAC + audit hoàn chỉnh | **Chạy baseline (E1 arm 1)** + đo latency | Banner guardrail + citation viewer | Harness tự động in metric |
@@ -137,16 +137,34 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
   constant-time, ingest đọc PDF thật từ MinIO + pypdf, mock query deterministic,
   **12/12 pytest pass** (kiểm chứng độc lập trong venv sạch), Dockerfile + compose service `ai`.
 - ✅ ERD + migrations V1–V4, entities/repositories (nền của T1 BE).
+- ✅ **Màn Documents/Upload Flutter** đúng work order (`docs/PLAN-FLUTTER-DOCS.md`): list + detail +
+  upload multipart, fix xong bug parse `DocsRepository.listDocuments()`. Verify thật bằng SDK:
+  `flutter pub get` / `analyze` (0 issue) / `test` (6/6 pass) / `flutter build web` (build thành công).
+- ✅ **Pivot kiến trúc FE (02/07/2026): "máy tính" chạy Web, không phải app native Windows** —
+  xem [`FRONTEND.md`](FRONTEND.md) §0.1. Đã sửa `core/kiosk.dart` (bỏ `dart:io`/`Platform`, vốn vỡ
+  build web) và luồng upload (path-based → **bytes-based**, vì `PlatformFile.path` luôn null trên
+  web) — cả hai đã verify bằng `flutter build web` thật, không chỉ đoán.
+- ✅ **E2E đã chạy thật (02/07/2026), Docker bật:** `docker-compose up -d postgres minio` →
+  backend + `dcid-ai` chạy native → login → upload PDF 3 trang → ingest thật (đọc MinIO, đếm trang
+  bằng pypdf) → callback → `GET /api/documents/{id}` trả `status: ACTIVE, pageCount: 3` đúng khớp →
+  `/api/query` trả lời đúng logic guardrail mock. Audit log ghi thành công. Toàn bộ backend test
+  (`mvnw test`) + AI test (12/12 pytest) vẫn xanh sau các fix.
+  **Phát hiện & sửa 3 bug hạ tầng/code thật** khi verify (chi tiết: `docs/SETUP.md` §6):
+  1. `docker-compose.yml` thiếu `ports:` cho `postgres` → trúng nhầm PostgreSQL cài sẵn trên máy
+     dev → đổi map sang host port `5433`.
+  2. Spring `RestClient` (JDK HttpClient) mặc định thử HTTP/2, `uvicorn` chỉ nói HTTP/1.1 → request
+     ingest hỏng giữa chừng → ép `HTTP_1_1` tường minh trong `AiClientConfig`.
+  3. Default MinIO creds trong `dcid-ai` (`minioadmin`) không khớp thật (`minio`/`minio123`) → sửa
+     `config.py` + `.env.example`.
+  Tiện thể sửa thêm 1 bug độc lập phát hiện qua log: `AuditLog.detail` (JSONB) thiếu
+  `@JdbcTypeCode(SqlTypes.JSON)` khiến **mọi lần ghi audit log đều lỗi** (kể cả khi `detail=null`) —
+  đã fix, audit log giờ ghi được.
 
 **Còn lại của T1 (làm nốt trước khi vào T2):**
 1. ⬜ **Người 1** — Outline luận văn (mục lục 5 chương + phân công viết) → file `docs/THESIS-OUTLINE.md`.
 2. ⬜ **Người 3** — Spike PaddleOCR: cài thử, OCR 2–3 trang mẫu VI+EN, ghi nhận thời gian/chất lượng
    (quyết định sớm PaddleOCR vs EasyOCR trước khi code pipeline thật ở T2).
-3. ⬜ **Người 4** — Nối màn Documents/Upload vào API thật (`GET/POST /api/documents`);
-   lưu ý `GET` trả `data.items[]` (PagedResponse) — sửa `DocsRepository.listDocuments()` đang đọc `data` như List.
-4. ⬜ **Người 5** — Sưu tầm tài liệu đợt 1 (mục §2): 15–25 tài liệu VI/EN, bắt đầu degradation set.
-5. ⬜ **Cả nhóm** — Chạy E2E đầu tiên khi có Docker: `docker-compose up -d postgres minio backend ai`
-   → login → upload PDF → version chuyển `ACTIVE` với `pageCount` đúng *(chưa chạy được do máy dev chưa bật Docker)*.
+3. ⬜ **Người 5** — Sưu tầm tài liệu đợt 1 (mục §2): 15–25 tài liệu VI/EN, bắt đầu degradation set.
 
 **3 luật cứng:**
 1. **T4 phải có số liệu baseline** — nếu chưa, cắt ngay E3–E5 và mọi stretch.
@@ -183,11 +201,20 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
 
 ## 8. Điểm xuất phát (đã xong — không tính lại vào 8 tuần)
 
-- ✅ BE: skeleton + self-JWT + RBAC 4 vai + audit; ERD + migration V1–V4; entities/repositories;
-  **upload/list documents + MinIO** chạy được.
-- ✅ FE: `dcid-app` Flutter skeleton — login, router role-guard, màn tra cứu/hỏi đã wire, analyze/test sạch.
-- ✅ Docs: kiến trúc, ERD, frontend, roadmap.
-- ⬜ Chưa có: `dcid-ai` (bắt đầu T1), query API, dataset, eval harness, quyển luận văn.
+*(Cập nhật 02/07/2026 — xem chi tiết §5 "Cập nhật tiến độ T1" ở trên.)*
 
-> Việc code tiếp theo theo đúng plan: **BE-người-2 làm `AiPipelineClient` + ingest-callback**,
-> song song **người 3 dựng khung `dcid-ai`** — hai việc này khớp nhau qua API contract chốt ở T1.
+- ✅ BE: skeleton + self-JWT + RBAC 4 vai + audit; ERD + migration V1–V4; entities/repositories;
+  upload/list/detail documents + MinIO; `AiPipelineClient`; `/api/internal/ingest-callback`
+  (ghi `document_pages` + auto-publish ACTIVE); `POST /api/query` + `query_logs`. Build + test xanh.
+- ✅ AI: skeleton `dcid-ai` (FastAPI) chạy đúng contract — health/ingest/query, token guard,
+  ingest đọc PDF thật từ MinIO, mock query deterministic. 12/12 pytest pass, Docker sẵn.
+- ✅ FE: `dcid-app` Flutter — login, router role-guard, màn Tra cứu/Ask, màn **Tài liệu** (list/detail/upload)
+  đã nối API thật. **2 target chính thức: Web (kiosk/admin) + Android (mobile)** — xem pivot ở
+  [`FRONTEND.md`](FRONTEND.md) §0.1. Verify bằng SDK thật: `analyze` 0 issue, `test` 6/6 pass,
+  `flutter build web` build thành công.
+- ✅ Docs: kiến trúc, ERD, API contract, frontend (đã cập nhật pivot web), roadmap.
+- ⬜ Chưa có: pipeline AI thật (OCR/embed/LLM/guardrail — vẫn là mock), dataset, eval harness,
+  outline + quyển luận văn.
+
+> Việc còn lại của T1 xem danh sách 4 mục ở §5 phía trên (outline luận văn, spike PaddleOCR,
+> sưu tầm tài liệu, chạy E2E khi có Docker).
