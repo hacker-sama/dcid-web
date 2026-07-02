@@ -22,6 +22,7 @@ public class MinioService {
 
     public String upload(String objectName, InputStream inputStream, long size, String contentType) {
         try {
+            ensureBucket();
             PutObjectArgs args = PutObjectArgs.builder()
                     .bucket(bucketName)
                     .object(objectName)
@@ -86,6 +87,19 @@ public class MinioService {
             );
         } catch (Exception e) {
             throw new UnsupportedOperationException("TODO: Handle MinIO download error", e);
+        }
+    }
+
+    /** Tạo bucket nếu chưa có (idempotent) — để upload chạy được trên MinIO mới. */
+    private void ensureBucket() {
+        try {
+            boolean exists = minioClient.bucketExists(
+                    BucketExistsArgs.builder().bucket(bucketName).build());
+            if (!exists) {
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Không thể tạo/kiểm tra MinIO bucket: " + bucketName, e);
         }
     }
 }

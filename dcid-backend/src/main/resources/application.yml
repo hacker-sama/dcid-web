@@ -1,6 +1,10 @@
 spring:
   application:
     name: smart-kcn-docs-backend
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_SIZE:50MB}
+      max-request-size: ${MAX_UPLOAD_SIZE:50MB}
   datasource:
     url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/dcid}
     username: ${POSTGRES_USER:dcid}
@@ -50,6 +54,10 @@ app:
   bootstrap:
     admin-username: ${APP_BOOTSTRAP_ADMIN_USERNAME:admin}
     admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:admin123}
+  ai:
+    # dcid-ai (FastAPI) — hợp đồng: docs/API-CONTRACT.md
+    base-url: ${AI_BASE_URL:http://localhost:8000}
+    internal-token: ${AI_INTERNAL_TOKEN:change-me-internal-token}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}
