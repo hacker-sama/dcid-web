@@ -36,7 +36,25 @@
       "Bash(curl -s http://localhost:8080/api/documents/c86fbd7d-30f3-446c-9c09-0fda3976d50c -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -o C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad/doc1.json)",
       "Bash(powershell -NoProfile -Command \"Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(./mvnw -B clean test)",
-      "Bash(curl -s -m 5 http://localhost:8000/ai/health)"
+      "Bash(curl -s -m 5 http://localhost:8000/ai/health)",
+      "Bash(ls C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad)",
+      "Bash(python --version)",
+      "Bash(python -m venv C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad/ocr-spike-venv)",
+      "Bash(echo \"venv created\")",
+      "Bash(C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad/ocr-spike-venv/Scripts/python.exe -m pip install -q --upgrade pip)",
+      "Bash(C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad/ocr-spike-venv/Scripts/python.exe -m pip install paddleocr pymupdf)",
+      "Bash(SCRATCH=\"C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad\" *)",
+      "Bash(C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad/ocr-spike-venv/Scripts/python.exe -m pip install -q numpy)",
+      "Bash(C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad/ocr-spike-venv/Scripts/python.exe -c ' *)",
+      "Bash(C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad/ocr-spike-venv/Scripts/python.exe ocr_spike_vi.py vi degraded_vi.png degraded_vi_result.json)",
+      "Bash(C:/Users/Admin/AppData/Local/Temp/claude/C--Users-Admin-Documents-GitHub-dcid-web/3b930d26-5d22-4065-886d-b0ef12666f21/scratchpad/ocr-spike-venv/Scripts/python.exe ocr_spike_vi.py en clean_ascii.png en_result.json)",
+      "Bash(docker version *)",
+      "Bash(./mvnw -B -q test)",
+      "Bash(./mvnw -B test)",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin123\"}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('login OK, role:', d['data']['role']\\)\")",
+      "Bash(curl -s http://localhost:8080/api/health)",
+      "Bash(curl -s http://localhost:8000/ai/health)"
     ]
   }
 }

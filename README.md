@@ -8,7 +8,7 @@ Monorepo:
 |---|---|
 | [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, quản lý tài liệu & version, audit ISO, storage MinIO, tích hợp CMMS/MES. |
 | [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Web (Kiosk/Admin) + Mobile (Android), Snap & Ask. |
-| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM. Hiện là **skeleton** (pipeline mock, đúng contract). |
+| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM. **OCR đã thật** (PaddleOCR+PyMuPDF); embed/index/LLM/guardrail vẫn mock, đúng contract. |
 
 ## Tài liệu
 

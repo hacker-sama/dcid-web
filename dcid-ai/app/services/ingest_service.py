@@ -1,46 +1,42 @@
-"""Ingest nền (skeleton): MinIO → pypdf đếm trang → callback BE (work order §4.2).
+"""Ingest nền: MinIO → OCR thật (PaddleOCR) → callback BE (work order §4.2).
 
-Đợt sau thay phần mock bằng pipeline thật:
-MinIO → app.pipeline.ocr → chunk → embed → index (Chroma) → render ảnh trang → callback.
+Đợt sau: chunk → embed → index (Chroma); render + upload ảnh trang lên MinIO
+(imageKey hiện vẫn None — cần cho viewer/bbox citation, chưa nằm trong OCR spike này).
 """
 
-import io
 import logging
 
-from pypdf import PdfReader
-
 from app.clients import backend_client, minio_client
+from app.pipeline import ocr
 from app.schemas import IngestCallback, IngestRequest, PageInfo
 
 logger = logging.getLogger("dcid-ai.ingest")
-
-SKELETON_OCR_TEXT = "[skeleton] chưa OCR"
 
 
 def run_ingest(req: IngestRequest) -> None:
     """Chạy trong BackgroundTasks. Mọi lỗi → callback FAILED; callback lỗi → log, không crash."""
     try:
         pdf_bytes = minio_client.get_object(req.storageKey)
-        page_count = _count_pages(pdf_bytes)
+        page_results = ocr.extract_pages(pdf_bytes, req.langs)
         callback = IngestCallback(
             versionId=req.versionId,
             status="READY",
-            pageCount=page_count,
+            pageCount=len(page_results),
             pages=[
                 PageInfo(
-                    pageNo=page_no,
-                    imageKey=None,  # TODO(đợt sau): render ảnh trang bằng poppler → MinIO
-                    width=None,
-                    height=None,
-                    ocrText=SKELETON_OCR_TEXT,
+                    pageNo=p.page_no,
+                    imageKey=None,  # TODO(đợt sau): render ảnh trang → MinIO cho viewer/bbox
+                    width=p.width,
+                    height=p.height,
+                    ocrText=p.text,
                 )
-                for page_no in range(1, page_count + 1)
+                for p in page_results
             ],
             error=None,
         )
         logger.info(
             "Ingest READY: versionId=%s storageKey=%s pageCount=%d",
-            req.versionId, req.storageKey, page_count,
+            req.versionId, req.storageKey, len(page_results),
         )
     except Exception as exc:  # noqa: BLE001 — mọi lỗi đều phải chuyển thành FAILED
         logger.warning(
@@ -56,12 +52,6 @@ def run_ingest(req: IngestRequest) -> None:
         )
 
     _send_callback(callback)
-
-
-def _count_pages(pdf_bytes: bytes) -> int:
-    """Đếm số trang bằng pypdf; PDF hỏng sẽ raise và được chuyển thành FAILED."""
-    reader = PdfReader(io.BytesIO(pdf_bytes))
-    return len(reader.pages)
 
 
 def _send_callback(callback: IngestCallback) -> None:

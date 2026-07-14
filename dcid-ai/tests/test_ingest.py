@@ -1,6 +1,8 @@
-"""POST /ai/ingest — 202 + callback payload đúng shape (mock MinIO + backend client).
+"""POST /ai/ingest — 202 + callback payload đúng shape (mock MinIO + OCR + backend client).
 
 TestClient chạy BackgroundTasks đồng bộ ngay sau response → assert được callback.
+OCR (PaddleOCR) được mock — model thật nặng/cần mạng lần đầu, không phù hợp unit test
+(xem dcid-ai/README.md: "Test không cần mạng/MinIO/backend thật").
 """
 
 import io
@@ -8,6 +10,7 @@ import io
 from fastapi.testclient import TestClient
 from pypdf import PdfWriter
 
+from app.pipeline.ocr import PageOcr
 from app.schemas import IngestCallback
 from app.services import ingest_service
 
@@ -30,6 +33,17 @@ def _make_pdf(num_pages: int) -> bytes:
     return buf.getvalue()
 
 
+def _fake_extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
+    """Giả lập OCR: 1 PageOcr / trang PDF (đếm qua pypdf, không gọi model thật)."""
+    from pypdf import PdfReader
+
+    n = len(PdfReader(io.BytesIO(pdf_bytes)).pages)
+    return [
+        PageOcr(page_no=i, text=f"[fake ocr] trang {i}", width=1653, height=2339)
+        for i in range(1, n + 1)
+    ]
+
+
 def test_ingest_success_sends_ready_callback(
     client: TestClient, auth_headers: dict[str, str], monkeypatch
 ) -> None:
@@ -37,6 +51,7 @@ def test_ingest_success_sends_ready_callback(
     monkeypatch.setattr(
         ingest_service.minio_client, "get_object", lambda storage_key: _make_pdf(3)
     )
+    monkeypatch.setattr(ingest_service.ocr, "extract_pages", _fake_extract_pages)
     monkeypatch.setattr(
         ingest_service.backend_client, "post_ingest_callback", sent.append
     )
@@ -56,8 +71,8 @@ def test_ingest_success_sends_ready_callback(
     first = cb.pages[0]
     assert first.pageNo == 1
     assert first.imageKey is None
-    assert first.width is None and first.height is None
-    assert first.ocrText == "[skeleton] chưa OCR"
+    assert first.width == 1653 and first.height == 2339
+    assert first.ocrText == "[fake ocr] trang 1"
     # camelCase khớp contract từng ký tự
     payload = cb.model_dump()
     assert set(payload) == {"versionId", "status", "pageCount", "pages", "error"}
@@ -98,6 +113,7 @@ def test_ingest_callback_failure_does_not_crash(
     monkeypatch.setattr(
         ingest_service.minio_client, "get_object", lambda storage_key: _make_pdf(1)
     )
+    monkeypatch.setattr(ingest_service.ocr, "extract_pages", _fake_extract_pages)
     monkeypatch.setattr(
         ingest_service.backend_client, "post_ingest_callback", callback_boom
     )
