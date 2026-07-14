@@ -183,9 +183,9 @@ lời đúng logic mock (câu hỏi chứa từ khóa số liệu → `numericRu
 |---|---|
 | Auth (self-JWT), RBAC 4 vai, audit log | ✅ Thật |
 | Upload PDF → MinIO → tạo version | ✅ Thật |
-| Ingest: đọc PDF từ MinIO, đếm số trang, callback đổi status → ACTIVE | ✅ Thật (không có OCR) |
-| `document_pages` (ảnh trang, bbox) | ⬜ Chưa — `imageKey`/`ocrText` là placeholder |
-| Hỏi–đáp `/api/query` | 🟡 **Mock deterministic** — trả lời giả theo từ khóa (xem `dcid-ai/app/api/query.py`), không có OCR/embedding/LLM thật |
+| Ingest: đọc PDF từ MinIO, **OCR thật** (PaddleOCR+PyMuPDF), callback đổi status → ACTIVE | ✅ Thật — EN CER 0%, VI CER ~10% (xem `dcid-ai/README.md`) |
+| `document_pages` (ảnh trang, bbox) | 🟡 `ocrText` đã thật; `imageKey`/bbox vẫn placeholder (chưa render/upload ảnh trang) |
+| Hỏi–đáp `/api/query` | 🟡 **Mock deterministic** — trả lời giả theo từ khóa (xem `dcid-ai/app/api/query.py`), không có embedding/LLM thật |
 | Guardrail (ngưỡng tin cậy, trích số liệu) | 🟡 Mock — logic thật (θ=0.60, rule-extraction) chưa cài |
 | Kiosk fullscreen, Snap & Ask (camera) | ⬜ Chưa làm (M4) |
 | Redis / Kafka | Cấu hình sẵn, **chưa có tính năng nào thực sự dùng** (rate-limit đang tắt, không có Kafka listener) — an toàn khi bỏ qua lúc dev |

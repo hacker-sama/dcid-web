@@ -117,7 +117,7 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
 
 | Tuần | Cột mốc | 1 – PM/Bút | 2 – BE | 3 – AI | 4 – Flutter | 5 – Data/Eval |
 |---|---|---|---|---|---|---|
-| **T1** | Chốt contract + dataset kickoff | Outline luận văn ⬜, API contract ✅ | `AiPipelineClient` + callback ✅ | Khung `dcid-ai` ✅, spike PaddleOCR ⬜ | Màn Documents/Upload ✅ | Sưu tầm tài liệu đợt 1 ⬜ |
+| **T1** | Chốt contract + dataset kickoff | Outline luận văn ⬜, API contract ✅ | `AiPipelineClient` + callback ✅ | Khung `dcid-ai` ✅, spike PaddleOCR ✅ (tích hợp thật) | Màn Documents/Upload ✅ | Sưu tầm tài liệu đợt 1 ⬜ |
 | **T2** | Skeleton khép kín | **Viết chương 1–2** | `POST /api/query` + `query_logs` | Ingest: OCR→chunk→embed→Chroma | Nối upload API thật | Degradation set + draft eval set |
 | **T3** | **Ingest E2E chạy thông** | Chương 2 (related work) | `GET /api/files` proxy | Query: retrieve + LLM + citation | Màn tra cứu + answer UI | Eval set v1 + harness v1 |
 | **T4** | **Query E2E + baseline đầu tiên** | Review kết quả baseline | RBAC + audit hoàn chỉnh | **Chạy baseline (E1 arm 1)** + đo latency | Banner guardrail + citation viewer | Harness tự động in metric |
@@ -159,12 +159,39 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
   Tiện thể sửa thêm 1 bug độc lập phát hiện qua log: `AuditLog.detail` (JSONB) thiếu
   `@JdbcTypeCode(SqlTypes.JSON)` khiến **mọi lần ghi audit log đều lỗi** (kể cả khi `detail=null`) —
   đã fix, audit log giờ ghi được.
+- ✅ **Spike PaddleOCR xong (03/07/2026) — kết quả khả quan có điều kiện, đã tích hợp thật**
+  (không chỉ spike, đã thay hẳn OCR mock trong `dcid-ai/app/pipeline/ocr.py` +
+  `app/services/ingest_service.py`, verify bằng E2E thật với PDF 2 trang EN+VI):
+  - **Cài đặt:** `paddlepaddle==3.3.0` (CPU, qua index riêng của PaddlePaddle) +
+    `paddleocr>=3.7` + `pymupdf` (rasterize PDF→ảnh, thuần pip, né được poppler).
+    Không cần quyền admin, không cần system deps ngoài pip. Model tự tải ~150MB lần
+    đầu từ CDN PaddleX (mạng không bị chặn trong môi trường dev đã test).
+  - **Kết quả đo bằng CER (character error rate) trên 8 câu VI+EN có số liệu kỹ thuật:**
+    | Ngôn ngữ | CER | Độ chính xác |
+    |---|---|---|
+    | Tiếng Anh (kể cả số liệu: 220V, 6.5 bar, ±0.02mm) | 0% | **100%** |
+    | Tiếng Việt có dấu (bản sạch) | 10.4% | 89.6% |
+    | Tiếng Việt có dấu (bản suy giảm: nhiễu+mờ+nghiêng) | 11.1% | 88.9% |
+  - **Phát hiện quan trọng:** PaddleOCR gộp `lang="vi"` vào model `LATIN_LANGS` dùng
+    chung ~50 ngôn ngữ Latin (không phải model tiếng Việt riêng) → mất chủ yếu các
+    nguyên âm có 2 dấu chồng (ậ, ệ, ộ, ố, ị, ắ...). Robust trước nhiễu/mờ/nghiêng
+    (CER chỉ tăng ~0.7 điểm %) — vấn đề nằm ở dictionary ngôn ngữ, không phải độ
+    nhiễu ảnh.
+  - **Đánh giá:** 89.6% dưới ngưỡng KPI OCR ≥95% của Business Case, nhưng **đủ dùng
+    cho retrieval ở M1** (text lỗi dấu vẫn embed/tìm được). Không chặn tiến độ — đã
+    tích hợp làm baseline, để lại TODO rõ ràng trong code cho E1/E2 sau: thử hybrid
+    PaddleOCR-detection + **VietOCR**-recognition cho đoạn tiếng Việt, hoặc model lớn
+    hơn, nhắm CER < 5%. Đây cũng chính là **số liệu baseline đầu tiên cho chương 4**.
+  - **Bug kỹ thuật đã gặp & sửa trong lúc tích hợp:** `paddlepaddle==3.3.0` lỗi runtime
+    `NotImplementedError` (oneDNN/PIR executor) khi bật `mkldnn` mặc định trên model
+    PP-OCRv6 — sửa bằng `enable_mkldnn=False` (đã ghi rõ trong code + tại sao).
+  - **requirements.txt + code cập nhật**, 12/12 pytest vẫn xanh (OCR được mock trong
+    unit test — model thật không phù hợp test suite nhanh, đúng nguyên tắc đã theo từ
+    đầu dự án).
 
 **Còn lại của T1 (làm nốt trước khi vào T2):**
 1. ⬜ **Người 1** — Outline luận văn (mục lục 5 chương + phân công viết) → file `docs/THESIS-OUTLINE.md`.
-2. ⬜ **Người 3** — Spike PaddleOCR: cài thử, OCR 2–3 trang mẫu VI+EN, ghi nhận thời gian/chất lượng
-   (quyết định sớm PaddleOCR vs EasyOCR trước khi code pipeline thật ở T2).
-3. ⬜ **Người 5** — Sưu tầm tài liệu đợt 1 (mục §2): 15–25 tài liệu VI/EN, bắt đầu degradation set.
+2. ⬜ **Người 5** — Sưu tầm tài liệu đợt 1 (mục §2): 15–25 tài liệu VI/EN, bắt đầu degradation set.
 
 **3 luật cứng:**
 1. **T4 phải có số liệu baseline** — nếu chưa, cắt ngay E3–E5 và mọi stretch.
@@ -213,8 +240,10 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
   [`FRONTEND.md`](FRONTEND.md) §0.1. Verify bằng SDK thật: `analyze` 0 issue, `test` 6/6 pass,
   `flutter build web` build thành công.
 - ✅ Docs: kiến trúc, ERD, API contract, frontend (đã cập nhật pivot web), roadmap.
-- ⬜ Chưa có: pipeline AI thật (OCR/embed/LLM/guardrail — vẫn là mock), dataset, eval harness,
+- ✅ **OCR thật (PaddleOCR + PyMuPDF)** đã thay mock trong `dcid-ai` — xem §5 "Cập nhật T1"
+  phía trên để có số liệu CER cụ thể (EN 100%, VI 89.6%). Verify E2E thật: PDF 2 trang → ACTIVE
+  → `document_pages.ocr_text` đúng nội dung nhận diện (kiểm trực tiếp trong Postgres).
+- ⬜ Chưa có: embed/index/LLM/guardrail thật (vẫn mock), dataset thật, eval harness,
   outline + quyển luận văn.
 
-> Việc còn lại của T1 xem danh sách 4 mục ở §5 phía trên (outline luận văn, spike PaddleOCR,
-> sưu tầm tài liệu, chạy E2E khi có Docker).
+> Việc còn lại của T1: outline luận văn (người 1), sưu tầm tài liệu (người 5).
