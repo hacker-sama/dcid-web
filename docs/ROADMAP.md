@@ -1,4 +1,4 @@
-# Smart KCN Docs — Roadmap (cập nhật 14/07/2026)
+# Smart KCN Docs — Roadmap (cập nhật 16/07/2026)
 
 > Dựa trực tiếp trên **code thực tế** trong repo (commit hiện tại) + tài liệu `PLAN-THESIS.md`,
 > `ARCHITECTURE.md`, `API-CONTRACT.md`, `ERD.md`, `FRONTEND.md`.
@@ -20,26 +20,26 @@
 | **Backend — DB schema** | V1 (users, audit_logs) + V2 (documents, versions, pages) + V3 (query_logs) + V4 (work_orders) |
 | **Backend — Entities** | `User`, `Document`, `DocumentVersion`, `DocumentPage`, `QueryLog`, `AuditLog` |
 | **AI — Skeleton FastAPI** | 3 endpoint: `GET /ai/health`, `POST /ai/ingest` (202 async), `POST /ai/query` (mock) |
-| **AI — Ingest thật (MinIO→OCR→callback)** | `ingest_service.py` gọi `ocr.extract_pages()` thật + callback BE |
-| **AI — OCR thật** | `pipeline/ocr.py`: **PyMuPDF** (rasterize) + **PaddleOCR 3.7** (nhận dạng) — EN: CER 0%, VI: CER ~10% |
+| **AI — Ingest thật (MinIO→OCR→callback)** | `ingest_service.py` gọi `ocr_client.extract_pages()` + chunk + embed + index + callback BE |
+| **AI — OCR thật (Service ai-ocr)** | `main_ocr.py` & `pipeline/ocr.py`: **PyMuPDF** (rasterize) + **PaddleOCR 3.7** (nhận dạng) — EN: CER 0%, VI: CER ~10% |
+| **AI — Chunking thật** | `pipeline/chunk.py`: layout-aware (giữ bảng nguyên vẹn), sliding window 400 từ / overlap 60 |
+| **AI — Embedding thật** | `pipeline/embed.py`: `multilingual-e5-small` ONNX/PyTorch, prefix chuẩn E5 (`passage: / query:`) |
+| **AI — Vector Index ChromaDB** | `pipeline/index.py`: upsert vào collection `kcn_chunks`, idempotent theo `version_id` |
 | **AI — Query mock** | `api/query.py`: deterministic mock (numeric rule regex + locked trigger) |
 | **AI — Guardrails stub** | `pipeline/guardrails.py`: threshold=0.60, `check_numeric()` raise NotImplementedError |
-| **AI — Pipeline stubs** | `chunk.py`, `embed.py`, `index.py` — đầy đủ stub + TODO rõ ràng |
 | **Flutter — Login** | `auth/login_screen.dart` nối API thật |
 | **Flutter — Shell/Nav** | `shell/home_shell.dart` + routing role-guard |
 | **Flutter — Tài liệu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — nối API thật |
 | **Flutter — Tra cứu** | `search/search_screen.dart` nối `POST /api/query` thật |
 | **Flutter — Placeholder** | `admin_screen.dart`, `snap_ask_screen.dart`, `document_viewer_screen.dart` — placeholder |
-| **Infra Docker** | postgres · redis · minio · zookeeper · kafka · backend · ai — tất cả `Started` |
+| **Infra Docker** | postgres · redis · minio · zookeeper · kafka · chroma · backend · ai · ai-ocr — tất cả `Up`/`Started` |
 
-### 🔴 CHƯA CÓ — cần làm trong T2–T6
+### 🔴 CHƯA CÓ — cần làm trong T3–T6
 
 | Hạng mục | Blocking gì |
 |---|---|
-| **chunk→embed→ChromaDB** (pipeline AI thật) | Retrieval thật, E1 experiment |
 | **LLM thật** (llama-cpp + Qwen2.5-1.5B Q4) | Query RAG thật, E2/E3/E4 |
 | **Guardrail thật** (cosine < 0.60, numeric rule-extraction) | E2 experiment |
-| **ChromaDB** trong docker-compose | Pipeline index |
 | **Dataset** (15–25 tài liệu VI/EN + degradation set) | Mọi thí nghiệm |
 | **Eval set** (80–120 câu hỏi + ground truth) | Số liệu chương 4 |
 | **Eval harness tự động** | Chạy E1–E5, in bảng metric |
@@ -57,7 +57,7 @@
 | **M0** | Nền tảng + Auth + skeleton | ✅ **Xong** | Docker, self-JWT, RBAC, audit |
 | **M1a** | Upload + Ingest E2E (pypdf mock) | ✅ **Xong** | upload PDF → MinIO → ACTIVE, E2E pass |
 | **M1b** | OCR thật tích hợp (PaddleOCR) | ✅ **Xong** | ingest thật EN/VI, CER baseline đo được |
-| **M1c** | chunk → embed → ChromaDB | ⬜ **T2** | ingest ghi vector vào Chroma, query retrieve được |
+| **M1c** | chunk → embed → ChromaDB | ✅ **Xong** | ingest ghi vector vào Chroma, query retrieve được |
 | **M1d** | LLM thật + RAG query | ⬜ **T3** | `/api/query` trả câu trả lời thật + citation trang |
 | **M2** | Guardrails đầy đủ + Experiments E1–E2 | ⬜ **T4–T5** | bảng số liệu hallucination rate, Recall@k |
 | **M3** | Flutter citation viewer + BE file proxy | ⬜ **T5** | UI hiện bbox, banner guardrail |
@@ -72,22 +72,22 @@
 
 #### AI Engineer (Người 3)
 
-**Bước 1 — Chunking (pipeline/chunk.py)**
-- Thay `raise NotImplementedError` bằng layout-aware chunking thật
-- Ưu tiên giữ bảng thông số nguyên vẹn (không cắt giữa bảng)
-- Input: `list[PageOcr]` từ `ocr.extract_pages()` → Output: `list[Chunk]`
+**Bước 1 — Chunking (pipeline/chunk.py)** ✅ **DONE**
+- Layout-aware chunking: giữ bảng nguyên vẹn, sliding window 400 từ / overlap 60
+- Input: `list[PageOcr]` → Output: `list[Chunk]` (với page_no, chunk_index)
+- Unit tests: 10 test cases pass (TestIsTable, TestSplitBlocks, TestChunkPages)
 
-**Bước 2 — Embedding (pipeline/embed.py)**
-- Cài `sentence-transformers` hoặc `optimum` (ONNX)
-- Model: `intfloat/multilingual-e5-small` (~470MB, chạy CPU)
-- Input: `list[Chunk]` → Output: `list[float]` vectors
+**Bước 2 — Embedding (pipeline/embed.py)** ✅ **DONE**
+- `sentence-transformers>=3.0` + model `intfloat/multilingual-e5-small`
+- Prefix chuẩn E5: "passage: " cho ingest, "query: " cho query (T3)
+- Singleton lazy-load per process (lru_cache)
 
-**Bước 3 — ChromaDB index (pipeline/index.py)**
-- Cài `chromadb`
-- Upsert vectors với metadata: `version_id, document_id, page_no, lang, min_role, chunk_index`
-- Collection: `kcn_chunks`
+**Bước 3 — ChromaDB index (pipeline/index.py)** ✅ **DONE**
+- `chromadb.HttpClient` kết nối service `chroma` trong docker-compose
+- `upsert_chunks()` idempotent theo version_id, `search()` filter RBAC version_id
+- Cosine similarity score ∈ [0,1]
 
-**Bước 4 — Thêm ChromaDB vào docker-compose.yml**
+**Bước 4 — Thêm ChromaDB vào docker-compose.yml** ✅ **DONE**
 ```yaml
 chroma:
   image: chromadb/chroma:latest
@@ -100,9 +100,11 @@ chroma:
 ```
 Thêm `CHROMA_HOST: chroma` và `CHROMA_PORT: 8000` vào service `ai`.
 
-**Bước 5 — Nối ingest_service.py**
-- Sau `ocr.extract_pages()`, gọi `chunk() → embed() → index()` (hiện đang bỏ qua)
-- Kết quả OCR text (`ocrText`) đã có trong callback → BE đã nhận, chỉ cần thêm Chroma
+**Bước 5 — Nối ingest_service.py** ✅ **DONE**
+- Pipeline đầy đủ: `ocr → chunk → embed → index → callback READY`
+- Mọi lỗi (kể cả Chroma/embed fail) → callback FAILED, service không crash
+
+**Tiến độ M1c:** ✅ **ĐÃ HOÀN THÀNH & VERIFY E2E (16/07/2026)** — đã kiểm chứng qua `smoke_test_t2.py` và chạy thực tế trong Docker (`ai-ocr` bóc tách → chunk layout-aware → embed `multilingual-e5-small` → lưu ChromaDB `kcn_chunks` → callback `ACTIVE`).
 
 #### Data/Eval (Người 5)
 

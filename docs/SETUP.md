@@ -1,24 +1,24 @@
 # Cài đặt & chạy dự án (Getting Started)
 
-> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (02/07/2026) —
+> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (16/07/2026) —
 > xem [§5](#5-cái-gì-chạy-được--cái-gì-còn-mock) để biết rõ phần nào là thật, phần nào còn mock.
-> **Toàn bộ luồng dưới đây đã chạy thật và verify end-to-end** (login → upload PDF → ingest →
-> version ACTIVE với đúng số trang → hỏi–đáp), không phải suy đoán từ code.
+> **Toàn bộ luồng dưới đây đã chạy thật và verify end-to-end** (login → upload PDF → OCR qua `ai-ocr` →
+> chunking → embedding → index ChromaDB → version ACTIVE với đúng số trang → hỏi–đáp), không phải suy đoán từ code.
 
 ---
 
 ## 0. Tổng quan nhanh
 
-Monorepo gồm 3 service độc lập + hạ tầng dùng chung:
+Monorepo gồm 4 service chính + hạ tầng dùng chung:
 
 ```
 dcid-backend/   Spring Boot (Java 21)  — auth, RBAC, upload tài liệu, hỏi–đáp, audit    :8080
-dcid-ai/        FastAPI (Python)       — OCR/RAG (SKELETON — hiện là mock)              :8000
+dcid-ai/        FastAPI (Python)       — orchestrator RAG (chunk, embed E5, ChromaDB)   :8000
+dcid-ai-ocr/    FastAPI (Python/Uvicorn)— worker bóc tách chữ chuyên dụng (PaddleOCR)    :8001
 dcid-app/       Flutter                — web (kiosk/admin) + Android (mobile)            :3000 (web dev)
 ```
 
-Hạ tầng (Docker): **PostgreSQL** (bắt buộc) · **MinIO** (bắt buộc để upload) · Redis, Kafka,
-Zookeeper (đã cấu hình sẵn nhưng **hiện chưa có gì thực sự dùng tới** — xem §4).
+Hạ tầng (Docker): **PostgreSQL** (bắt buộc) · **MinIO** (bắt buộc để upload) · **ChromaDB** (bắt buộc cho vector RAG) · Redis, Kafka, Zookeeper (đã cấu hình sẵn).
 
 ---
 
@@ -66,12 +66,14 @@ dcid-web/
 Mở **Docker Desktop** trước (Windows/Mac cần app chạy nền), sau đó từ **repo root**:
 
 ```bash
-docker-compose up -d postgres minio
+# Cách 1: Khởi động toàn bộ hạ tầng + service OCR và ChromaDB cho local dev
+docker-compose up -d postgres minio chroma ai-ocr
+
+# Cách 2 (Khuyến nghị để kiểm chứng full e2e nhanh nhất): Khởi động toàn bộ cả backend và ai
+docker-compose up -d
 ```
 
-> Chỉ cần `postgres` + `minio` để chạy đủ tính năng hiện có (auth, upload, query). Có thể thêm
-> `redis kafka zookeeper` nếu muốn khởi động full stack như production sau này — xem §4 lý do
-> chưa bắt buộc.
+> Cần `postgres` + `minio` + `chroma` + `ai-ocr` để chạy đủ tính năng hiện có (auth, upload, OCR, chunk, embed, query). Nếu chọn chạy local dev (`dcid-backend` và `dcid-ai` chạy ngoài container bằng lệnh ở mục 3.2 và 3.3), bạn chỉ cần up 4 container hạ tầng trên.
 
 Kiểm tra đã lên:
 ```bash
@@ -109,7 +111,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html
 > **Postgres chạy ở host port `5433`, không phải `5432`** — cố ý, để tránh đụng độ với một
 > PostgreSQL cài sẵn trên máy dev (rất hay gặp trên Windows). `POSTGRES_URL` mặc định trong
 > `application.yml`/`.env.example` đã trỏ đúng `5433`, không cần chỉnh gì nếu dùng
-> `docker-compose up -d postgres minio` như trên.
+> `docker-compose up -d postgres minio chroma ai-ocr` như trên.
 
 ### 3.3. AI service (`dcid-ai`) — port 8000
 
@@ -159,21 +161,17 @@ flutter run --dart-define=API_BASE_URL=http://localhost:8080
 
 ---
 
-## 4. Kiểm tra end-to-end (đủ cả 3 service)
+## 4. Kiểm tra end-to-end (đủ cả 4 service chính + hạ tầng)
 
 1. Mở app (web hoặc Android) → đăng nhập `admin` / `admin123`.
 2. Vào tab **Tài liệu** → nút "Tải tài liệu" → chọn 1 file PDF bất kỳ → điền Tiêu đề + Loại tài liệu → Tải lên.
-3. Backend lưu PDF vào MinIO, gọi `dcid-ai` ingest → `dcid-ai` đọc PDF thật, đếm số trang, gọi callback
-   về backend → version chuyển sang **ACTIVE** (vài giây).
+3. Backend lưu PDF vào MinIO, gọi `dcid-ai` ingest → `dcid-ai` gọi `ai-ocr` (PaddleOCR + PyMuPDF) bóc tách chữ → `chunk.py` cắt đoạn layout-aware → `embed.py` nhúng vector `multilingual-e5-small` → `index.py` upsert vào **ChromaDB** (`kcn_chunks`) → gọi callback về backend đổi status sang **ACTIVE** (vài chục giây tùy CPU).
 4. Bấm vào tài liệu vừa tạo → thấy version với chip trạng thái **ACTIVE** và đúng số trang PDF.
 5. Vào tab **Tra cứu**, hỏi thử một câu chứa "điện áp" → nhận câu trả lời mock kèm trích dẫn
-   (xem §5 — câu trả lời hiện là dữ liệu giả lập, không phải AI thật).
+   (xem §5 — câu trả lời hiện là dữ liệu giả lập deterministic, RAG retrieval & LLM thật sẽ nối ở T3).
 
-**Đã verify bằng lệnh thật (curl, không qua UI), toàn bộ chuỗi 1→5 chạy đúng:** upload PDF 3 trang
-→ backend lưu MinIO + gọi ingest → `dcid-ai` đọc file thật + đếm trang bằng `pypdf` → callback →
-`GET /api/documents/{id}` trả `status: "ACTIVE", pageCount: 3` (khớp file gốc) → `/api/query` trả
-lời đúng logic mock (câu hỏi chứa từ khóa số liệu → `numericRule: true`). Audit log ghi đúng cả
-`DOCUMENT_UPLOAD` lẫn `DOCUMENT_INGESTED`.
+**Đã verify bằng lệnh thật (curl & smoke_test_t2.py), toàn bộ chuỗi 1→5 chạy đúng:** upload PDF
+→ backend lưu MinIO + gọi ingest → `dcid-ai` + `ai-ocr` bóc tách chữ + đếm trang → chunking + embedding + upsert ChromaDB → callback → `GET /api/documents/{id}` trả `status: "ACTIVE"` → `/api/query` trả lời đúng logic mock. Audit log ghi đúng `DOCUMENT_UPLOAD` lẫn `DOCUMENT_INGESTED`.
 
 ---
 
@@ -183,12 +181,12 @@ lời đúng logic mock (câu hỏi chứa từ khóa số liệu → `numericRu
 |---|---|
 | Auth (self-JWT), RBAC 4 vai, audit log | ✅ Thật |
 | Upload PDF → MinIO → tạo version | ✅ Thật |
-| Ingest: đọc PDF từ MinIO, **OCR thật** (PaddleOCR+PyMuPDF), callback đổi status → ACTIVE | ✅ Thật — EN CER 0%, VI CER ~10% (xem `dcid-ai/README.md`) |
+| Ingest pipeline (OCR + Chunking + Embedding + ChromaDB index) | ✅ Thật — PaddleOCR 3.7 + PyMuPDF + layout-aware chunking + `multilingual-e5-small` + `ChromaDB` (`kcn_chunks`) |
 | `document_pages` (ảnh trang, bbox) | 🟡 `ocrText` đã thật; `imageKey`/bbox vẫn placeholder (chưa render/upload ảnh trang) |
-| Hỏi–đáp `/api/query` | 🟡 **Mock deterministic** — trả lời giả theo từ khóa (xem `dcid-ai/app/api/query.py`), không có embedding/LLM thật |
-| Guardrail (ngưỡng tin cậy, trích số liệu) | 🟡 Mock — logic thật (θ=0.60, rule-extraction) chưa cài |
+| Hỏi–đáp `/api/query` | 🟡 **Mock deterministic** — trả lời giả theo từ khóa (xem `dcid-ai/app/api/query.py`), chưa nối LLM Qwen2.5-1.5B (T3) |
+| Guardrail (ngưỡng tin cậy, trích số liệu) | 🟡 Mock — logic thật (θ=0.60, rule-extraction) sẽ cài ở T4 |
 | Kiosk fullscreen, Snap & Ask (camera) | ⬜ Chưa làm (M4) |
-| Redis / Kafka | Cấu hình sẵn, **chưa có tính năng nào thực sự dùng** (rate-limit đang tắt, không có Kafka listener) — an toàn khi bỏ qua lúc dev |
+| Redis / Kafka | Cấu hình sẵn, **chưa có tính năng nào thực sự dùng** — an toàn khi bỏ qua lúc dev |
 
 Chi tiết lộ trình: [`PLAN-THESIS.md`](PLAN-THESIS.md) §5 (bảng cột mốc 8 tuần).
 

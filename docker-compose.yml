@@ -1,9 +1,8 @@
-# docker-compose.yml – root of the repository (dcid-web)
-
 # Shared named volumes so data survives container restarts
 volumes:
   postgres_data: {}
   minio_data: {}
+  chroma_data: {}  # ChromaDB persistent vector index (T2 — M1c)
 
 services:
   postgres:
@@ -81,10 +80,42 @@ services:
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
       MINIO_BUCKET: kcn-docs
+      OCR_SERVICE_URL: http://ai-ocr:8001
+      # ChromaDB — khớp service name trong compose (port nội bộ 8000)
+      CHROMA_HOST: chroma
+      CHROMA_PORT: 8000
+    depends_on:
+      - minio
+      - chroma
+      - ai-ocr
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  ai-ocr:
+    build:
+      context: ./dcid-ai
+      dockerfile: Dockerfile.ocr
+    container_name: dcid-ai-ocr
+    environment:
+      AI_INTERNAL_TOKEN: change-me-internal-token
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: kcn-docs
     depends_on:
       - minio
     ports:
-      - "8000:8000"
+      - "8002:8001"
+    restart: unless-stopped
+
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: dcid-chroma
+    volumes:
+      - chroma_data:/chroma/.chroma/index
+    ports:
+      - "8001:8000"  # host 8001 tránh đụng với dcid-ai (8000)
     restart: unless-stopped
 
   kafka:

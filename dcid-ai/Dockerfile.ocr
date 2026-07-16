@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /srv/dcid-ai
+
+# System deps for opencv / paddlepaddle
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── OCR deps (paddlepaddle + paddleocr + pymupdf) ────────────────────────────
+COPY requirements-ocr.txt .
+RUN pip install --no-cache-dir -r requirements-ocr.txt
+
+# ── App code (dùng chung codebase, chỉ chạy OCR worker) ──────────────────────
+COPY app ./app
+
+EXPOSE 8001
+
+# OCR worker: FastAPI riêng, chỉ expose endpoint /ai/ingest (OCR + callback)
+CMD ["uvicorn", "app.main_ocr:app", "--host", "0.0.0.0", "--port", "8001"]

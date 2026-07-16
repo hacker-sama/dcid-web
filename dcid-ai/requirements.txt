@@ -6,11 +6,13 @@ minio>=7.2,<8.0
 pypdf>=4.2,<6.0
 pytest>=8.0,<9.0
 
-# --- OCR pipeline (app/pipeline/ocr.py) ---
-# paddlepaddle CPU: dùng index riêng của PaddlePaddle (không chỉ PyPI mặc định) để
-# chắc chắn lấy đúng wheel CPU. --extra-index-url chỉ BỔ SUNG nguồn tìm kiếm, không
-# thay PyPI, nên các gói khác trong file này không bị ảnh hưởng.
---extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cpu/
-paddlepaddle==3.3.0
-paddleocr>=3.7,<4.0
-pymupdf>=1.24,<2.0
+# --- Torch CPU-only — PHẢI cài trước sentence-transformers ---
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu
+torchvision==0.18.1+cpu
+
+# --- Embedding pipeline (app/pipeline/embed.py) ---
+sentence-transformers>=3.0,<4.0
+
+# --- Vector index (app/pipeline/index.py) ---
+chromadb>=1.5,<2.0
