@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     ai_internal_token: str = "change-me-internal-token"
     be_base_url: str = "http://localhost:8080"
+    ocr_service_url: str = "http://ai-ocr:8001"
 
     minio_endpoint: str = "localhost:9000"
     # Khớp docker-compose.yml (service minio: MINIO_ROOT_USER=minio / MINIO_ROOT_PASSWORD=minio123),
@@ -23,6 +24,10 @@ class Settings(BaseSettings):
     minio_secret_key: str = "minio123"
     minio_bucket: str = "kcn-docs"
     minio_secure: bool = False
+
+    # ChromaDB — service `chroma` trong docker-compose.yml (port nội bộ 8000)
+    chroma_host: str = "localhost"
+    chroma_port: int = 8000
 
 
 @lru_cache

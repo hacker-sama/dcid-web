@@ -15,10 +15,7 @@ docs/PLAN-THESIS.md mục T1):
 import logging
 from dataclasses import dataclass, field
 from functools import lru_cache
-
-import fitz  # PyMuPDF
-import numpy as np
-from paddleocr import PaddleOCR
+from typing import Any
 
 logger = logging.getLogger("dcid-ai.ocr")
 
@@ -38,7 +35,7 @@ class PageOcr:
 
 
 @lru_cache(maxsize=4)
-def _get_engine(lang: str) -> PaddleOCR:
+def _get_engine(lang: str) -> Any:
     """Model PaddleOCR theo ngôn ngữ — tạo 1 lần, cache theo process (init ~1-2s khi
     model đã tải, ~30s nếu tải lần đầu từ CDN PaddleX vào ~/.paddlex/official_models).
 
@@ -47,6 +44,8 @@ def _get_engine(lang: str) -> PaddleOCR:
     onednn_instruction.cc khi convert PIR attribute). Tắt mkldnn né được lỗi này,
     đổi lại chậm hơn dùng mkldnn một chút — chấp nhận được cho ingest (async).
     """
+    from paddleocr import PaddleOCR
+
     logger.info("Khoi tao PaddleOCR lang=%s (co the tai model lan dau tu CDN)", lang)
     return PaddleOCR(
         lang=lang,
@@ -69,8 +68,13 @@ def _pick_lang(langs: list[str]) -> str:
 
 def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
     """Render từng trang PDF (PyMuPDF) rồi OCR (PaddleOCR). Lỗi PDF hỏng sẽ raise —
-    caller (ingest_service) chuyển thành callback FAILED.
+    caller chuyển thành callback FAILED.
+    Lưu ý: fitz và numpy được import bên trong hàm để container `ai` (không cài OCR)
+    vẫn import được PageOcr mà không bị ModuleNotFoundError.
     """
+    import fitz  # PyMuPDF
+    import numpy as np
+
     lang = _pick_lang(langs)
     engine = _get_engine(lang)
 

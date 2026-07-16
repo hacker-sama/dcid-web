@@ -57,7 +57,7 @@
 | **M0** | Nền tảng + Auth + skeleton | ✅ **Xong** | Docker, self-JWT, RBAC, audit |
 | **M1a** | Upload + Ingest E2E (pypdf mock) | ✅ **Xong** | upload PDF → MinIO → ACTIVE, E2E pass |
 | **M1b** | OCR thật tích hợp (PaddleOCR) | ✅ **Xong** | ingest thật EN/VI, CER baseline đo được |
-| **M1c** | chunk → embed → ChromaDB | ⬜ **T2** | ingest ghi vector vào Chroma, query retrieve được |
+| **M1c** | chunk → embed → ChromaDB | ✅ **Xong** | ingest ghi vector vào Chroma, query retrieve được |
 | **M1d** | LLM thật + RAG query | ⬜ **T3** | `/api/query` trả câu trả lời thật + citation trang |
 | **M2** | Guardrails đầy đủ + Experiments E1–E2 | ⬜ **T4–T5** | bảng số liệu hallucination rate, Recall@k |
 | **M3** | Flutter citation viewer + BE file proxy | ⬜ **T5** | UI hiện bbox, banner guardrail |
@@ -72,22 +72,22 @@
 
 #### AI Engineer (Người 3)
 
-**Bước 1 — Chunking (pipeline/chunk.py)**
-- Thay `raise NotImplementedError` bằng layout-aware chunking thật
-- Ưu tiên giữ bảng thông số nguyên vẹn (không cắt giữa bảng)
-- Input: `list[PageOcr]` từ `ocr.extract_pages()` → Output: `list[Chunk]`
+**Bước 1 — Chunking (pipeline/chunk.py)** ✅ **DONE**
+- Layout-aware chunking: giữ bảng nguyên vẹn, sliding window 400 từ / overlap 60
+- Input: `list[PageOcr]` → Output: `list[Chunk]` (với page_no, chunk_index)
+- Unit tests: 10 test cases pass (TestIsTable, TestSplitBlocks, TestChunkPages)
 
-**Bước 2 — Embedding (pipeline/embed.py)**
-- Cài `sentence-transformers` hoặc `optimum` (ONNX)
-- Model: `intfloat/multilingual-e5-small` (~470MB, chạy CPU)
-- Input: `list[Chunk]` → Output: `list[float]` vectors
+**Bước 2 — Embedding (pipeline/embed.py)** ✅ **DONE**
+- `sentence-transformers>=3.0` + model `intfloat/multilingual-e5-small`
+- Prefix chuẩn E5: "passage: " cho ingest, "query: " cho query (T3)
+- Singleton lazy-load per process (lru_cache)
 
-**Bước 3 — ChromaDB index (pipeline/index.py)**
-- Cài `chromadb`
-- Upsert vectors với metadata: `version_id, document_id, page_no, lang, min_role, chunk_index`
-- Collection: `kcn_chunks`
+**Bước 3 — ChromaDB index (pipeline/index.py)** ✅ **DONE**
+- `chromadb.HttpClient` kết nối service `chroma` trong docker-compose
+- `upsert_chunks()` idempotent theo version_id, `search()` filter RBAC version_id
+- Cosine similarity score ∈ [0,1]
 
-**Bước 4 — Thêm ChromaDB vào docker-compose.yml**
+**Bước 4 — Thêm ChromaDB vào docker-compose.yml** ✅ **DONE**
 ```yaml
 chroma:
   image: chromadb/chroma:latest
@@ -100,9 +100,13 @@ chroma:
 ```
 Thêm `CHROMA_HOST: chroma` và `CHROMA_PORT: 8000` vào service `ai`.
 
-**Bước 5 — Nối ingest_service.py**
-- Sau `ocr.extract_pages()`, gọi `chunk() → embed() → index()` (hiện đang bỏ qua)
-- Kết quả OCR text (`ocrText`) đã có trong callback → BE đã nhận, chỉ cần thêm Chroma
+**Bước 5 — Nối ingest_service.py** ✅ **DONE**
+- Pipeline đầy đủ: `ocr → chunk → embed → index → callback READY`
+- Mọi lỗi (kể cả Chroma/embed fail) → callback FAILED, service không crash
+
+**Bước tiếp theo để verify M1c:**
+- Chạy `docker compose up --build -d` → kiểm tra dcid-chroma Started
+- Upload 1 PDF và kiểm tra log: `Chroma upsert OK: ... chunks=N`
 
 #### Data/Eval (Người 5)
 
