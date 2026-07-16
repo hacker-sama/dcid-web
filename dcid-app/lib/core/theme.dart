@@ -7,7 +7,7 @@ ThemeData buildAppTheme() {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
-    visualDensity: VisualDensity.comfortable,
+    visualDensity: VisualDensity.adaptivePlatformDensity,
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(0, 52),
