@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constrained_content.dart';
 import '../../state/auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -33,12 +34,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final loading = auth.status == AuthStatus.loading;
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
+      body: ConstrainedContent(
+        maxWidth: 420,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -82,7 +82,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 }

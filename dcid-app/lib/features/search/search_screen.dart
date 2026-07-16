@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constrained_content.dart';
 import '../../data/models/answer_result.dart';
 import '../../state/providers.dart';
 
@@ -45,10 +46,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ConstrainedContent(
+      maxWidth: 840,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
@@ -76,8 +79,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           if (_result != null) Expanded(child: _AnswerView(result: _result!)),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _AnswerView extends StatelessWidget {

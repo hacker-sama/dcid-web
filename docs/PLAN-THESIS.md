@@ -189,6 +189,18 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
     unit test — model thật không phù hợp test suite nhanh, đúng nguyên tắc đã theo từ
     đầu dự án).
 
+### 📌 Cập nhật tiến độ T2 (16/07/2026)
+
+**Đã xong (tập trung vào các phần của T2/Week 2):**
+- ✅ **Flutter Web Layout & Density Optimization (theo `docs/flutter-design.md`)**:
+  - Tích hợp package `data_table_2` (v2.7.2) để hiển thị danh sách tài liệu dưới dạng bảng dày đặc khi ở màn hình rộng (breakpoint >= `expanded` / 1200dp).
+  - Tải lên (upload) PDF được tích hợp vào thanh công cụ (toolbar) trên đầu bảng đối với màn hình rộng, và tự động chuyển thành Dialog có constraint maxWidth (600dp) thay vì bottom sheet trải dài thô thiển.
+  - Tạo helper widget `ConstrainedContent` dùng chung để giới hạn bề rộng nội dung chính (login form max 420dp, list/detail max 840dp, admin table max 1400dp).
+  - Cấu hình `VisualDensity.adaptivePlatformDensity` cho `ThemeData` để tự động thu hẹp khoảng trắng trên desktop/web.
+  - Cập nhật hằng số `Breakpoints` chuẩn vào `responsive.dart` và cập nhật các logic rẽ nhánh layout.
+  - Chạy `flutter analyze` (0 issue) và `flutter test` (xanh 100%) hoàn tất việc verify.
+
+
 **Còn lại của T1 (làm nốt trước khi vào T2):**
 1. ⬜ **Người 1** — Outline luận văn (mục lục 5 chương + phân công viết) → file `docs/THESIS-OUTLINE.md`.
 2. ⬜ **Người 5** — Sưu tầm tài liệu đợt 1 (mục §2): 15–25 tài liệu VI/EN, bắt đầu degradation set.

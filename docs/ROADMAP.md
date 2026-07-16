@@ -29,6 +29,7 @@
 | **Flutter — Shell/Nav** | `shell/home_shell.dart` + routing role-guard |
 | **Flutter — Tài liệu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — nối API thật |
 | **Flutter — Tra cứu** | `search/search_screen.dart` nối `POST /api/query` thật |
+| **Flutter — Layout & Density** | Áp dụng `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, và responsive layout cho các màn hình theo `flutter-design.md` |
 | **Flutter — Placeholder** | `admin_screen.dart`, `snap_ask_screen.dart`, `document_viewer_screen.dart` — placeholder |
 | **Infra Docker** | postgres · redis · minio · zookeeper · kafka · backend · ai — tất cả `Started` |
 

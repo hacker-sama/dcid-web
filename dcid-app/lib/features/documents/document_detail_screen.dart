@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../core/constrained_content.dart';
 import '../../data/models/document_detail.dart';
 import '../../state/documents_providers.dart';
 
@@ -40,22 +40,25 @@ class DocumentDetailScreen extends ConsumerWidget {
         data: (detail) => RefreshIndicator(
           onRefresh: () =>
               ref.refresh(documentDetailProvider(documentId).future),
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            children: [
-              _DocumentInfoCard(detail: detail),
-              const SizedBox(height: 16),
-              Text('Phiên bản', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              if (detail.versions.isEmpty)
-                const Text('Chưa có phiên bản nào.')
-              else
-                for (final version in detail.versions) ...[
-                  _VersionTile(version: version),
-                  const SizedBox(height: 8),
-                ],
-            ],
+          child: ConstrainedContent(
+            maxWidth: 840,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: [
+                _DocumentInfoCard(detail: detail),
+                const SizedBox(height: 16),
+                Text('Phiên bản', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                if (detail.versions.isEmpty)
+                  const Text('Chưa có phiên bản nào.')
+                else
+                  for (final version in detail.versions) ...[
+                    _VersionTile(version: version),
+                    const SizedBox(height: 8),
+                  ],
+              ],
+            ),
           ),
         ),
       ),
