@@ -63,8 +63,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private void checkSubmissionRateLimit(String userId) {
-        String key = RATE_LIMIT_PREFIX + userId + ":" + SUBMISSIONS_KEY;
-
+        String key = RATE_LIMIT_PREFIX + userId + ":" + SUBMISSIONS_KEY;    
+        String res = request.getCurrentUserId();
+        if (!DataUtils.isNull(res)) throw new NotFoundException("")
         Long currentCount = redisTemplate.opsForValue().increment(key);
         if (currentCount == null) {
             currentCount = 1L;
