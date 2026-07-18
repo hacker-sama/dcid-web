@@ -1,11 +1,51 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
-
 import 'api_client.dart';
 import 'models/answer_result.dart';
 import 'models/document_detail.dart';
 import 'models/document_summary.dart';
+class DocumentService {
+  final Dio _dio;
+
+  DocumentService(this._dio);
+  Future<List<DocumentSummary>> getDocuments() async {
+    try {
+      Response response = await _dio.get('https://backend.example.com/api/documents');
+
+      if (response.statusCode == 200) {
+        // Deserialize JSON data into a list of DocumentSummary
+        List<dynamic> data = json.decode(response.data);
+        List<DocumentSummary> documents = data.map((item) => DocumentSummary.fromJson(item)).toList();
+
+        return documents;
+      } else {
+        throw Exception('Failed to load documents. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+}
+
+// The DocumentService class can be used as follows:
+void main() async {
+  final dio = Dio();
+  final documentService = DocumentService(dio);
+
+  try {
+    final documents = await documentService.getDocuments();
+
+    for (var doc in documents) {
+      print(doc.toJson());
+    }
+  } catch (e) {
+    // Handle any errors
+    print('Error: $e');
+  }
+}
+
 
 /// Read/query/upload documents via the backend (which forwards to the AI service).
 class DocsRepository {
@@ -75,3 +115,4 @@ class DocsRepository {
         .toList();
   }
 }
+  
