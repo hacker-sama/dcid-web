@@ -6,22 +6,29 @@ import '../../core/responsive.dart';
 import '../../state/auth_controller.dart';
 
 class _Dest {
-  const _Dest(this.path, this.icon, this.label, {this.adminOnly = false});
+  const _Dest(this.path, this.icon, this.label, {this.adminOnly = false, this.mobileOnly = false});
   final String path;
   final IconData icon;
   final String label;
   final bool adminOnly;
+  /// Only shown on mobile (compact breakpoint). E.g., Snap & Ask uses camera.
+  final bool mobileOnly;
 }
 
-const _destinations = <_Dest>[
+const _allDestinations = <_Dest>[
   _Dest('/search', Icons.search, 'Tra cứu'),
-  _Dest('/snap', Icons.camera_alt, 'Snap & Ask'),
+  _Dest('/snap', Icons.camera_alt, 'Snap & Ask', mobileOnly: true),
   _Dest('/documents', Icons.folder, 'Tài liệu'),
   _Dest('/admin', Icons.admin_panel_settings, 'Quản trị', adminOnly: true),
 ];
 
 /// Adaptive shell: NavigationRail on wide (kiosk/desktop), NavigationBar on
 /// narrow (mobile). Destinations are filtered by role.
+///
+/// **Role-based filtering (FRONTEND.md §3):**
+/// - OPERATOR: Tra cứu + Snap & Ask (mobile) + Tài liệu (SOP/Safety filtered in list)
+/// - ENGINEER: All non-admin screens
+/// - QA_ADMIN / ADMIN: All screens including admin panel
 class HomeShell extends ConsumerWidget {
   const HomeShell({required this.child, super.key});
 
@@ -30,8 +37,18 @@ class HomeShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    final isAdmin = auth.user?.role.isAdminLevel ?? false;
-    final dests = _destinations.where((d) => !d.adminOnly || isAdmin).toList();
+    final role = auth.user?.role;
+    final isAdmin = role?.isAdminLevel ?? false;
+    final isWide = Responsive.isWide(context);
+
+    // Filter destinations based on role + platform.
+    final dests = _allDestinations.where((d) {
+      // Admin-only screens need admin role.
+      if (d.adminOnly && !isAdmin) return false;
+      // Mobile-only screens (Snap & Ask) hidden on wide/kiosk.
+      if (d.mobileOnly && isWide) return false;
+      return true;
+    }).toList();
 
     final location = GoRouterState.of(context).matchedLocation;
     var index = dests.indexWhere((d) => location.startsWith(d.path));
@@ -40,7 +57,7 @@ class HomeShell extends ConsumerWidget {
     void onSelect(int i) => context.go(dests[i].path);
     void logout() => ref.read(authControllerProvider.notifier).logout();
 
-    if (Responsive.isWide(context)) {
+    if (isWide) {
       return Scaffold(
         body: Row(
           children: [
@@ -60,10 +77,23 @@ class HomeShell extends ConsumerWidget {
                   alignment: Alignment.bottomCenter,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: IconButton(
-                      tooltip: 'Đăng xuất',
-                      icon: const Icon(Icons.logout),
-                      onPressed: logout,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (role != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Chip(
+                              label: Text(role.label),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        IconButton(
+                          tooltip: 'Đăng xuất',
+                          icon: const Icon(Icons.logout),
+                          onPressed: logout,
+                        ),
+                      ],
                     ),
                   ),
                 ),

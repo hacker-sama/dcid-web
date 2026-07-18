@@ -1,15 +1,24 @@
 /// One source reference returned with an answer (page + optional bbox crop).
 class Citation {
-  const Citation({required this.versionId, required this.pageNo, this.bboxKey});
+  const Citation({
+    required this.versionId,
+    required this.pageNo,
+    this.bboxKey,
+    this.snippet,
+  });
 
   final String versionId;
   final int pageNo;
   final String? bboxKey;
 
+  /// Short text excerpt from the matched chunk (nullable when guardrail-locked).
+  final String? snippet;
+
   factory Citation.fromJson(Map<String, dynamic> json) => Citation(
         versionId: json['versionId'] as String? ?? '',
         pageNo: (json['pageNo'] as num?)?.toInt() ?? 0,
         bboxKey: json['bboxKey'] as String?,
+        snippet: json['snippet'] as String?,
       );
 }
 

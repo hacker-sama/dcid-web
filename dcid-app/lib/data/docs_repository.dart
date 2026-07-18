@@ -1,58 +1,19 @@
 import 'dart:typed_data';
-import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'api_client.dart';
+import 'docs_repository_interface.dart';
 import 'models/answer_result.dart';
 import 'models/document_detail.dart';
 import 'models/document_summary.dart';
-class DocumentService {
-  final Dio _dio;
-
-  DocumentService(this._dio);
-  Future<List<DocumentSummary>> getDocuments() async {
-    try {
-      Response response = await _dio.get('https://backend.example.com/api/documents');
-
-      if (response.statusCode == 200) {
-        // Deserialize JSON data into a list of DocumentSummary
-        List<dynamic> data = json.decode(response.data);
-        List<DocumentSummary> documents = data.map((item) => DocumentSummary.fromJson(item)).toList();
-
-        return documents;
-      } else {
-        throw Exception('Failed to load documents. Status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception(e.toString());
-    }
-  }
-}
-
-// The DocumentService class can be used as follows:
-void main() async {
-  final dio = Dio();
-  final documentService = DocumentService(dio);
-
-  try {
-    final documents = await documentService.getDocuments();
-
-    for (var doc in documents) {
-      print(doc.toJson());
-    }
-  } catch (e) {
-    // Handle any errors
-    print('Error: $e');
-  }
-}
-
 
 /// Read/query/upload documents via the backend (which forwards to the AI service).
-class DocsRepository {
+class DocsRepository implements IDocsRepository {
   DocsRepository(this._api);
 
   final ApiClient _api;
 
+  @override
   Future<AnswerResult> ask(String question) async {
     final res = await _api.dio.post<Map<String, dynamic>>(
       '/api/query',
@@ -63,12 +24,14 @@ class DocsRepository {
 
   /// `GET /api/documents` — PagedResponse: items live in `data.items`
   /// (docs/PLAN-FLUTTER-DOCS.md §3.1).
+  @override
   Future<List<DocumentSummary>> listDocuments() async {
     final res = await _api.dio.get<Map<String, dynamic>>('/api/documents');
     return parseDocumentList(res.data!);
   }
 
   /// `GET /api/documents/{id}` (§3.2).
+  @override
   Future<DocumentDetail> getDocumentDetail(String id) async {
     final res = await _api.dio.get<Map<String, dynamic>>('/api/documents/$id');
     return DocumentDetail.fromJson(res.data!['data'] as Map<String, dynamic>);
@@ -80,6 +43,7 @@ class DocsRepository {
   /// Nhận file dưới dạng bytes (không phải path): trên web `PlatformFile.path`
   /// luôn null (trình duyệt không lộ đường dẫn hệ thống), nên đây là cách
   /// upload hoạt động thống nhất trên mọi nền tảng (web/Android/Windows).
+  @override
   Future<DocumentDetail> uploadDocument({
     required String title,
     required String category,
@@ -114,5 +78,4 @@ class DocsRepository {
         .map((e) => DocumentSummary.fromJson(e as Map<String, dynamic>))
         .toList();
   }
-}
-  
+}

@@ -44,6 +44,9 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
   Uint8List? _fileBytes;
   String? _fileName;
   bool _uploading = false;
+
+  /// After successful upload, show "Processing" state before closing.
+  bool _processing = false;
   String? _error;
 
   @override
@@ -97,7 +100,15 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
             fileBytes: _fileBytes!,
             fileName: _fileName ?? 'document.pdf',
           );
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        setState(() {
+          _uploading = false;
+          _processing = true;
+        });
+        // Show processing state for 3 seconds, then auto-close.
+        await Future<void>.delayed(const Duration(seconds: 3));
+        if (mounted) Navigator.of(context).pop(true);
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -134,6 +145,41 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    // ── Processing state ──────────────────────────────────────────────
+    if (_processing) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(24, 32, 24, 32 + bottomInset),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _PulsingIndicator(),
+            const SizedBox(height: 24),
+            Text(
+              'Đang xử lý tài liệu...',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'AI đang OCR và phân tích nội dung.\nBạn sẽ được thông báo khi hoàn tất.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Upload form ───────────────────────────────────────────────────
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
       child: Form(
@@ -236,6 +282,55 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Animated pulsing circle indicator for the "Processing" state.
+class _PulsingIndicator extends StatefulWidget {
+  const _PulsingIndicator();
+
+  @override
+  State<_PulsingIndicator> createState() => _PulsingIndicatorState();
+}
+
+class _PulsingIndicatorState extends State<_PulsingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 0.85, end: 1.15).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ScaleTransition(
+      scale: _scale,
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: scheme.primaryContainer,
+        ),
+        child: Icon(Icons.auto_awesome, size: 36, color: scheme.primary),
       ),
     );
   }

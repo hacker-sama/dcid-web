@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../data/api_client.dart';
 import '../data/auth_repository.dart';
 import '../data/docs_repository.dart';
+import '../data/docs_repository_interface.dart';
 
 final secureStorageProvider =
     Provider<FlutterSecureStorage>((ref) => const FlutterSecureStorage());
@@ -18,5 +19,15 @@ final authRepositoryProvider = Provider<AuthRepository>(
   ),
 );
 
+/// Document operations. Override with `MockDocsRepository` during Week 1:
+///
+/// ```dart
+/// ProviderScope(
+///   overrides: [
+///     docsRepositoryProvider.overrideWithValue(MockDocsRepository()),
+///   ],
+///   child: const DcidApp(),
+/// )
+/// ```
 final docsRepositoryProvider =
-    Provider<DocsRepository>((ref) => DocsRepository(ref.watch(apiClientProvider)));
+    Provider<IDocsRepository>((ref) => DocsRepository(ref.watch(apiClientProvider)));
