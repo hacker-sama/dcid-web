@@ -1,3 +1,4 @@
+import '../auth_repository_interface.dart';
 import '../models/app_user.dart';
 import '../models/user_role.dart';
 
@@ -12,24 +13,28 @@ import '../models/user_role.dart';
 /// | `qa`           | QA_ADMIN  |
 /// | `engineer`     | ENGINEER  |
 /// | anything else  | OPERATOR  |
-class MockAuthRepository {
+class MockAuthRepository implements IAuthRepository {
   String? _fakeToken;
 
+  @override
   Future<AppUser> login(String username, String password) async {
     await Future<void>.delayed(const Duration(milliseconds: 500));
     _fakeToken = 'mock-jwt-$username';
     return _userForUsername(username);
   }
 
+  @override
   Future<AppUser> me() async {
     // Return a default user if no login happened yet.
     return _userForUsername('admin');
   }
 
+  @override
   Future<void> logout() async {
     _fakeToken = null;
   }
 
+  @override
   Future<String?> token() async => _fakeToken;
 
   static AppUser _userForUsername(String username) {

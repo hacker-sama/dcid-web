@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/kiosk.dart';
+import 'data/mock/mock_auth_repository.dart';
 import 'data/mock/mock_docs_repository.dart';
 import 'state/providers.dart';
 
@@ -19,8 +20,10 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [
-        if (_useMockData)
+        if (_useMockData) ...[
+          authRepositoryProvider.overrideWithValue(MockAuthRepository()),
           docsRepositoryProvider.overrideWithValue(MockDocsRepository()),
+        ],
       ],
       child: const DcidApp(),
     ),
