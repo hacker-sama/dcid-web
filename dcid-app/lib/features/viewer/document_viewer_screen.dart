@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constrained_content.dart';
+import '../../core/env.dart';
+import '../../data/api_client.dart';
 import '../../data/mock/mock_data.dart';
 import '../../data/models/page_info.dart';
+import '../../state/providers.dart';
 import 'bbox_painter.dart';
 
 /// Document page viewer with bounding box overlays.
@@ -117,7 +121,7 @@ class _PageViewer extends StatelessWidget {
             builder: (context, constraints) {
               return Stack(
                 children: [
-                  // ── Page image (mock placeholder) ─────────────────
+                  // ── Page image (Real image from API) ─────────────────
                   Container(
                     width: constraints.maxWidth,
                     height: constraints.maxHeight,
@@ -132,10 +136,50 @@ class _PageViewer extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: _MockPageContent(
-                      pageNo: page.pageNo,
-                      width: constraints.maxWidth,
-                      height: constraints.maxHeight,
+                    // Fetch token from secure storage to authenticate image request
+                    child: Consumer(
+                      builder: (context, ref, child) {
+                        return FutureBuilder<String?>(
+                          future: ref.read(secureStorageProvider).read(key: ApiClient.tokenKey),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                            final token = snapshot.data;
+                            final imageUrl = '${Env.apiBaseUrl}/api/files/${page.imageKey}';
+                            
+                            return Image.network(
+                              imageUrl,
+                              headers: token != null ? {'Authorization': 'Bearer $token'} : null,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.broken_image, size: 48, color: scheme.error),
+                                      const SizedBox(height: 8),
+                                      Text('Lỗi tải trang ${page.pageNo}', style: TextStyle(color: scheme.error)),
+                                      // Log error for debugging if backend API is missing
+                                      Text(error.toString(), style: const TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
+                                    ],
+                                  ),
+                                );
+                              },
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
 
