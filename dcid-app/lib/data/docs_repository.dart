@@ -22,6 +22,19 @@ class DocsRepository implements IDocsRepository {
     return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
   }
 
+  @override
+  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName) async {
+    final form = FormData.fromMap({
+      'question': question,
+      'file': MultipartFile.fromBytes(imageBytes, filename: fileName),
+    });
+    final res = await _api.dio.post<Map<String, dynamic>>(
+      '/api/query',
+      data: form,
+    );
+    return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
+  }
+
   /// `GET /api/documents` — PagedResponse: items live in `data.items`
   /// (docs/PLAN-FLUTTER-DOCS.md §3.1).
   @override

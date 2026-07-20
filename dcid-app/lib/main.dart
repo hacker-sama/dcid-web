@@ -10,7 +10,7 @@ import 'state/providers.dart';
 /// Set to `true` during Week 1 (APIs not ready) to use mock data.
 /// Flip to `false` when the real backend is available — zero other
 /// code changes required.
-const bool _useMockData = true;
+const bool _useMockData = false;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

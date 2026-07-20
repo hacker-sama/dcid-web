@@ -13,6 +13,9 @@ abstract class IDocsRepository {
   /// `POST /api/query` — RAG search.
   Future<AnswerResult> ask(String question);
 
+  /// `POST /api/query` — Snap & Ask (multipart with image).
+  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName);
+
   /// `GET /api/documents` — paginated list.
   Future<List<DocumentSummary>> listDocuments();
 

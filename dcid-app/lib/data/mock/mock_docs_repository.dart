@@ -24,6 +24,21 @@ class MockDocsRepository implements IDocsRepository {
   }
 
   @override
+  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName) async {
+    await Future<void>.delayed(const Duration(seconds: 2));
+    // Trả về một câu trả lời mock đặc thù cho Snap & Ask
+    return AnswerResult(
+      answer: 'Dựa trên hình ảnh bạn cung cấp và tài liệu $fileName, đây là linh kiện Servo Driver MR-J4. Điện áp yêu cầu là 200-230 VAC.',
+      confidence: 0.89,
+      locked: false,
+      numericRule: false,
+      citations: [
+        MockData.answerNormal.citations.first,
+      ],
+    );
+  }
+
+  @override
   Future<List<DocumentSummary>> listDocuments() async {
     await Future<void>.delayed(const Duration(milliseconds: 500));
     return MockData.documents;
