@@ -16,3 +16,6 @@ sentence-transformers>=3.0,<4.0
 
 # --- Vector index (app/pipeline/index.py) ---
 chromadb>=1.5,<2.0
+
+# --- LLM client — OpenAI-compatible, dùng cho LM Studio local server ---
+openai>=1.40,<2.0

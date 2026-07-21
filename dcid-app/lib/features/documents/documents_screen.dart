@@ -17,9 +17,9 @@ class DocumentsScreen extends ConsumerWidget {
   Future<void> _openUploadSheet(BuildContext context, WidgetRef ref) async {
     final isWide = Responsive.isWide(context);
     final messenger = ScaffoldMessenger.of(context);
-    final bool? uploaded;
+    final Object? uploaded;
     if (isWide) {
-      uploaded = await showDialog<bool>(
+      uploaded = await showDialog<Object>(
         context: context,
         builder: (_) => Dialog(
           child: ConstrainedBox(
@@ -30,18 +30,21 @@ class DocumentsScreen extends ConsumerWidget {
       );
     } else {
       if (!context.mounted) return;
-      uploaded = await showModalBottomSheet<bool>(
+      uploaded = await showModalBottomSheet<Object>(
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
         builder: (_) => const UploadDocumentSheet(),
       );
     }
-    if (uploaded == true) {
+    if (uploaded != null && (uploaded == true || uploaded is String)) {
       ref.invalidate(documentsProvider);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Đã tải lên — đang xử lý OCR')),
+        const SnackBar(content: Text('Đã tải lên — đang xử lý OCR...')),
       );
+      if (uploaded is String && context.mounted) {
+        context.push('/documents/$uploaded');
+      }
     }
   }
 
@@ -67,7 +70,10 @@ class DocumentsScreen extends ConsumerWidget {
               if (docs.isEmpty) {
                 return RefreshIndicator(
                   onRefresh: () => ref.refresh(documentsProvider.future),
-                  child: const _EmptyState(),
+                  child: _EmptyState(
+                    isAdminLevel: isAdminLevel,
+                    onUploadPressed: () => _openUploadSheet(context, ref),
+                  ),
                 );
               }
 
@@ -211,7 +217,7 @@ class DocumentsScreen extends ConsumerWidget {
               );
             },
           ),
-          floatingActionButton: (isAdminLevel && !isDesktop)
+          floatingActionButton: (isAdminLevel && (!isDesktop || docsAsync.value?.isEmpty == true))
               ? FloatingActionButton.extended(
                   onPressed: () => _openUploadSheet(context, ref),
                   icon: const Icon(Icons.upload_file),
@@ -225,14 +231,33 @@ class DocumentsScreen extends ConsumerWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({this.isAdminLevel = false, this.onUploadPressed});
+
+  final bool isAdminLevel;
+  final VoidCallback? onUploadPressed;
 
   @override
   Widget build(BuildContext context) {
     // ListView để pull-to-refresh hoạt động cả khi rỗng.
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(24),
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Danh sách tài liệu',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            if (isAdminLevel && onUploadPressed != null)
+              FilledButton.icon(
+                onPressed: onUploadPressed,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Tải tài liệu'),
+              ),
+          ],
+        ),
         const SizedBox(height: 120),
         Icon(Icons.folder_open,
             size: 56, color: Theme.of(context).colorScheme.outline),

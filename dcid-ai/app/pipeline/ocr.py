@@ -20,6 +20,7 @@ from typing import Any
 logger = logging.getLogger("dcid-ai.ocr")
 
 RENDER_DPI = 200  # đủ nét để OCR mà không quá nặng (A4 ~1650x2340px)
+MAX_SIDE_PIXELS = 2400  # giới hạn cạnh tối đa để tránh tạo ảnh quá lớn (6600x9300+) gây tràn RAM và sập OCR khi xử lý bản vẽ lớn (A0/A1/A2/A3)
 
 
 @dataclass
@@ -81,8 +82,13 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
     pages: list[PageOcr] = []
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     try:
-        matrix = fitz.Matrix(RENDER_DPI / 72, RENDER_DPI / 72)
         for i, page in enumerate(doc, start=1):
+            max_side_pt = max(page.rect.width, page.rect.height)
+            scale_dpi = RENDER_DPI / 72.0
+            scale_max = MAX_SIDE_PIXELS / max_side_pt if max_side_pt > 0 else scale_dpi
+            scale = min(scale_dpi, scale_max)
+            matrix = fitz.Matrix(scale, scale)
+
             pix = page.get_pixmap(matrix=matrix)
             img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
                 pix.height, pix.width, pix.n
@@ -91,8 +97,43 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
                 img = img[:, :, :3]
 
             lines: list[str] = []
-            for res in engine.predict(img):
-                lines.extend(res.get("rec_texts", []))
+            boxes: list[tuple[float, float, float, float]] = []
+
+            # Cố gắng lấy text tự nhiên (native text) và tọa độ không gian (Bbox) từ PyMuPDF trước.
+            # PDF xuất từ Word/CAD thường có sẵn text 100% chính xác kèm tọa độ rect.
+            native_text = page.get_text("text").strip()
+            if len(native_text) > 50:
+                for b in page.get_text("blocks"):
+                    if len(b) >= 7 and b[6] == 0:  # text block
+                        txt = str(b[4]).strip()
+                        if txt:
+                            block_lines = txt.split("\n")
+                            lines.extend(block_lines)
+                            bbox = (round(float(b[0]), 1), round(float(b[1]), 1), round(float(b[2]), 1), round(float(b[3]), 1))
+                            boxes.extend([bbox] * len(block_lines))
+                if not lines:
+                    lines = native_text.split("\n")
+                logger.info("OCR trang %d: Dung native text (%d ky tu, %d boxes) thay vi PaddleOCR", i, len(native_text), len(boxes))
+            else:
+                # Nếu không có text (PDF scan), dùng PaddleOCR bóc tách chữ & Bbox polys
+                for res in engine.predict(img):
+                    rec_texts = res.get("rec_texts", []) if isinstance(res, dict) else getattr(res, "rec_texts", [])
+                    dt_polys = res.get("dt_polys", []) if isinstance(res, dict) else getattr(res, "dt_polys", [])
+                    if not dt_polys:
+                        dt_polys = res.get("boxes", []) if isinstance(res, dict) else getattr(res, "boxes", [])
+                    lines.extend(rec_texts)
+                    for poly in dt_polys:
+                        try:
+                            poly_arr = np.array(poly)
+                            if poly_arr.ndim == 2 and poly_arr.shape[1] >= 2:
+                                min_x = float(np.min(poly_arr[:, 0]))
+                                min_y = float(np.min(poly_arr[:, 1]))
+                                max_x = float(np.max(poly_arr[:, 0]))
+                                max_y = float(np.max(poly_arr[:, 1]))
+                                boxes.append((round(min_x, 1), round(min_y, 1), round(max_x, 1), round(max_y, 1)))
+                        except Exception:
+                            pass
+                logger.debug("OCR trang %d: PaddleOCR doc duoc %d dong, %d boxes", i, len(lines), len(boxes))
 
             pages.append(
                 PageOcr(
@@ -100,9 +141,10 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
                     text="\n".join(lines),
                     width=pix.width,
                     height=pix.height,
+                    boxes=boxes,
                 )
             )
-            logger.debug("OCR trang %d: %d dong", i, len(lines))
+            logger.debug("OCR trang %d: %d x %d px -> %d dong (%d boxes)", i, pix.width, pix.height, len(lines), len(boxes))
     finally:
         doc.close()
 

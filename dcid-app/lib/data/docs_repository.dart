@@ -13,10 +13,22 @@ class DocsRepository {
 
   final ApiClient _api;
 
-  Future<AnswerResult> ask(String question) async {
+  Future<AnswerResult> ask(
+    String question, {
+    bool reasoningMode = false,
+    List<String>? selectedVersionIds,
+    List<Map<String, String>>? history,
+  }) async {
     final res = await _api.dio.post<Map<String, dynamic>>(
       '/api/query',
-      data: {'question': question},
+      data: {
+        'question': question,
+        'reasoningMode': reasoningMode,
+        if (selectedVersionIds != null && selectedVersionIds.isNotEmpty)
+          'selectedVersionIds': selectedVersionIds,
+        if (history != null && history.isNotEmpty)
+          'history': history,
+      },
     );
     return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
   }

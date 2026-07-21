@@ -5,6 +5,7 @@ import vn.dcid.ai.AiPipelineClient;
 import vn.dcid.ai.dto.AiCitation;
 import vn.dcid.ai.dto.AiQueryRequest;
 import vn.dcid.ai.dto.AiQueryResponse;
+import vn.dcid.domain.entity.DocumentVersion;
 import vn.dcid.domain.entity.QueryLog;
 import vn.dcid.domain.enums.UserRole;
 import vn.dcid.domain.enums.VersionStatus;
@@ -46,6 +47,14 @@ public class QueryService {
         long start = System.nanoTime();
 
         List<UUID> allowed = resolveAllowedVersionIds(actorRole, request.machineCode());
+        if (request.selectedVersionIds() != null && !request.selectedVersionIds().isEmpty()) {
+            List<UUID> selected = request.selectedVersionIds();
+            allowed = versionRepository.findAllById(allowed).stream()
+                    .filter(v -> selected.contains(v.getId()) || selected.contains(v.getDocumentId()))
+                    .map(DocumentVersion::getId)
+                    .toList();
+        }
+
         if (allowed.isEmpty()) {
             AnswerDTO locked = AnswerDTO.locked(NO_ACCESS_MESSAGE);
             saveLog(actorId, request.question(), null, null, false, true, locked.answer(), elapsedMs(start));
@@ -53,11 +62,19 @@ public class QueryService {
         }
 
         AiQueryResponse ai = aiPipelineClient.query(
-                new AiQueryRequest(request.question(), TOP_K, allowed, request.machineCode()));
+                new AiQueryRequest(
+                        request.question(),
+                        TOP_K,
+                        allowed,
+                        request.machineCode(),
+                        request.reasoningMode(),
+                        request.history() != null ? request.history() : List.of()
+                ));
 
         int latencyMs = elapsedMs(start);
         boolean lockedFlag = ai.guard() != null && ai.guard().locked();
         boolean numericFlag = ai.guard() != null && ai.guard().numericRule();
+        boolean reasoningFlag = ai.guard() != null && ai.guard().reasoningMode();
         List<AiCitation> citations = ai.citations() != null ? ai.citations() : List.of();
         UUID matchedVersionId = citations.isEmpty() ? null : citations.getFirst().versionId();
 
@@ -68,9 +85,9 @@ public class QueryService {
         return new AnswerDTO(
                 ai.answer(),
                 ai.confidence(),
-                new AnswerDTO.Guard(lockedFlag, numericFlag),
+                new AnswerDTO.Guard(lockedFlag, numericFlag, reasoningFlag),
                 citations.stream()
-                        .map(c -> new AnswerDTO.Citation(c.versionId(), c.pageNo(), c.bboxKey()))
+                        .map(c -> new AnswerDTO.Citation(c.versionId(), c.pageNo(), c.bboxKey(), c.snippet()))
                         .toList()
         );
     }

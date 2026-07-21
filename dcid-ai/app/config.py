@@ -29,6 +29,22 @@ class Settings(BaseSettings):
     chroma_host: str = "localhost"
     chroma_port: int = 8000
 
+    # ── LM Studio (OpenAI-compatible local server) ────────────────────────────
+    # Khi chạy trong Docker: host.docker.internal trỏ về Host OS.
+    # Khi dev local (không Docker): http://localhost:1234/v1
+    lm_studio_base_url: str = "http://host.docker.internal:1234/v1"
+    # LM Studio không cần API key thật — bất kỳ string nào cũng được chấp nhận.
+    lm_studio_api_key: str = "lm-studio"
+    # Tên model phải khớp chính xác identifier hiển thị trong LM Studio UI (Qwen-2.5-7B-Instruct / DeepSeek-R1-Distill)
+    lm_studio_model: str = "deepseek-r1-distill-qwen-1.5b"
+    llm_temperature: float = 0.2          # Cấu hình suy luận tối ưu theo sơ đồ (Low Temperature: 0.2)
+    llm_top_p: float = 0.9               # Cấu hình suy luận tối ưu theo sơ đồ (Top-P: 0.9)
+    llm_repetition_penalty: float = 1.2  # Cấu hình suy luận tối ưu theo sơ đồ (High Repetition Penalty: 1.2)
+    llm_frequency_penalty: float = 0.0
+    llm_presence_penalty: float = 0.0
+    llm_max_tokens: int = 2048
+    llm_timeout: float = 120.0
+
 
 @lru_cache
 def get_settings() -> Settings:

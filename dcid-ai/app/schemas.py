@@ -36,6 +36,12 @@ class IngestCallback(BaseModel):
     error: str | None = None
 
 
+class ChatMessage(BaseModel):
+    """Một lượt tin nhắn trong lịch sử hội thoại multi-turn."""
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class QueryRequest(BaseModel):
     """BE → AI (contract §2.2)."""
 
@@ -43,11 +49,14 @@ class QueryRequest(BaseModel):
     topK: int = 5
     allowedVersionIds: list[UUID]
     machineCode: str | None = None
+    reasoningMode: bool = False
+    history: list[ChatMessage] = []
 
 
 class Guard(BaseModel):
     locked: bool = False
     numericRule: bool = False
+    reasoningMode: bool = False
 
 
 class Citation(BaseModel):
