@@ -5,14 +5,18 @@ WORKDIR /app
 
 COPY pom.xml .
 COPY .mvn .mvn
-COPY mvnw .
 
+<<<<<<< HEAD
 ENV MAVEN_CONFIG=""
 RUN ./mvnw dependency:go-offline -B
+=======
+# Dùng mvn trực tiếp (image đã có Maven sẵn, không cần mvnw wrapper)
+RUN mvn dependency:go-offline -B
+>>>>>>> 1d838c37bcc1fd9ac0d034f22eee5cd59e49cf18
 
 COPY src ./src
 
-RUN ./mvnw clean package -DskipTests -B
+RUN mvn clean package -DskipTests -B
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine

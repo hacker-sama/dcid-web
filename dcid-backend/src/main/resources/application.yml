@@ -1,10 +1,15 @@
 spring:
   application:
-    name: congdan-so-backend
+    name: smart-kcn-docs-backend
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_SIZE:50MB}
+      max-request-size: ${MAX_UPLOAD_SIZE:50MB}
   datasource:
-    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/dcid}
+    # Host port 5433 (không phải 5432) — xem ghi chú trong docker-compose.yml.
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5433/dcid}
     username: ${POSTGRES_USER:dcid}
-    password: ${POSTGRES_PASSWORD:dcid_password}
+    password: ${POSTGRES_PASSWORD:dcid}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -15,15 +20,10 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8080/realms/dcid/protocol/openid-connect/certs}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: congdan-so
+      group-id: smart-kcn-docs
       auto-offset-reset: earliest
       enable-auto-commit: false
     producer:
@@ -47,19 +47,27 @@ spring:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  jwt:
+    # HMAC-SHA256 secret (>= 32 bytes). MUST be overridden per environment via APP_JWT_SECRET.
+    secret: ${APP_JWT_SECRET:change-me-dev-secret-please-override-32b+}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:28800000}   # 8h
+    issuer: ${APP_JWT_ISSUER:smart-kcn-docs}
+  bootstrap:
+    admin-username: ${APP_BOOTSTRAP_ADMIN_USERNAME:admin}
+    admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:admin123}
+  ai:
+    # dcid-ai (FastAPI) — hợp đồng: docs/API-CONTRACT.md
+    # 127.0.0.1 (không phải "localhost") — uvicorn mặc định chỉ bind IPv4 loopback;
+    # JDK HttpClient có thể ưu tiên thử ::1 (IPv6) trước và bị connection refused.
+    base-url: ${AI_BASE_URL:http://127.0.0.1:8000}
+    internal-token: ${AI_INTERNAL_TOKEN:change-me-internal-token}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
-    access-key: ${MINIO_ACCESS_KEY:minioadmin}
-    secret-key: ${MINIO_SECRET_KEY:minioadmin}
-    bucket: ${MINIO_BUCKET:dcid}
+    access-key: ${MINIO_ACCESS_KEY:minio}
+    secret-key: ${MINIO_SECRET_KEY:minio123}
+    bucket: ${MINIO_BUCKET:kcn-docs}
   rate-limit:
     submissions-per-hour: ${RATE_LIMIT_SUBMISSIONS:10}
-  keycloak:
-    admin-url: ${KEYCLOAK_ADMIN_URL:http://localhost:8080}
-    realm: ${KEYCLOAK_REALM:dcid}
-  kafka:
-    topics:
-      application-events: application-events
 
 management:
   endpoints:

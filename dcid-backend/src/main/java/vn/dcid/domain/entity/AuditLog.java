@@ -1,6 +1,8 @@
 package vn.dcid.domain.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -29,6 +31,11 @@ public class AuditLog {
     @Column(name = "ip_address", length = 50)
     private String ipAddress;
 
+    // JdbcTypeCode bắt buộc: columnDefinition="JSONB" chỉ ảnh hưởng DDL generation (không
+    // dùng ở đây vì ddl-auto=validate), không tự khiến Hibernate bind đúng kiểu jsonb khi
+    // ghi — thiếu annotation này khiến MỌI lần ghi audit log lỗi "column detail is of type
+    // jsonb but expression is of type character varying" (kể cả khi detail = null).
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "detail", columnDefinition = "JSONB")
     private String detail;
 

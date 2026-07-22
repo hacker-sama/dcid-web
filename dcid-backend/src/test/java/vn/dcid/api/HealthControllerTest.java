@@ -1,24 +1,25 @@
 package vn.dcid.api;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.util.Map;
 
-@WebMvcTest(HealthController.class)
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Plain unit test — no Spring context, so it stays green without the infra stack.
+ */
 class HealthControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
     @Test
-    void healthEndpointShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/health"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"))
-                .andExpect(jsonPath("$.service").value("dcid-backend"));
+    void healthEndpointShouldReturnUp() {
+        ResponseEntity<Map<String, String>> response = new HealthController().health();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .containsEntry("status", "UP")
+                .containsEntry("service", "dcid-backend");
     }
 }

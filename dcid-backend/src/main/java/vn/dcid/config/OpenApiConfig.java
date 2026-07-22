@@ -24,8 +24,8 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("DCID Platform API")
-                        .description("Vietnamese e-Government Platform - CongDanSo Backend API")
+                        .title("Smart KCN Docs API")
+                        .description("On-premise governance/control plane for the industrial document assistant")
                         .version("1.0.0")
                         .license(new License().name("MIT").url("https://opensource.org/licenses/MIT")))
                 .servers(List.of(new Server().url(serverUrl)))

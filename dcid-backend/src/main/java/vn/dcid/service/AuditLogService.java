@@ -23,7 +23,6 @@ public class AuditLogService {
     @Async
     public void log(UUID actorId, String action, String resourceType, UUID resourceId,
                     String ipAddress, String detail) {
-        // TODO: Implement audit log creation
         try {
             AuditLog auditLog = new AuditLog();
             auditLog.setActorId(actorId);
@@ -31,7 +30,15 @@ public class AuditLogService {
             auditLog.setResourceType(resourceType);
             auditLog.setResourceId(resourceId);
             auditLog.setIpAddress(ipAddress);
-            auditLog.setDetail(detail);
+
+            String jsonDetail = detail;
+            if (detail != null && !detail.isBlank()) {
+                String trimmed = detail.trim();
+                if (!(trimmed.startsWith("{") && trimmed.endsWith("}")) && !(trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+                    jsonDetail = "{\"message\": \"" + detail.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\"}";
+                }
+            }
+            auditLog.setDetail(jsonDetail);
 
             auditLogRepository.save(auditLog);
         } catch (Exception e) {

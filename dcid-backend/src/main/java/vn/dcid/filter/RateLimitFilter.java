@@ -57,12 +57,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean isSubmissionEndpoint(String method, String path) {
-        return "POST".equalsIgnoreCase(method) && path.startsWith("/api/citizens/applications");
+        // TODO(Smart KCN Docs): wire this to the write-heavy endpoints that need throttling
+        //  (e.g. document upload, /api/query). Disabled until the new domain exists.
+        return false;
     }
 
     private void checkSubmissionRateLimit(String userId) {
-        String key = RATE_LIMIT_PREFIX + userId + ":" + SUBMISSIONS_KEY;
-
+        String key = RATE_LIMIT_PREFIX + userId + ":" + SUBMISSIONS_KEY;    
         Long currentCount = redisTemplate.opsForValue().increment(key);
         if (currentCount == null) {
             currentCount = 1L;
