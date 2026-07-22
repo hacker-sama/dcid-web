@@ -29,7 +29,7 @@
 flowchart TB
     subgraph Edge["🏭 Edge Device / Kiosk (CPU, phân xưởng)"]
         UI["Flutter app (dcid-app)\nKiosk (Windows) + Mobile (Android)\nSnap & Ask, side-by-side"]
-        AISVC["AI Service (Python, FastAPI + Celery)\nPaddleOCR · e5-small(ONNX) · llama.cpp(Qwen2.5-1.5B)\nRAG retrieval + Guardrails"]
+        AISVC["AI Service (Python, FastAPI + Celery)\nPaddleOCR · e5-small(ONNX) · LM Studio API(DeepSeek R1)\nRAG retrieval + Guardrails"]
         CHROMA[("ChromaDB\nvector store")]
     end
 
@@ -62,7 +62,7 @@ flowchart TB
 | Thành phần | Công nghệ | Trách nhiệm chính |
 |---|---|---|
 | **Governance plane** | Spring Boot 3.3, Java 21 | Auth/RBAC, quản lý tài liệu + version, audit ISO, storage MinIO, tích hợp CMMS/MES, điều phối job AI |
-| **AI plane** | Python, FastAPI, Celery | OCR (PaddleOCR), embedding (e5-small ONNX), retrieval (ChromaDB), LLM (Qwen2.5-1.5B GGUF qua llama.cpp), guardrails |
+| **AI plane** | Python, FastAPI, Celery | OCR (PaddleOCR), embedding (e5-small ONNX), retrieval (ChromaDB), LLM (DeepSeek R1 Distill Qwen 1.5B qua LM Studio REST API), guardrails |
 | **Vector store** | ChromaDB | Semantic search trên chunk + metadata (trang, ngôn ngữ, version) |
 | **Relational DB** | PostgreSQL 16 | users, roles, document/version metadata, query_logs, audit_logs, work_orders |
 | **Object storage** | MinIO | PDF gốc, ảnh trang, **bounding-box crop** (bằng chứng số liệu) |
@@ -77,29 +77,31 @@ quyền và ghi log. Spring Boot **không** chạy model — nó gọi AI plane 
 
 ## 4. Luồng nghiệp vụ chính
 
-### 4.1. Ingestion (số hóa tài liệu)
+### 4.1. Ingestion (số hóa tài liệu & cấu trúc hóa không gian)
 ```
 QA/Admin upload PDF (Spring Boot)
   → lưu file gốc vào MinIO, tạo bản ghi Document + DocumentVersion (Postgres, status=PROCESSING)
-  → phát job sang AI Service (REST/queue)
-      → PaddleOCR bóc tách text + bảng (TSR) + toạ độ (bbox), đa ngôn ngữ EN/CN/JP/VI
-      → chunk theo cấu trúc + gắn metadata (page, bbox, lang, version)
-      → embed (e5-small ONNX) → upsert vào ChromaDB
-      → cắt & lưu bounding-box crops vào MinIO
+  → phát job sang AI Service (REST):
+      → PaddleOCR + PyMuPDF bóc tách text + bảng (TSR) + toạ độ không gian (boxes Bbox: [x0,y0,x1,y1])
+      → chunk theo cấu trúc Markdown (### [Đoạn kỹ thuật - Trang X | Bbox: ...]) + trích xuất snippet (300 ký tự)
+      → embed (e5-small) → upsert vào ChromaDB (collection kcn_chunks với metadata bbox & snippet)
   → callback báo Spring Boot: status=READY (hoặc FAILED)
   → ghi audit_log
 ```
 
-### 4.2. Truy vấn + Guardrail (Human-in-the-loop)
+### 4.2. Truy vấn + Guardrail & Trích dẫn Không gian
 ```
 Kỹ sư hỏi (UI) → AI Service:
-  retrieve top-k từ ChromaDB (lọc theo quyền/role + version hiện hành)
+  retrieve top-k từ ChromaDB (lọc theo allowedVersionIds + độ tương đồng)
   IF cosine_similarity < 0.60  → KHÓA câu trả lời sinh tự động,
                                   trả cảnh báo đỏ "Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm"
   IF query chạm 'điện áp/áp suất/nhiệt độ/dung sai'
-                               → trích số liệu trực tiếp từ metadata gốc (rule-based), không để LLM "chế"
-  ELSE → LLM sinh câu trả lời kèm trích dẫn (page + bbox crop từ MinIO)
-AI Service → Spring Boot: ghi query_log (user, timestamp, query, doc version, confidence, có/không hallucination-guard)
+                                → trích số liệu trực tiếp từ metadata gốc (rule-based)
+  ELSE → AI Model Local (LM Studio / Qwen 1.5B, temp=0.2, top_p=0.9, repetition_penalty=1.2)
+         sinh câu trả lời chuyên môn tường minh kèm trích dẫn tọa độ không gian
+  Trả về AnswerDTO (answer, confidence, guard, citations[versionId, pageNo, bboxKey, snippet])
+  Flutter App hiển thị câu trả lời và nhãn Trang X [Bbox] → Click mở Hộp thoại Trích Dẫn Không Gian
+AI Service → Spring Boot: ghi query_log (user, timestamp, query, doc version, confidence, reasoningMode)
 ```
 
 ### 4.3. Versioning workflow
@@ -193,7 +195,7 @@ Chi tiết vận hành backend: xem `dcid-backend/CLAUDE.md`.
 # Phần B — Kiến trúc chi tiết (Complete Architecture)
 
 > Quyết định đã chốt: **monorepo** (AI ở `dcid-ai/`) · **VI+EN trước** (CN/JP ở M2) ·
-> **llama-cpp-python** cho LLM serving.
+> **LM Studio (REST API / OpenAILike)** cho LLM serving.
 
 ## B1. Cấu trúc thư mục toàn dự án
 
@@ -223,17 +225,14 @@ dcid-ai/
 │   │   ├── chunk.py          # structure-aware chunking (giữ cấu trúc bảng)
 │   │   ├── embed.py          # multilingual-e5-small (ONNX qua optimum)
 │   │   ├── index.py          # ChromaDB upsert
-│   │   ├── retrieve.py       # top-k + filter (role, version=ACTIVE)
 │   │   └── bbox.py           # cắt bounding-box crop → MinIO
-│   ├── llm/
-│   │   ├── engine.py         # llama-cpp-python (Qwen2.5-1.5B Q4_K_M)
-│   │   └── prompt.py         # system prompt + format trích dẫn
-│   ├── guardrails/
-│   │   ├── confidence.py     # cosine < 0.60 → khóa câu trả lời
-│   │   └── numeric.py        # rule-based trích số liệu (điện áp/áp suất/…)
 │   ├── clients/
+│   │   ├── llm_client.py     # OpenAILike REST client tới LM Studio (deepseek-r1-distill-qwen-1.5b)
 │   │   ├── minio_client.py   # đọc PDF gốc / ghi crop
 │   │   └── backend_client.py # callback → dcid-backend (token nội bộ)
+│   ├── services/
+│   │   ├── ingest_service.py # điều phối luồng bóc tách PDF & index
+│   │   └── query_service.py  # RAG retrieve + guardrails + gọi llm_client
 │   └── tasks.py              # Celery: ingest bất đồng bộ
 ├── models/                   # GGUF + ONNX weights (đóng gói offline)
 ├── tests/
@@ -363,7 +362,7 @@ sequenceDiagram
 
 | Thành phần | Định dạng | ~Dung lượng | ~RAM khi chạy |
 |---|---|---|---|
-| Qwen2.5-1.5B-Instruct | GGUF Q4_K_M | ~1.1 GB | ~2–3 GB |
+| DeepSeek R1 Distill Qwen 1.5B | GGUF Q8_0 (LM Studio) | ~1.8 GB | ~3–4 GB |
 | multilingual-e5-small | ONNX | <400 MB | vài trăm MB |
 | PaddleOCR mobile (multi-lang) | — | vài trăm MB | ~1 GB khi OCR |
 | ChromaDB | persistent dir | theo dữ liệu | thấp |

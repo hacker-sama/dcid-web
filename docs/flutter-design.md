@@ -80,7 +80,7 @@ bảng, dẫn tới mất cột trạng thái quan trọng và trông giống li
 
 | Vai trò | Loại màn | Widget bắt buộc |
 |---|---|---|
-| OPERATOR, ENGINEER (mobile, ≤ `compact`) | Tra cứu SOP, Search/Ask, Snap & Ask | `ListView`/`ListTile` — đúng, giữ nguyên |
+| OPERATOR, ENGINEER (mobile, ≤ `compact`) | Tra cứu SOP, Search/Ask, Snap & Ask | `ListView`/`ListTile` — đúng, giữ nguyên. Khi click nhãn trích dẫn, sử dụng `showDialog` + `AlertDialog` để hiển thị tọa độ Bbox và đoạn nội dung gốc (`snippet`) |
 | QA_ADMIN, ADMIN (web, ≥ `expanded`) | Danh sách/quản lý tài liệu, version, audit log, user management | **`data_table_2` hoặc `pluto_grid`** (đã chọn sẵn trong `ARCHITECTURE.md` §0, §9) — KHÔNG dùng `ListView`/`ListTile` |
 | Bất kỳ vai nào ở breakpoint `medium` (tablet ngang) | Danh sách vừa phải, không cần hết cột | `ListTile` được, nhưng phải `dense: true` + `ConstrainedContent` |
 

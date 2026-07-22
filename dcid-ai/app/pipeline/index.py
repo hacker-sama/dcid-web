@@ -109,6 +109,8 @@ def upsert_chunks(
             "document_id": str(document_id),
             "page_no": c.page_no,
             "chunk_index": c.chunk_index,
+            "bbox": str(c.bbox or ""),
+            "snippet": str(c.snippet or c.text[:300] or ""),
             **{k: v for k, v in metadata.items() if v is not None},
         }
         for c in chunks
@@ -132,22 +134,7 @@ def search(
     allowed_version_ids: list[UUID],
     top_k: int = 5,
 ) -> list[dict[str, Any]]:
-    """Truy vấn top-k chunk với filter version_id ∈ allowed_version_ids.
-
-    Args:
-        query_embedding:     vector câu hỏi từ embed.embed_query().
-        allowed_version_ids: danh sách UUID phiên bản được phép truy cập
-                             (RBAC từ BE — contract §2.2).
-        top_k:               số chunk trả về.
-
-    Returns:
-        list dict, mỗi phần tử gồm:
-          {text, page_no, version_id, document_id, chunk_index, score (cosine similarity)}
-        Sắp xếp giảm dần theo score.
-
-    Raises:
-        Exception: ChromaDB unreachable — caller xử lý.
-    """
+    """Truy vấn top-k chunk với filter version_id ∈ allowed_version_ids."""
     collection = _get_collection()
 
     # Chroma where filter: version_id phải nằm trong danh sách cho phép
@@ -179,6 +166,10 @@ def search(
                 "version_id": meta.get("version_id"),
                 "document_id": meta.get("document_id"),
                 "chunk_index": meta.get("chunk_index"),
+                "bbox": meta.get("bbox", ""),
+                "snippet": meta.get("snippet", ""),
+                "title": meta.get("title", ""),
+                "category": meta.get("category", ""),
                 "score": round(similarity, 4),
             }
         )

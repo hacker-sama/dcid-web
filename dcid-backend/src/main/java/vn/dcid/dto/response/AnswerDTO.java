@@ -13,14 +13,14 @@ public record AnswerDTO(
         Guard guard,
         List<Citation> citations
 ) {
-    public record Guard(boolean locked, boolean numericRule) {
+    public record Guard(boolean locked, boolean numericRule, boolean reasoningMode) {
     }
 
-    public record Citation(UUID versionId, int pageNo, String bboxKey) {
+    public record Citation(UUID versionId, int pageNo, String bboxKey, String snippet) {
     }
 
     /** Câu trả lời bị guardrail khóa (dùng khi không có tài liệu phù hợp quyền / độ tin cậy thấp). */
     public static AnswerDTO locked(String message) {
-        return new AnswerDTO(message, 0.0, new Guard(true, false), List.of());
+        return new AnswerDTO(message, 0.0, new Guard(true, false, false), List.of());
     }
 }

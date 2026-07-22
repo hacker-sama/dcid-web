@@ -1,5 +1,7 @@
 package vn.dcid.ai.dto;
 
+import vn.dcid.dto.request.ChatMessageDTO;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -11,6 +13,8 @@ public record AiQueryRequest(
         String question,
         int topK,
         List<UUID> allowedVersionIds,
-        String machineCode
+        String machineCode,
+        boolean reasoningMode,
+        List<ChatMessageDTO> history
 ) {
 }

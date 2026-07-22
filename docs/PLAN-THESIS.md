@@ -92,7 +92,7 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
 | E1 | **Chunking**: fixed-size vs layout/table-aware | Recall@k, answer accuracy |
 | E2 | **Guardrail**: LLM thuần vs confidence-gate (θ=0.60) vs + numeric rule | hallucination rate, false-answer rate |
 | E3 | **Retrieval**: dense-only (e5) vs hybrid BM25+dense *(nếu kịp)* | Recall@k |
-| E4 | **Model/quantization**: Qwen2.5-1.5B Q4 vs Q8 (hoặc 0.5B vs 1.5B) | quality vs latency |
+| E4 | **Model/quantization**: DeepSeek R1 Distill Qwen 1.5B (Q4 vs Q8) | quality vs latency |
 | E5 | **Tập sạch vs suy giảm** | toàn bộ metric |
 
 > Tối thiểu phải có **E1 + E2**; E3–E5 làm nếu còn thời gian, mỗi cái thêm là một mục trong chương thực nghiệm.

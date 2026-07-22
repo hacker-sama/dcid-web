@@ -122,11 +122,10 @@ dcid-app/  (Flutter)
 
 - **Snap & Ask** (mobile): `camera`/`image_picker` chụp → upload multipart tới `POST /api/query` (kèm ảnh)
   → backend forward `dcid-ai` → answer + citation.
-- **Side-by-side + overlay bbox:** `Stack` + `CustomPaint` vẽ khoanh đỏ theo toạ độ chuẩn hoá
-  (dựa `width/height` trong `document_pages`).
-- **Guardrail UI:** `locked=true` (cosine < 0.60) → **banner đỏ** "Yêu cầu kỹ sư xác minh", ẩn câu trả lời tự sinh.
+- **Side-by-side & Hộp thoại Trích dẫn Không Gian (`AlertDialog`):** Mỗi kết quả tra cứu hiển thị danh sách nhãn trích dẫn (`Trang X [Bbox]`). Khi click vào nhãn trích dẫn, hệ thống mở Hộp thoại hiển thị chính xác **Tọa độ Bbox (`p{pageNo}_[minX,minY,maxX,maxY]`)** kèm **đoạn văn bản gốc (`snippet` tối đa 300 ký tự)** được AI tham chiếu.
+- **Guardrail UI & Reasoning `<think>`:** `locked=true` (cosine < 0.60) → **banner đỏ** "Yêu cầu kỹ sư xác minh", ẩn câu trả lời tự sinh. Tự động lọc và hiển thị nội dung suy luận `<think>` trong thẻ gập (accordion/details) gọn gàng.
 - **Touch/glove:** target ≥ 48dp, chữ lớn, ít gõ phím, theme tối, haptic khi cảnh báo.
-- **Luôn hiển thị nguồn:** tên tài liệu + version + số trang kèm mọi câu trả lời.
+- **Luôn hiển thị nguồn:** tên tài liệu + version + số trang + tọa độ Bbox + đoạn trích dẫn kèm mọi câu trả lời.
 
 ---
 

@@ -130,13 +130,13 @@ stateDiagram-v2
 ## 5. Cách một câu trả lời truy ngược về bằng chứng (citation)
 
 ```
-/api/query → AI trả citations[{ versionId, pageNo, bboxKey }]
+/api/query → AI trả citations[{ versionId, pageNo, bboxKey, snippet }]
    versionId  → document_versions   (tài liệu nào, version nào)
    pageNo     → document_pages       (ảnh trang: image_key + width/height)
-   bboxKey    → MinIO                 (ảnh crop khoanh đỏ số liệu)
+   bboxKey    → Tọa độ không gian    (định dạng p{pageNo}_[minX,minY,maxX,maxY] khoanh đỏ vùng dữ liệu)
+   snippet    → Đoạn trích dẫn       (đoạn văn bản gốc cấu trúc hóa Markdown tối đa 300 ký tự)
 ```
-FE vẽ overlay bbox lên ảnh trang theo toạ độ chuẩn hoá (dựa `width/height`). `query_logs` lưu lại
-`matched_version_id` + `confidence` + `locked` để hậu kiểm.
+FE hiển thị nhãn trích dẫn `Trang X [Bbox]`, click vào để mở Hộp thoại Trích Dẫn Không Gian hiển thị trực tiếp tọa độ Bbox và đoạn văn bản gốc (`snippet`). `query_logs` lưu lại `matched_version_id` + `confidence` + `locked` để hậu kiểm.
 
 ---
 

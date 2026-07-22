@@ -1,50 +1,46 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+
 import 'api_client.dart';
-import 'docs_repository_interface.dart';
 import 'models/answer_result.dart';
 import 'models/document_detail.dart';
 import 'models/document_summary.dart';
 
 /// Read/query/upload documents via the backend (which forwards to the AI service).
-class DocsRepository implements IDocsRepository {
+class DocsRepository {
   DocsRepository(this._api);
 
   final ApiClient _api;
 
-  @override
-  Future<AnswerResult> ask(String question) async {
+  Future<AnswerResult> ask(
+    String question, {
+    bool reasoningMode = false,
+    List<String>? selectedVersionIds,
+    List<Map<String, String>>? history,
+  }) async {
     final res = await _api.dio.post<Map<String, dynamic>>(
       '/api/query',
-      data: {'question': question},
-    );
-    return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
-  }
-
-  @override
-  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName) async {
-    final form = FormData.fromMap({
-      'question': question,
-      'file': MultipartFile.fromBytes(imageBytes, filename: fileName),
-    });
-    final res = await _api.dio.post<Map<String, dynamic>>(
-      '/api/query',
-      data: form,
+      data: {
+        'question': question,
+        'reasoningMode': reasoningMode,
+        if (selectedVersionIds != null && selectedVersionIds.isNotEmpty)
+          'selectedVersionIds': selectedVersionIds,
+        if (history != null && history.isNotEmpty)
+          'history': history,
+      },
     );
     return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
   }
 
   /// `GET /api/documents` — PagedResponse: items live in `data.items`
   /// (docs/PLAN-FLUTTER-DOCS.md §3.1).
-  @override
   Future<List<DocumentSummary>> listDocuments() async {
     final res = await _api.dio.get<Map<String, dynamic>>('/api/documents');
     return parseDocumentList(res.data!);
   }
 
   /// `GET /api/documents/{id}` (§3.2).
-  @override
   Future<DocumentDetail> getDocumentDetail(String id) async {
     final res = await _api.dio.get<Map<String, dynamic>>('/api/documents/$id');
     return DocumentDetail.fromJson(res.data!['data'] as Map<String, dynamic>);
@@ -56,7 +52,6 @@ class DocsRepository implements IDocsRepository {
   /// Nhận file dưới dạng bytes (không phải path): trên web `PlatformFile.path`
   /// luôn null (trình duyệt không lộ đường dẫn hệ thống), nên đây là cách
   /// upload hoạt động thống nhất trên mọi nền tảng (web/Android/Windows).
-  @override
   Future<DocumentDetail> uploadDocument({
     required String title,
     required String category,
@@ -91,4 +86,4 @@ class DocsRepository implements IDocsRepository {
         .map((e) => DocumentSummary.fromJson(e as Map<String, dynamic>))
         .toList();
   }
-}
+}

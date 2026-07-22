@@ -12,16 +12,22 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import vn.dcid.common.ApiResponse;
 import vn.dcid.common.PageRequest;
 import vn.dcid.common.PagedResponse;
+import vn.dcid.domain.entity.DocumentVersion;
 import vn.dcid.dto.request.CreateDocumentRequest;
 import vn.dcid.dto.response.DocumentDTO;
 import vn.dcid.dto.response.DocumentDetailDTO;
+import vn.dcid.dto.response.DocumentPageDTO;
 import vn.dcid.exception.ForbiddenException;
 import vn.dcid.security.SecurityContextHelper;
 import vn.dcid.service.DocumentService;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -55,6 +61,27 @@ public class DocumentController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<DocumentDetailDTO>> detail(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.of(documentService.getDetail(id)));
+    }
+
+    /** Danh sách trang + OCR text của version. */
+    @GetMapping("/{id}/versions/{versionId}/pages")
+    public ResponseEntity<ApiResponse<List<DocumentPageDTO>>> getVersionPages(
+            @PathVariable UUID id, @PathVariable UUID versionId) {
+        return ResponseEntity.ok(ApiResponse.of(documentService.getVersionPages(id, versionId)));
+    }
+
+    /** Tải / Xem file PDF gốc của version. */
+    @GetMapping("/{id}/versions/{versionId}/download")
+    public ResponseEntity<Resource> downloadVersion(
+            @PathVariable UUID id, @PathVariable UUID versionId) {
+        DocumentVersion version = documentService.getVersionEntity(id, versionId);
+        InputStreamResource resource = new InputStreamResource(documentService.downloadVersionFile(id, versionId));
+        String filename = version.getOriginalFilename() != null ? version.getOriginalFilename() : "document.pdf";
+        String contentType = version.getContentType() != null ? version.getContentType() : "application/pdf";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(resource);
     }
 
     private UUID currentUserId() {
