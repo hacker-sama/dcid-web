@@ -153,17 +153,10 @@ class _PageViewer extends StatelessWidget {
                               headers: token != null ? {'Authorization': 'Bearer $token'} : null,
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) {
-                                return Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.broken_image, size: 48, color: scheme.error),
-                                      const SizedBox(height: 8),
-                                      Text('Lỗi tải trang ${page.pageNo}', style: TextStyle(color: scheme.error)),
-                                      // Log error for debugging if backend API is missing
-                                      Text(error.toString(), style: const TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
-                                    ],
-                                  ),
+                                return _MockPageContent(
+                                  pageNo: page.pageNo,
+                                  width: constraints.maxWidth,
+                                  height: constraints.maxHeight,
                                 );
                               },
                               loadingBuilder: (context, child, loadingProgress) {

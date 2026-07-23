@@ -13,7 +13,12 @@ import 'mock_data.dart';
 /// the Riverpod provider override in `main.dart`.
 class MockDocsRepository implements IDocsRepository {
   @override
-  Future<AnswerResult> ask(String question) async {
+  Future<AnswerResult> ask(
+    String question, {
+    bool reasoningMode = false,
+    List<String>? selectedVersionIds,
+    List<Map<String, String>>? history,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 800));
     // Return a guardrail-locked answer if question contains "test-locked"
     // so the red banner can be manually tested.

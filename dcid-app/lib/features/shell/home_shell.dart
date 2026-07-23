@@ -11,7 +11,6 @@ class _Dest {
   final IconData icon;
   final String label;
   final bool adminOnly;
-  /// Only shown on mobile (compact breakpoint). E.g., Snap & Ask uses camera.
   final bool mobileOnly;
 }
 

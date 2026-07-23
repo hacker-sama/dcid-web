@@ -11,7 +11,12 @@ import 'models/document_summary.dart';
 /// transparently via Riverpod provider overrides.
 abstract class IDocsRepository {
   /// `POST /api/query` — RAG search.
-  Future<AnswerResult> ask(String question);
+  Future<AnswerResult> ask(
+    String question, {
+    bool reasoningMode = false,
+    List<String>? selectedVersionIds,
+    List<Map<String, String>>? history,
+  });
 
   /// `POST /api/query` — Snap & Ask (multipart with image).
   Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName);
