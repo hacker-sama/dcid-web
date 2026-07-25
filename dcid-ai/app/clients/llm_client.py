@@ -183,6 +183,92 @@ def generate_answer(system_prompt: str, user_prompt: str) -> tuple[str, str]:
     return answer, model_used
 
 
+def generate_answer_stream(system_prompt: str, user_prompt: str):
+    """Generator: Stream từng token text từ LM Studio về client qua SSE.
+
+    Sử dụng OpenAI SDK streaming mode (stream=True). Mỗi lần yield là một
+    đoạn text (delta) nhỏ từ model — phù hợp để pipe thẳng vào SSE response.
+
+    Args:
+        system_prompt: Hướng dẫn hành vi + context chunks đã được inject.
+        user_prompt:   Câu hỏi cuối cùng của người dùng.
+
+    Yields:
+        str: Từng đoạn text delta từ LM Studio (có thể là 1 từ, 1 câu, hoặc nhiều ký tự).
+
+    Raises:
+        LLMConnectionError: LM Studio chưa chạy hoặc không thể kết nối.
+        LLMInferenceError:  Model đã nạp nhưng gặp lỗi inference.
+
+    Ví dụ dùng trong FastAPI SSE:
+        async def event_stream():
+            for chunk in generate_answer_stream(sys_prompt, user_prompt):
+                yield f"data: {json.dumps({'delta': chunk})}\\n\\n"
+    """
+    try:
+        from openai import APIConnectionError, APIStatusError, APITimeoutError  # noqa: PLC0415
+    except ImportError as exc:
+        raise RuntimeError("openai chưa cài.") from exc
+
+    s = get_settings()
+    client = _get_client()
+
+    logger.debug(
+        "Gọi LLM stream: model=%s max_tokens=%d temperature=%.2f",
+        s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
+    )
+
+    stream_kwargs: dict = {
+        "model": s.lm_studio_model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt},
+        ],
+        "temperature": s.llm_temperature,
+        "max_tokens": s.llm_max_tokens,
+        "stream": True,
+    }
+    # Thêm top_p nếu cấu hình
+    top_p = getattr(s, "llm_top_p", 0.0)
+    if top_p and 0.0 < top_p < 1.0:
+        stream_kwargs["top_p"] = top_p
+
+    try:
+        stream = client.chat.completions.create(**stream_kwargs)
+        token_count = 0
+        for chunk in stream:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta is None:
+                continue
+            # Xử lý cả trường hợp model trả reasoning_content riêng (DeepSeek-R1)
+            content = getattr(delta, "content", None) or ""
+            if content:
+                token_count += 1
+                yield content
+
+        logger.info("LLM stream OK: model=%s tokens_streamed=%d", s.lm_studio_model, token_count)
+
+    except APIConnectionError as exc:
+        logger.error("LLM stream kết nối thất bại: %s", exc)
+        raise LLMConnectionError(
+            f"LM Studio không phản hồi tại {s.lm_studio_base_url}. "
+            "Hãy mở LM Studio trên máy Host → nạp model → Start Server (port 1234)."
+        ) from exc
+    except APITimeoutError as exc:
+        logger.error("LLM stream timeout sau %.1fs", s.llm_timeout)
+        raise LLMInferenceError(
+            f"LM Studio timeout sau {s.llm_timeout}s khi streaming."
+        ) from exc
+    except APIStatusError as exc:
+        logger.error("LLM stream Channel Error (status %s): %s", exc.status_code, exc.message)
+        raise LLMInferenceError(
+            f"LM Studio Channel Error (status {exc.status_code}) khi streaming."
+        ) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.error("LLM stream lỗi không xác định: %s", exc)
+        raise LLMInferenceError(f"Lỗi LLM stream không xác định: {exc}") from exc
+
+
 def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
     """Bóc tách thẻ <think> và loại bỏ hoàn toàn các dòng/đoạn chỉ thị hệ thống (meta-instructions)
     nếu model 1.5B lỡ lặp lại (echo) vào câu trả lời cuối cùng.

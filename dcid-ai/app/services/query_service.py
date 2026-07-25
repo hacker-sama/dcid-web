@@ -21,6 +21,7 @@ from uuid import UUID
 
 from app.clients import llm_client
 from app.clients.llm_client import LLMConnectionError, LLMInferenceError
+from app.config import get_settings
 from app.pipeline import embed as embed_pipeline
 from app.pipeline import index as index_pipeline
 from app.pipeline import guardrails
@@ -239,3 +240,104 @@ def _build_citations(hits: list[dict]) -> list[Citation]:
             )
         )
     return citations
+
+
+def run_query_stream(req: QueryRequest):
+    """Generator cho SSE streaming: Thực hiện RAG pipeline và yield từng SSE event.
+
+    Luồng SSE protocol:
+        event: meta      → gửi metadata (citations, confidence, guard) TRƯỚC khi stream text
+        event: delta     → gửi từng token text từ LLM
+        event: done      → báo hiệu kết thúc stream
+
+    Format mỗi event (Server-Sent Events):
+        data: {"event": "meta", "citations": [...], "confidence": 0.9, "guard": {...}}\\n\\n
+        data: {"event": "delta", "text": "Đây là"}\\n\\n
+        data: {"event": "delta", "text": " câu trả lời"}\\n\\n
+        data: {"event": "done"}\\n\\n
+
+    Yields:
+        str: SSE-formatted lines để pipe vào FastAPI StreamingResponse.
+    """
+    import json  # noqa: PLC0415
+
+    start_ns = time.perf_counter()
+
+    def _sse(event: str, **data) -> str:
+        """Helper tạo SSE line chuẩn RFC 8895."""
+        return f"data: {json.dumps({'event': event, **data}, ensure_ascii=False)}\n\n"
+
+    # ── Fast-path: no versions ──────────────────────────────────────────────
+    if not req.allowedVersionIds:
+        yield _sse("meta", citations=[], confidence=LOCKED_CONFIDENCE, guard={"locked": True, "numericRule": False, "reasoningMode": False})
+        yield _sse("delta", text=LOCKED_ANSWER)
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="guardrail-no-versions")
+        return
+
+    # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
+    try:
+        query_vec = embed_pipeline.embed_query(req.question)
+    except Exception as exc:
+        logger.error("Embed câu hỏi thất bại (stream): %s", exc)
+        yield _sse("error", message="Lỗi embed câu hỏi.")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-embed")
+        return
+
+    # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
+    try:
+        hits = index_pipeline.search(
+            query_embedding=query_vec,
+            allowed_version_ids=req.allowedVersionIds,
+            top_k=req.topK,
+        )
+    except Exception as exc:
+        logger.error("ChromaDB search thất bại (stream): %s", exc)
+        yield _sse("error", message="Lỗi tìm kiếm tài liệu.")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-chroma")
+        return
+
+    # ── 3. Guardrail ─────────────────────────────────────────────────────────
+    numeric_rule = guardrails.check_numeric(req.question)
+    reasoning_mode = guardrails.check_reasoning_mode(req.question, explicit_flag=req.reasoningMode)
+    locked = guardrails.is_locked(hits, req.question, reasoning_mode=reasoning_mode)
+    confidence = round(hits[0]["score"], 4) if hits else 0.0
+    citations_data = [
+        {
+            "versionId": str(c.versionId),
+            "pageNo": c.pageNo,
+            "bboxKey": c.bboxKey,
+            "snippet": c.snippet,
+        }
+        for c in _build_citations(hits)
+    ]
+    guard_data = {"locked": locked, "numericRule": numeric_rule, "reasoningMode": reasoning_mode}
+
+    # Gửi metadata TRƯỚC (citations, confidence) để client hiển thị ngay
+    yield _sse("meta", citations=citations_data, confidence=confidence, guard=guard_data)
+
+    if locked:
+        yield _sse("delta", text=LOCKED_ANSWER)
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="guardrail-locked")
+        return
+
+    # ── 4. Build Prompt ──────────────────────────────────────────────────────
+    system_prompt = prompts.build_system_prompt(hits, numeric_rule=numeric_rule, reasoning_mode=reasoning_mode)
+    user_prompt = prompts.build_user_prompt(req.question, reasoning_mode=reasoning_mode, history=req.history)
+
+    # ── 5. Stream từ LM Studio ──────────────────────────────────────────────
+    try:
+        model_name = get_settings().lm_studio_model
+        for token in llm_client.generate_answer_stream(system_prompt, user_prompt):
+            yield _sse("delta", text=token)
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model=model_name)
+
+    except llm_client.LLMConnectionError:
+        yield _sse("error", message="LM Studio chưa chạy. Vui lòng liên hệ quản trị viên.")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-connection")
+    except llm_client.LLMInferenceError as exc:
+        yield _sse("error", message=f"Lỗi LLM inference: {exc}")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-inference")
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Stream query lỗi không xác định: %s", exc)
+        yield _sse("error", message="Lỗi không xác định.")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-unknown")

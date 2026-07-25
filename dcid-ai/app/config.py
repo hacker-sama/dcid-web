@@ -45,6 +45,15 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 2048
     llm_timeout: float = 120.0
 
+    # ── Redis / Celery (async task queue) ─────────────────────────────────────
+    # service `redis` trong docker-compose.yml (port nội bộ 6379)
+    # Khi dev local: redis://localhost:6379/0
+    redis_url: str = "redis://redis:6379/0"
+    # Soft limit: SoftTimeLimitExceeded exception được raise để task có thể cleanup
+    celery_task_soft_time_limit: int = 600   # 10 phút — đủ cho PDF 100+ trang
+    # Hard limit: worker bị kill nếu vượt quá (tránh zombie process)
+    celery_task_time_limit: int = 900        # 15 phút hard limit
+
 
 @lru_cache
 def get_settings() -> Settings:

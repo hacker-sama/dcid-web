@@ -19,3 +19,10 @@ chromadb>=1.5,<2.0
 
 # --- LLM client — OpenAI-compatible, dùng cho LM Studio local server ---
 openai>=1.40,<2.0
+
+# --- Async task queue (Celery + Redis broker/backend) ---
+celery[redis]>=5.3,<6.0
+redis>=5.0,<6.0
+
+# --- Celery monitoring UI (optional, truy cập tại http://localhost:5555) ---
+flower>=2.0,<3.0

@@ -66,10 +66,10 @@ dcid-web/
 Mở **Docker Desktop** trước (Windows/Mac cần app chạy nền), sau đó từ **repo root**:
 
 ```bash
-# Cách 1: Khởi động toàn bộ hạ tầng + service OCR và ChromaDB cho local dev
-docker-compose up -d postgres minio chroma ai-ocr
+# Cách 1: Khởi động toàn bộ hạ tầng + service OCR và ChromaDB cho local dev (thêm redis cho Celery)
+docker-compose up -d postgres minio chroma ai-ocr redis
 
-# Cách 2 (Khuyến nghị để kiểm chứng full e2e nhanh nhất): Khởi động toàn bộ cả backend và ai
+# Cách 2 (Khuyến nghị để kiểm chứng full e2e nhanh nhất): Khởi động toàn bộ cả backend và ai (gồm cả worker)
 docker-compose up -d
 ```
 
@@ -115,7 +115,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html
 
 ### 3.3. AI service (`dcid-ai`) — port 8000
 
-Terminal mới:
+Terminal mới (chạy API server):
 ```bash
 cd dcid-ai
 python -m venv .venv
@@ -125,12 +125,20 @@ copy .env.example .env          # macOS/Linux: cp .env.example .env
 uvicorn app.main:app --port 8000
 ```
 
+Terminal mới (chạy Celery Worker cho tác vụ Ingest E2E):
+```bash
+cd dcid-ai
+.venv\Scripts\activate
+celery -A app.celery_app.celery_app worker --loglevel=info --concurrency=2 -Q ingest,default
+```
+
 Verify:
 ```bash
 curl http://localhost:8000/ai/health
 # {"status":"ok","model_loaded":false}
 ```
 Swagger UI: http://localhost:8000/docs
+Celery Flower (Monitor Worker nếu có chạy container `ai-flower`): http://localhost:5555
 
 > ⚠️ **`AI_INTERNAL_TOKEN` phải giống nhau** giữa `dcid-ai/.env` và biến môi trường của backend
 > (`AI_INTERNAL_TOKEN`, mặc định `change-me-internal-token` ở cả hai bên — khớp sẵn nếu bạn không

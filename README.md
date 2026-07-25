@@ -6,9 +6,9 @@ Monorepo:
 
 | Thư mục | Vai trò |
 |---|---|
-| [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, quản lý tài liệu & version, audit ISO, storage MinIO, tích hợp CMMS/MES. |
-| [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Web (Kiosk/Admin) + Mobile (Android), Snap & Ask. |
-| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM. **OCR đã thật** (PaddleOCR+PyMuPDF); embed/index/LLM/guardrail vẫn mock, đúng contract. |
+| [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, quản lý tài liệu & version, audit ISO, storage MinIO, WebSocket STOMP. |
+| [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Web (Kiosk/Admin) + Mobile (Android). Đã có Tra cứu RAG, Upload tài liệu. |
+| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM. **OCR đã thật** (PaddleOCR+PyMuPDF); RAG thật với ChromaDB; LLM chạy local (LM Studio); Async workers (Celery+Redis); SSE Streaming. |
 
 ## Tài liệu
 
@@ -27,20 +27,24 @@ Monorepo:
 ## Chạy nhanh
 
 Hướng dẫn đầy đủ (yêu cầu công cụ, từng bước, kiểm tra, troubleshooting):
-**[docs/SETUP.md](docs/SETUP.md)**. Tóm tắt 3 service:
+**[docs/SETUP.md](docs/SETUP.md)**. Tóm tắt các luồng khởi chạy chính:
 
 ```bash
 # 1. Hạ tầng
-docker-compose up -d postgres minio
+docker-compose up -d postgres minio chroma ai-ocr redis
 
 # 2. Backend — terminal riêng
 cd dcid-backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 # Login: POST http://localhost:8080/api/auth/login  {"username":"admin","password":"admin123"}
 
-# 3. AI service — terminal riêng
+# 3. AI service — terminal riêng (mở 2 tab)
+# Tab 1: API Server
 cd dcid-ai && python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt && copy .env.example .env
 uvicorn app.main:app --port 8000
+# Tab 2: Celery Worker (chạy task nền)
+cd dcid-ai && .venv\Scripts\activate
+celery -A app.celery_app.celery_app worker --loglevel=info -Q ingest,default
 
 # 4. Frontend — terminal riêng
 cd dcid-app && flutter pub get

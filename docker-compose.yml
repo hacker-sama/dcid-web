@@ -3,6 +3,7 @@ volumes:
   postgres_data: {}
   minio_data: {}
   chroma_data: {}  # ChromaDB persistent vector index (T2 — M1c)
+  redis_data: {}   # Redis persistence cho Celery task results
 
 services:
   postgres:
@@ -25,6 +26,10 @@ services:
     image: redis:7
     container_name: dcid-redis
     command: ["redis-server", "--save", "900 1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"  # Expose ra host để dev local debug / kiểm tra Celery queue
     restart: unless-stopped
 
   minio:
@@ -84,12 +89,57 @@ services:
       # ChromaDB — khớp service name trong compose (port nội bộ 8000)
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
+      # Redis — Celery broker/backend (service `redis`, port nội bộ 6379)
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       - minio
       - chroma
       - ai-ocr
+      - redis
     ports:
       - "8000:8000"
+    restart: unless-stopped
+
+  # ── Celery Worker: chạy Embed/Index pipeline bất đồng bộ ─────────────────
+  ai-worker:
+    build:
+      context: ./dcid-ai
+      dockerfile: Dockerfile
+    container_name: dcid-ai-worker
+    # Worker chạy Celery thay vì uvicorn
+    command: ["celery", "-A", "app.celery_app.celery_app", "worker",
+              "--loglevel=info", "--concurrency=2", "-Q", "ingest,default"]
+    environment:
+      AI_INTERNAL_TOKEN: change-me-internal-token
+      BE_BASE_URL: http://backend:8080
+      OCR_SERVICE_URL: http://ai-ocr:8001
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: kcn-docs
+      CHROMA_HOST: chroma
+      CHROMA_PORT: 8000
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+      - minio
+      - chroma
+      - ai-ocr
+    restart: unless-stopped
+
+  # ── Flower: Celery monitoring UI (http://localhost:5555) ─────────────────
+  ai-flower:
+    build:
+      context: ./dcid-ai
+      dockerfile: Dockerfile
+    container_name: dcid-ai-flower
+    command: ["celery", "-A", "app.celery_app.celery_app", "flower", "--port=5555"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
     restart: unless-stopped
 
   ai-ocr:
