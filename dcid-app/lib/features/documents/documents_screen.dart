@@ -5,8 +5,8 @@ import 'package:data_table_2/data_table_2.dart';
 
 import '../../core/responsive.dart';
 import '../../core/constrained_content.dart';
-import '../../state/auth_controller.dart';
 import '../../state/documents_providers.dart';
+import '../../state/role_filter.dart';
 import 'upload_document_sheet.dart';
 
 /// Danh sách tài liệu (`/documents`): loading / error / empty state,
@@ -51,8 +51,8 @@ class DocumentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final docsAsync = ref.watch(documentsProvider);
-    final isAdminLevel =
-        ref.watch(authControllerProvider).user?.role.isAdminLevel ?? false;
+    final isAdminLevel = ref.watch(canUploadProvider);
+    final visibleCategories = ref.watch(visibleCategoriesProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -66,7 +66,16 @@ class DocumentsScreen extends ConsumerWidget {
             error: (_, _) => _ErrorState(
               onRetry: () => ref.invalidate(documentsProvider),
             ),
-            data: (docs) {
+            data: (allDocs) {
+              // Role-based filtering: show only categories visible to the user.
+              final docs = visibleCategories.isEmpty
+                  ? allDocs
+                  : allDocs
+                      .where((d) =>
+                          d.category == null ||
+                          visibleCategories.contains(d.category))
+                      .toList();
+
               if (docs.isEmpty) {
                 return RefreshIndicator(
                   onRefresh: () => ref.refresh(documentsProvider.future),

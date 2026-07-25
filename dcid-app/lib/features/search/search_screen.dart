@@ -134,7 +134,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             // ── Thanh chọn tài liệu nguồn (NotebookLM Source Panel) ──
             Card(
               elevation: 0,
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -175,7 +175,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: _availableDocs.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (context, index) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final doc = _availableDocs[index];
                             final isSelected = _selectedDocIds.contains(doc.id);
@@ -344,7 +344,7 @@ class _MessageBubble extends StatelessWidget {
                   bottomRight: isUser ? const Radius.circular(2) : const Radius.circular(16),
                   bottomLeft: !isUser ? const Radius.circular(2) : const Radius.circular(16),
                 ),
-                border: !isUser ? Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)) : null,
+                border: !isUser ? Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)) : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,7 +418,7 @@ class _MessageBubble extends StatelessWidget {
                                         Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
-                                            color: colorScheme.primaryContainer.withOpacity(0.3),
+                                            color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                                             borderRadius: BorderRadius.circular(6),
                                           ),
                                           child: Row(
@@ -453,7 +453,7 @@ class _MessageBubble extends StatelessWidget {
                                         width: double.infinity,
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: colorScheme.surfaceVariant.withOpacity(0.5),
+                                          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                                           borderRadius: BorderRadius.circular(6),
                                           border: Border.all(color: colorScheme.outlineVariant),
                                         ),

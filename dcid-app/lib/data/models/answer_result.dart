@@ -22,7 +22,7 @@ class AnswerResult {
     required this.confidence,
     required this.locked,
     required this.numericRule,
-    required this.reasoningMode,
+    this.reasoningMode = false,
     required this.citations,
   });
 
