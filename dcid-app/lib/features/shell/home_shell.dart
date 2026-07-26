@@ -14,6 +14,7 @@ class _Dest {
   final bool mobileOnly;
 }
 
+
 const _allDestinations = <_Dest>[
   _Dest('/search', Icons.search, 'Tra cứu'),
   _Dest('/snap', Icons.camera_alt, 'Snap & Ask'), // Tạm thời hiện trên web để dễ test

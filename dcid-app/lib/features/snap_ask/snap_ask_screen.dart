@@ -124,18 +124,22 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
       _answer = null;
     });
 
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final repo = ref.read(docsRepositoryProvider);
       final entry = _snaps.first;
       final answer = await repo.askWithImage(question, entry.bytes, entry.fileName);
-      setState(() => _answer = answer);
+      if (mounted) setState(() => _answer = answer);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e')),
-      );
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isAsking = false);
     }
+
   }
 
   // ── Bottom sheet: chọn cách lấy ảnh ───────────────────────────────

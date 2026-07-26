@@ -59,7 +59,7 @@
 | **Flutter — SSE Chat UI** (typing effect tung token, citations, guard banner) | Demo trai nghiem ChatGPT-like |
 | **Flutter — Upload progress UI** (OCR -> Embed -> Da san sang realtime) | Demo upload flow |
 | **Flutter — Citation viewer** (bbox + banner guardrail) | Demo UI day du |
-| **Flutter — Admin console** (version management, audit) | M3 |
+| **Flutter & BE — Admin Console** (user management CRUD, version management, audit) | M3 |
 | **Outline + quyen luan van** (chuong 1–2) | Bao ve |
 
 ---
@@ -77,9 +77,10 @@
 | **M2** | Experiments E1–E2 (do dac chi tiet guardrail/chunking) | ⏳ **T3–T4** | bang so lieu hallucination rate, Recall@k |
 | **M2b** | OCR Pre-processing + DSPy optimization | ⏳ **T4–T5** | CER VI < 5%, cau tra loi lap dat chinh xac hon |
 | **M2c** | Unsloth + LoRA SFT — fine-tune Qwen 1.5B | ⏳ **T5–T6** | Dataset JSONL >= 100 mau, model GGUF load duoc LM Studio, do order_accuracy |
-| **M3** | Flutter SSE Chat + BE stream proxy + Citation viewer + Upload progress | ⏳ **T3–T4** | chu hien dan dan, citation bbox, banner guardrail, progress bar realtime khi upload |
+| **M3** | Flutter SSE Chat + BE stream proxy + Citation viewer + Upload progress + Admin User Management | ⏳ **T3–T4** | chu hien dan dan, citation bbox, banner guardrail, progress bar realtime khi upload, Admin tao/quan ly user |
 | **M4** | Luan van + eval set hoan chinh | ⏳ **T6–T7** | bang metric E1–E2, code freeze |
 | **M5** | Demo + bao ve | ⏳ **T8** | video demo du phong, slide, Q&A thu |
+
 
 ---
 
