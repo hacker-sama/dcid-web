@@ -32,7 +32,9 @@
 | **AI — Decoupled Async (Celery + Redis)** | `app/celery_app.py` + `app/workers/embed_worker.py`. Retry backoff, soft/hard timeout, task khong mat khi restart. |
 | **AI — Callback Push per-step** | `clients/backend_client.py` + `schemas.IngestStatusPush`: push `PROCESSING_OCR -> PROCESSING_EMBED -> PROCESSING_INDEX -> READY/FAILED` ve BE tai moi buoc |
 | **AI — SSE Streaming Query** | `POST /ai/query/stream` — `StreamingResponse` SSE: gui `meta` event (citations+guard) ngay, roi stream tung token tu LM Studio. Format RFC 8895. |
-| **AI — LLM Stream Generator** | `clients/llm_client.generate_answer_stream()`: OpenAI SDK `stream=True`, xu ly delta.content + delta.reasoning_content (DeepSeek-R1) |
+| **AI — LLM Stream Generator** | `clients/llm_client.generate_answer_stream()`: OpenAI SDK `stream=True`, xu ly delta.content + loc the `<think>` (DeepSeek-R1) co fallback. |
+| **AI — True Multimodal Vision (VLM)** | `minio_client.get_object_base64()` + `llm_client.py` + `query_service.py`: truyen du lieu anh Base64 (`image_url`) sang OpenAI-compatible API cho cac model Vision (Qwen2-VL, Llama-3.2-Vision) phan tich truc tiep hinh ve ban ve. |
+| **AI — ChatML & Prompt Optimization for Small Models** | `prompts.py` + `llm_client.py`: chuyen history ve mảng `messages` OpenAPI chuan, toi uu prompt ngan cho model 1.5B/3B (Qwen2.5, Llama-3.2) tranh hallucinate. |
 | **Flutter — Login** | `auth/login_screen.dart` noi API that |
 | **Flutter — Shell/Nav** | `shell/home_shell.dart` + routing role-guard |
 | **Flutter — Tai lieu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — noi API that |
@@ -226,7 +228,7 @@ data/eval/questions.csv
 | 1 | **OCR: PaddleOCR 3.7 + PyMuPDF** | Khong can system deps (poppler), cai thuan pip, CER 0% EN |
 | 2 | **Rasterize: RENDER_DPI=200 -> 300 (T4)** | A4 du net; nang len 300 DPI cho ban ve A3/A2/A1 co ky hieu nho |
 | 3 | **enable_mkldnn=False** | paddlepaddle 3.3.0 loi oneDNN/PIR runtime khi mkldnn=True |
-| 4 | **LLM: LM Studio (REST API) + DeepSeek R1 Distill Qwen 1.5B Q8_0** | Tach inference sang LM Studio local, ho tro reasoning `<think>`, khong phu thuoc C++ binding trong container |
+| 4 | **LLM & Vision VLM: LM Studio (REST API) + Qwen2-VL-2B-Instruct GGUF Q4_K_M** | Tach inference sang LM Studio local, ho tro ca Text RAG lan Multimodal Vision phân tích trực tiếp hình ảnh bản vẽ, nhẹ (~2.78GB) chạy tốt trên CPU máy yếu |
 | 5 | **Embed: multilingual-e5-small ONNX** | <400MB, multilingual, chay CPU |
 | 6 | **Vector DB: ChromaDB** | Persistent tren edge, de dong goi offline |
 | 7 | **Frontend: Flutter Web + Android** | 1 codebase, target chinh: Web kiosk + Android mobile |
@@ -241,6 +243,8 @@ data/eval/questions.csv
 | 16 | **SSE Streaming Query (T2)** | `POST /ai/query/stream` stream tung token tu LM Studio theo RFC 8895. Meta event -> chu hien dan — trai nghiem giong ChatGPT |
 | 17 | **BE SSE Proxy `GET /api/query/stream` (T3)** | BE forward SSE tu AI ve Flutter, giu nguyen event format. Ghi query_logs khi nhan event `done`. Flutter khong goi thang AI service |
 | 18 | **STOMP WebSocket cho ingest progress (T3)** | BE broadcast per-step status qua `/topic/ingest/{versionId}` bang `SimpMessagingTemplate`. Flutter subscribe STOMP khi upload xong |
+| 19 | **True Multimodal Vision API (VLM)** | Ho tro gui `image_url` base64 qua LM Studio voi model **Qwen2-VL-2B-Instruct GGUF Q4_K_M** xem truc tiep va phan tich hinh ve ban ve ky thuat. |
+| 20 | **ChatML & Small Model Prompt Tuning** | Chuyen history ve OpenAI message list `[{"role": "user/assistant", ...}]`, rut gon system prompt de cac model 1.5B/3B (Qwen 2.5, Llama 3.2) chay mượt ma khong lặp lai system prompt. |
 
 ---
 

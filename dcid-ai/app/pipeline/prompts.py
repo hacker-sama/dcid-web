@@ -1,73 +1,85 @@
 """Prompt Templates cho Smart KCN Docs — RAG Query Pipeline.
 
-Thiết kế cho model nhỏ (1.5B): prompt ngắn gọn, rõ ràng, ít bị echo lại.
+Thiết kế cho model nhỏ (1.5B–2B): prompt ngắn gọn, rõ ràng, ép buộc bám sát context,
+KHÔNG cho phép hallucination (bịa đặt) khi context là OCR rác hoặc không đủ thông tin.
 """
 
 from __future__ import annotations
 
-# ── System prompt cơ bản (ngắn để model 1.5B - 9B không echo) ──────────────────────
-_SYSTEM_BASE = """Bạn là chuyên gia kỹ thuật của hệ thống Smart KCN Docs.
-Trả lời dựa trên [TÀI LIỆU] bên dưới. Dữ liệu chứa kết quả OCR cấu trúc hóa từ bản vẽ hoặc bảng biểu kèm tọa độ không gian (Bbox). Hãy kết nối logic cấu trúc và không gian này để tìm ra câu trả lời.
-Nếu không có thông tin, nói rõ không có.
-Quy tắc quan trọng: Trả lời ngắn gọn, đúng trọng tâm. ĐẶC BIỆT: Phải trả lời bằng CÙNG NGÔN NGỮ với câu hỏi của người dùng (hỏi tiếng Việt -> trả lời tiếng Việt, hỏi English -> trả lời English). Ghi rõ số (Trang X | Bbox Y) khi trích dẫn số liệu kỹ thuật hoặc chi tiết từ bản vẽ."""
+# ────────────────────────────────────────────────────────────────────────────
+# System Prompts — Quy tắc chống hallucination CỨNG cho model nhỏ
+# ────────────────────────────────────────────────────────────────────────────
 
-_SYSTEM_REASONING_BASE = """Bạn là chuyên gia kỹ thuật của hệ thống Smart KCN Docs.
-Dựa trên [TÀI LIỆU] bên dưới, hãy hướng dẫn từng bước (Bước 1, 2, 3...) hoặc phân tích chi tiết bản vẽ kỹ thuật.
-Lưu ý: Dữ liệu [TÀI LIỆU] là văn bản OCR được cấu trúc hóa theo không gian (Bbox), chứa BOM, danh sách chi tiết, số hiệu, vật liệu. Hãy tự xâu chuỗi các mã số với tên gọi và tọa độ tương ứng.
-Mỗi bước: làm gì, công cụ gì, lý do kỹ thuật. 
-Quy tắc quan trọng: ĐẶC BIỆT: Phải trả lời bằng CÙNG NGÔN NGỮ với câu hỏi của người dùng (hỏi tiếng Việt -> trả lời tiếng Việt, hỏi English -> trả lời English). Ghi rõ số (Trang X | Bbox Y) khi trích dẫn số liệu hoặc chi tiết từ bản vẽ."""
+_SYSTEM_BASE = """Bạn là chuyên gia phân tích tài liệu kỹ thuật.
 
-_NUMERIC_SUFFIX = "\nTRÍCH XUẤT CHÍNH XÁC: số liệu + đơn vị đo + tọa độ Bbox. Không làm tròn."
+NHIỆM VỤ: Đọc phần "THÔNG TIN TỪ TÀI LIỆU" bên dưới rồi trả lời câu hỏi của người dùng.
 
-_CONTEXT_HEADER = "\n\n[TÀI LIỆU]\n"
-_CONTEXT_FOOTER = "\n[HẾT TÀI LIỆU]\n"
-_NO_CONTEXT = "\n[TÀI LIỆU: Không có thông tin liên quan.]\n"
+QUY TẮC BẮT BUỘC:
+1. CHỈ ĐƯỢC sử dụng thông tin CÓ TRONG phần "THÔNG TIN TỪ TÀI LIỆU". TUYỆT ĐỐI KHÔNG ĐƯỢC bịa thêm thông tin không có trong tài liệu.
+2. Phải TRÍCH DẪN trực tiếp các con số, thông số, tên chi tiết, vật liệu tìm thấy trong tài liệu.
+3. Nếu text tài liệu khó đọc hoặc bị lỗi OCR (ví dụ: toàn ký tự rời rạc, số liệu không rõ ràng), hãy nói thẳng: "Text tài liệu bị lỗi OCR, chỉ đọc được một số thông tin sau: ..." rồi liệt kê những gì đọc được.
+4. KHÔNG ĐƯỢC nhắc tới các tính năng hệ thống (Search by Image, Image Recognition, Smart KCN Docs...). Chỉ trả lời về NỘI DUNG tài liệu.
+5. KHÔNG lặp lại câu hỏi. Trả lời bằng CÙNG NGÔN NGỮ với câu hỏi."""
+
+_SYSTEM_REASONING_BASE = """Bạn là chuyên gia phân tích tài liệu và bản vẽ kỹ thuật.
+
+NHIỆM VỤ: Đọc phần "THÔNG TIN TỪ TÀI LIỆU" bên dưới rồi giải thích chi tiết cho người dùng.
+
+QUY TẮC BẮT BUỘC:
+1. CHỈ ĐƯỢC sử dụng thông tin CÓ TRONG phần "THÔNG TIN TỪ TÀI LIỆU". TUYỆT ĐỐI KHÔNG ĐƯỢC bịa thêm thông tin không có trong tài liệu.
+2. Phải TRÍCH DẪN trực tiếp các con số, thông số, tên chi tiết, vật liệu tìm thấy trong tài liệu.
+3. Nếu text tài liệu khó đọc hoặc bị lỗi OCR (ví dụ: toàn ký tự rời rạc, số liệu không rõ ràng), hãy nói thẳng: "Text tài liệu bị lỗi OCR, chỉ đọc được một số thông tin sau: ..." rồi liệt kê những gì đọc được.
+4. KHÔNG ĐƯỢC nhắc tới các tính năng hệ thống (Search by Image, Image Recognition, Smart KCN Docs...). Chỉ trả lời về NỘI DUNG tài liệu.
+5. KHÔNG lặp lại câu hỏi. Trả lời bằng CÙNG NGÔN NGỮ với câu hỏi."""
+
+_NUMERIC_SUFFIX = "\nLƯU Ý THÊM: Phải trích xuất chính xác các con số và đơn vị đo từ tài liệu."
+
+_CONTEXT_HEADER = "\n--- THÔNG TIN TỪ TÀI LIỆU ---\n"
+_CONTEXT_FOOTER = "\n--- HẾT THÔNG TIN TÀI LIỆU ---\n"
+_NO_CONTEXT = "\n--- KHÔNG CÓ THÔNG TIN TÀI LIỆU ---\n"
 
 
 def build_system_prompt(
-    hits: list[dict],
     numeric_rule: bool = False,
     reasoning_mode: bool = False,
 ) -> str:
-    """Xây dựng system prompt đầy đủ gồm base + cấu trúc không gian context."""
+    """Xây dựng system prompt (chỉ chứa chỉ dẫn hệ thống)."""
     base = _SYSTEM_REASONING_BASE if reasoning_mode else _SYSTEM_BASE
-    parts: list[str] = [base]
-
     if numeric_rule:
-        parts.append(_NUMERIC_SUFFIX)
+        return base + _NUMERIC_SUFFIX
+    return base
 
+
+def build_user_prompt(question: str, hits: list[dict], reasoning_mode: bool = False, history: list | None = None) -> str:
+    """Xây dựng user prompt với context chunks từ ChromaDB."""
+    parts: list[str] = []
+    
     parts.append(_CONTEXT_HEADER)
     if hits:
         for i, hit in enumerate(hits, start=1):
-            page_no   = hit.get("page_no", "?")
-            score_pct = round(hit.get("score", 0) * 100, 1)
-            title     = hit.get("title", "").strip() or "Tài liệu kỹ thuật"
+            title     = hit.get("title", "").strip()
             category  = hit.get("category", "").strip()
-            title_str = f"{category}: {title}" if category else title
-            bbox_str  = hit.get("bbox", "").strip() or "N/A"
+            page_no   = hit.get("page_no", "?")
+            bbox_str  = hit.get("bbox", "").strip()
             text      = hit.get("text", "").strip()
-            parts.append(
-                f"\n[Đoạn {i} | {title_str} | Trang {page_no} | Bbox: {bbox_str} | Liên quan: {score_pct}%]\n{text}\n"
-            )
+
+            # Header rõ ràng: tên tài liệu + loại + trang
+            header_parts = []
+            if title:
+                header_parts.append(f"Tài liệu: '{title}'")
+            if category:
+                header_parts.append(f"Loại: {category}")
+            header_parts.append(f"Trang {page_no}")
+            if bbox_str and bbox_str.upper() != "N/A":
+                header_parts.append(f"Tọa độ: {bbox_str}")
+            location_info = " | ".join(header_parts)
+
+            parts.append(f"[Đoạn {i} - {location_info}]\n{text}\n")
         parts.append(_CONTEXT_FOOTER)
     else:
         parts.append(_NO_CONTEXT)
 
+    # Câu hỏi + chỉ thị bám sát context cứng
+    parts.append(f"\nCâu hỏi: {question.strip()}\n")
+    parts.append("Trả lời DỰA TRÊN NỘI DUNG tài liệu ở trên. Nếu text khó đọc thì liệt kê những gì đọc được.")
     return "".join(parts)
-
-
-def build_user_prompt(question: str, reasoning_mode: bool = False, history: list | None = None) -> str:
-    """Trả về câu hỏi kèm lịch sử hội thoại gần nhất (nếu có)."""
-    clean_q = question.strip()
-    if not history:
-        return clean_q
-
-    lines = ["[LỊCH SỬ]"]
-    for msg in history[-4:]:  # giới hạn 4 lượt để giảm token cho model 1.5B
-        role = getattr(msg, "role", None) if not isinstance(msg, dict) else msg.get("role")
-        content = getattr(msg, "content", None) if not isinstance(msg, dict) else msg.get("content", "")
-        role_label = "Người dùng" if role == "user" else "AI"
-        if content and content.strip():
-            lines.append(f"{role_label}: {content.strip()}")
-    lines.append(f"\n[CÂU HỎI]\n{clean_q}")
-    return "\n".join(lines)

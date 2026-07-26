@@ -30,3 +30,32 @@ def get_object(storage_key: str) -> bytes:
     finally:
         response.close()
         response.release_conn()
+
+
+def get_object_base64(storage_key: str) -> str:
+    """Tải object ảnh từ MinIO và chuyển đổi thành Data URI Base64 (dùng cho Vision LLM API)."""
+    import base64
+    import mimetypes
+
+    data = get_object(storage_key)
+    mime_type, _ = mimetypes.guess_type(storage_key)
+    if not mime_type or not mime_type.startswith("image/"):
+        mime_type = "image/png"
+    b64 = base64.b64encode(data).decode("utf-8")
+    return f"data:{mime_type};base64,{b64}"
+
+
+def put_object(storage_key: str, data: bytes, content_type: str = "image/png") -> None:
+    """Tải dữ liệu bytes (ảnh trang PDF) lên MinIO bucket."""
+    import io
+    s = get_settings()
+    client = _make_client()
+    client.put_object(
+        s.minio_bucket,
+        storage_key,
+        io.BytesIO(data),
+        length=len(data),
+        content_type=content_type,
+    )
+
+

@@ -54,12 +54,14 @@ def _get_client():
 # Public API
 # ────────────────────────────────────────────────────────────────────────────
 
-def generate_answer(system_prompt: str, user_prompt: str) -> tuple[str, str]:
-    """Gọi LM Studio để sinh câu trả lời.
+def generate_answer(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None) -> tuple[str, str]:
+    """Gọi LM Studio để sinh câu trả lời (hỗ trợ cả Text LLM lẫn Vision VLM).
 
     Args:
         system_prompt: Hướng dẫn hành vi + context chunks đã được inject.
         user_prompt:   Câu hỏi cuối cùng của người dùng.
+        history:       Lịch sử hội thoại (list of ChatMessage schemas).
+        image_base64:  Chuỗi Data URI Base64 ảnh (ví dụ data:image/png;base64,...) nếu có.
 
     Returns:
         (answer_text, model_name) — cả 2 luôn là str không None.
@@ -81,14 +83,31 @@ def generate_answer(system_prompt: str, user_prompt: str) -> tuple[str, str]:
         s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
     )
 
-    # Chỉ thêm penalty params khi thực sự khác 0 — LM Studio crash channel
-    # khi nhận extra_body hoặc penalty fields không hỗ trợ (DeepSeek-R1).
+    messages = [{"role": "system", "content": system_prompt}]
+    if history:
+        import re
+        for msg in history[-4:]:  # Giới hạn 4 lượt gần nhất
+            role = getattr(msg, "role", None) if not isinstance(msg, dict) else msg.get("role")
+            content = getattr(msg, "content", None) if not isinstance(msg, dict) else msg.get("content", "")
+            if role and content:
+                role = "assistant" if role == "ai" else role
+                # Lọc sạch các từ khóa rác từ lịch sử cũ nếu có
+                clean_content = re.sub(r"\[CÂU HỎI\]|Câu hỏi:.*?\n", "", content).strip()
+                messages.append({"role": role, "content": clean_content or content})
+
+    if image_base64:
+        user_content: list[dict[str, Any]] | str = [
+            {"type": "image_url", "image_url": {"url": image_base64}},
+            {"type": "text", "text": user_prompt},
+        ]
+    else:
+        user_content = user_prompt
+
+    messages.append({"role": "user", "content": user_content})
+
     call_kwargs: dict[str, Any] = {
         "model": s.lm_studio_model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_prompt},
-        ],
+        "messages": messages,
         "temperature": s.llm_temperature,
         "max_tokens": s.llm_max_tokens,
     }
@@ -104,10 +123,6 @@ def generate_answer(system_prompt: str, user_prompt: str) -> tuple[str, str]:
         call_kwargs["frequency_penalty"] = freq_p
     if pres_p:
         call_kwargs["presence_penalty"] = pres_p
-    # Truyền repetition_penalty an toàn (Cấu hình suy luận tối ưu theo sơ đồ: 1.2)
-    rep_p = getattr(s, "llm_repetition_penalty", 1.0)
-    if rep_p and rep_p > 1.0:
-        call_kwargs["extra_body"] = {"repetition_penalty": rep_p}
 
     try:
         response = client.chat.completions.create(**call_kwargs)
@@ -174,6 +189,12 @@ def generate_answer(system_prompt: str, user_prompt: str) -> tuple[str, str]:
             len(raw_content), len(reasoning_content), raw_content[:500],
         )
 
+    # ── HALLUCINATION DETECTION ──────────────────────────────────────────
+    # Model 2B thường bịa đặt khi nhận OCR text rác: trả về các từ khóa
+    # về tính năng hệ thống hoặc nội dung hoàn toàn không liên quan tài liệu.
+    # Phát hiện → trả rỗng → query_service sẽ fallback sang thông báo an toàn.
+    answer = _detect_hallucination(answer)
+
     logger.info(
         "LLM OK: model=%s tokens_used=%s answer_chars=%d",
         model_used,
@@ -183,8 +204,8 @@ def generate_answer(system_prompt: str, user_prompt: str) -> tuple[str, str]:
     return answer, model_used
 
 
-def generate_answer_stream(system_prompt: str, user_prompt: str):
-    """Generator: Stream từng token text từ LM Studio về client qua SSE.
+def generate_answer_stream(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None):
+    """Generator: Stream từng token text từ LM Studio về client qua SSE (hỗ trợ cả Vision VLM).
 
     Sử dụng OpenAI SDK streaming mode (stream=True). Mỗi lần yield là một
     đoạn text (delta) nhỏ từ model — phù hợp để pipe thẳng vào SSE response.
@@ -192,6 +213,8 @@ def generate_answer_stream(system_prompt: str, user_prompt: str):
     Args:
         system_prompt: Hướng dẫn hành vi + context chunks đã được inject.
         user_prompt:   Câu hỏi cuối cùng của người dùng.
+        history:       Lịch sử hội thoại (list of ChatMessage schemas).
+        image_base64:  Chuỗi Data URI Base64 ảnh (ví dụ data:image/png;base64,...) nếu có.
 
     Yields:
         str: Từng đoạn text delta từ LM Studio (có thể là 1 từ, 1 câu, hoặc nhiều ký tự).
@@ -218,12 +241,30 @@ def generate_answer_stream(system_prompt: str, user_prompt: str):
         s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
     )
 
+    messages = [{"role": "system", "content": system_prompt}]
+    if history:
+        import re
+        for msg in history[-4:]:
+            role = getattr(msg, "role", None) if not isinstance(msg, dict) else msg.get("role")
+            content = getattr(msg, "content", None) if not isinstance(msg, dict) else msg.get("content", "")
+            if role and content:
+                role = "assistant" if role == "ai" else role
+                clean_content = re.sub(r"\[CÂU HỎI\]|Câu hỏi:.*?\n", "", content).strip()
+                messages.append({"role": role, "content": clean_content or content})
+
+    if image_base64:
+        user_content: list[dict[str, Any]] | str = [
+            {"type": "image_url", "image_url": {"url": image_base64}},
+            {"type": "text", "text": user_prompt},
+        ]
+    else:
+        user_content = user_prompt
+
+    messages.append({"role": "user", "content": user_content})
+
     stream_kwargs: dict = {
         "model": s.lm_studio_model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_prompt},
-        ],
+        "messages": messages,
         "temperature": s.llm_temperature,
         "max_tokens": s.llm_max_tokens,
         "stream": True,
@@ -236,15 +277,66 @@ def generate_answer_stream(system_prompt: str, user_prompt: str):
     try:
         stream = client.chat.completions.create(**stream_kwargs)
         token_count = 0
+        in_think = False
+        buffer = ""
+        think_buffer = ""
+        has_yielded = False
+
         for chunk in stream:
             delta = chunk.choices[0].delta if chunk.choices else None
             if delta is None:
                 continue
-            # Xử lý cả trường hợp model trả reasoning_content riêng (DeepSeek-R1)
+            
             content = getattr(delta, "content", None) or ""
-            if content:
-                token_count += 1
-                yield content
+            if not content:
+                continue
+                
+            token_count += 1
+            buffer += content
+            
+            if not in_think:
+                if "<think>" in buffer:
+                    parts = buffer.split("<think>", 1)
+                    if parts[0]:
+                        yield parts[0]
+                        has_yielded = True
+                    buffer = parts[1]
+                    in_think = True
+                else:
+                    lt_idx = buffer.rfind("<")
+                    if lt_idx != -1 and len(buffer) - lt_idx < 10:
+                        if buffer[:lt_idx]:
+                            yield buffer[:lt_idx]
+                            has_yielded = True
+                        buffer = buffer[lt_idx:]
+                    else:
+                        yield buffer
+                        has_yielded = True
+                        buffer = ""
+            else:
+                think_buffer += content
+                if "</think>" in buffer:
+                    parts = buffer.split("</think>", 1)
+                    buffer = parts[1]
+                    in_think = False
+                else:
+                    buffer = buffer[-10:]
+
+        if buffer and not in_think:
+            if "<think" in buffer:
+                buffer = buffer.replace("<think", "")
+            if buffer.strip():
+                yield buffer
+                has_yielded = True
+                
+        if not has_yielded and think_buffer:
+            # Fallback: model chỉ trả về suy luận mà không có câu trả lời cuối
+            clean_think = think_buffer.replace("</think>", "").strip()
+            if clean_think:
+                # Xoá các cụm meta tương tự như _clean_think_tags
+                import re
+                clean_think = re.sub(r"\[CHỈ THỊ[^\]]*\][:.]?\s*", "", clean_think, flags=re.IGNORECASE)
+                yield clean_think
 
         logger.info("LLM stream OK: model=%s tokens_streamed=%d", s.lm_studio_model, token_count)
 
@@ -268,6 +360,57 @@ def generate_answer_stream(system_prompt: str, user_prompt: str):
         logger.error("LLM stream lỗi không xác định: %s", exc)
         raise LLMInferenceError(f"Lỗi LLM stream không xác định: {exc}") from exc
 
+def _detect_hallucination(answer: str) -> str:
+    """Phát hiện hallucination từ model 2B.
+
+    Khi model nhỏ nhận OCR text rác, nó thường bịa đặt về:
+    - Tính năng hệ thống (Search by Image, Image Recognition, Smart KCN Docs...)
+    - Nội dung hoàn toàn không liên quan tài liệu kỹ thuật
+    - Mô tả sản phẩm phần mềm thay vì nội dung bản vẽ
+
+    Nếu phát hiện hallucination → trả rỗng → query_service fallback sang thông báo an toàn.
+
+    Returns:
+        answer gốc nếu OK, hoặc chuỗi rỗng nếu hallucination.
+    """
+    if not answer or not answer.strip():
+        return answer
+
+    answer_lower = answer.lower()
+
+    # Danh sách từ khóa hallucination: model bịa về tính năng hệ thống
+    _HALLUCINATION_KEYWORDS = [
+        "search by image",
+        "image recognition",
+        "nhận dạng hình ảnh",
+        "tìm kiếm bằng hình ảnh",
+        "upload image",
+        "tải lên hình ảnh",
+        "drag and drop",
+        "kéo và thả",
+        "artificial intelligence",
+        "trí tuệ nhân tạo",
+        "machine learning",
+        "học máy",
+        "deep learning",
+        "neural network",
+        "chatbot",
+        "google lens",
+        "tineye",
+        "reverse image search",
+    ]
+
+    hallucination_count = sum(1 for kw in _HALLUCINATION_KEYWORDS if kw in answer_lower)
+
+    if hallucination_count >= 2:
+        logger.warning(
+            "HALLUCINATION DETECTED (%d keywords): %.300s",
+            hallucination_count, answer.replace("\n", "↵"),
+        )
+        return ""
+
+    return answer
+
 
 def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
     """Bóc tách thẻ <think> và loại bỏ hoàn toàn các dòng/đoạn chỉ thị hệ thống (meta-instructions)
@@ -288,6 +431,7 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
         r"\[LƯU Ý[^\]]*\][:.]?\s*(.*?)(?=\n\s*\n|\n\s*---|$)",
         r"\[HẾT CONTEXT[^\]]*\]",
         r"\[KHÔNG CÓ CONTEXT[^\]]*\]",
+        r"\[CÂU HỎI[^\]]*\][:.]?\s*(.*?)(?=\n|$)",
     ]
     for pat in meta_patterns:
         cleaned = re.sub(pat, "", cleaned, flags=re.IGNORECASE | re.DOTALL)
@@ -295,7 +439,7 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
     # Loại bỏ đường viền phân cách "---" thừa ở đầu câu trả lời sau khi lọc meta
     cleaned = re.sub(r"^\s*---\s*", "", cleaned).strip()
 
-    # Loại bỏ thêm nếu model chép lại tiêu đề không có ngoặc vuông ở đầu dòng
+    # Loại bỏ thêm nếu model chép lại tiêu đề không có ngoặc vuông ở đầu dòng (e.g. Câu hỏi: "...")
     lines = cleaned.split("\n")
     filtered = []
     for line in lines:
@@ -303,7 +447,8 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
         if any(stripped.startswith(p) and len(stripped) < 120 for p in [
             "[CHỈ THỊ", "CHỈ THỊ CHUYÊN GIA", "CHỈ THỊ ĐẶC BIỆT",
             "[YÊU CẦU", "YÊU CẦU TƯ VẤN", "NGUYÊN TẮC HƯỚNG DẪN",
-            "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN"
+            "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN",
+            "Câu hỏi:", "Câu hỏi :", "[CÂU HỎI"
         ]):
             continue
         filtered.append(line)
@@ -325,7 +470,8 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
                 if any(stripped.startswith(p) and len(stripped) < 120 for p in [
                     "[CHỈ THỊ", "CHỈ THỊ CHUYÊN GIA", "CHỈ THỊ ĐẶC BIỆT",
                     "[YÊU CẦU", "YÊU CẦU TƯ VẤN", "NGUYÊN TẮC HƯỚNG DẪN",
-                    "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN"
+                    "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN",
+                    "Câu hỏi:", "Câu hỏi :", "[CÂU HỎI"
                 ]):
                     continue
                 think_filtered.append(line)
@@ -344,7 +490,8 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
             if any(stripped.startswith(p) and len(stripped) < 120 for p in [
                 "[CHỈ THỊ", "CHỈ THỊ CHUYÊN GIA", "CHỈ THỊ ĐẶC BIỆT",
                 "[YÊU CẦU", "YÊU CẦU TƯ VẤN", "NGUYÊN TẮC HƯỚNG DẪN",
-                "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN"
+                "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN",
+                "Câu hỏi:", "Câu hỏi :", "[CÂU HỎI"
             ]):
                 continue
             think_filtered.append(line)

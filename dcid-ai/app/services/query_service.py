@@ -56,6 +56,21 @@ def run_query(req: QueryRequest) -> QueryResponse:
             model="guardrail-no-versions",
         )
 
+    # ── 0.5. Vision Query: Tải ảnh base64 từ MinIO & OCR (nếu có) ──────────────
+    image_base64: str | None = None
+    if req.imageStorageKey:
+        try:
+            from app.clients import minio_client, ocr_client
+            logger.info("Vision Query: đang tải ảnh base64 & OCR file ảnh %s", req.imageStorageKey)
+            image_base64 = minio_client.get_object_base64(req.imageStorageKey)
+            pages = ocr_client.extract_pages(req.imageStorageKey, ["vi", "en"])
+            image_text = "\n".join(p.text for p in pages if p.text)
+            if image_text:
+                req.question = f"{req.question}\n[Thông tin từ OCR ảnh chụp]:\n{image_text}"
+                logger.info("Đã nối text OCR từ ảnh vào câu hỏi (%d ký tự)", len(image_text))
+        except Exception as exc:
+            logger.error("Xử lý Vision Query ảnh %s thất bại: %s", req.imageStorageKey, exc)
+
     # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
     try:
         query_vec = embed_pipeline.embed_query(req.question)
@@ -109,15 +124,29 @@ def run_query(req: QueryRequest) -> QueryResponse:
             model="guardrail-locked",
         )
 
+    # Nếu chưa có image_base64 từ SnapAsk, tự động bốc ảnh trang PDF của kết quả top 1 từ MinIO (nếu có)
+    if not image_base64 and hits:
+        top_hit = hits[0]
+        top_v_id = top_hit.get("version_id")
+        top_p_no = top_hit.get("page_no")
+        if top_v_id and top_p_no:
+            page_img_key = f"pages/{top_v_id}/{top_p_no}.png"
+            try:
+                from app.clients import minio_client
+                image_base64 = minio_client.get_object_base64(page_img_key)
+                logger.info("Auto-Vision RAG: Đã bốc ảnh trang bản vẽ %s truyền sang Vision LLM", page_img_key)
+            except Exception as exc:
+                logger.debug("Tài liệu cũ chưa có ảnh trang %s trong MinIO (dùng Text RAG thuần): %s", page_img_key, exc)
+
     # ── 4. Build Prompt ──────────────────────────────────────────────────────
-    system_prompt = prompts.build_system_prompt(
-        hits, numeric_rule=numeric_rule, reasoning_mode=reasoning_mode
-    )
-    user_prompt   = prompts.build_user_prompt(req.question, reasoning_mode=reasoning_mode, history=req.history)
+    system_prompt = prompts.build_system_prompt(numeric_rule=numeric_rule, reasoning_mode=reasoning_mode)
+    user_prompt = prompts.build_user_prompt(req.question, hits, reasoning_mode=reasoning_mode, history=req.history)
 
     # ── 5. Gọi LM Studio ────────────────────────────────────────────────────
     try:
-        answer_text, model_name = llm_client.generate_answer(system_prompt, user_prompt)
+        answer_text, model_name = llm_client.generate_answer(
+            system_prompt, user_prompt, history=req.history, image_base64=image_base64
+        )
     except LLMConnectionError as exc:
         logger.error("LLM kết nối thất bại (LM Studio không chạy?): %s", exc)
         # Khi LM Studio chết → vẫn trả response nhưng là locked để BE không bị 503
@@ -160,12 +189,13 @@ def run_query(req: QueryRequest) -> QueryResponse:
     # Kiểm tra blank answer (model 1.5B đôi khi trả rỗng sau khi bóc thẻ <think>)
     if not answer_text.strip():
         logger.warning(
-            "LLM trả blank answer: model=%s confidence=%.3f — fall back locked message.",
+            "LLM trả blank answer (hallucination hoặc blank): model=%s confidence=%.3f — fall back message.",
             model_name, confidence,
         )
         return QueryResponse(
-            answer="Mô hình AI không tạo được nội dung trả lời. "
-                   "Vui lòng thử lại hoặc đặt câu hỏi theo cách khác.",
+            answer="Tài liệu này chủ yếu chứa bản vẽ kỹ thuật scan, nội dung text OCR khó đọc. "
+                   "Vui lòng mở trực tiếp file tài liệu để xem bản vẽ gốc, "
+                   "hoặc đặt câu hỏi cụ thể hơn về thông số kỹ thuật cần tra cứu.",
             confidence=confidence,
             guard=Guard(locked=True, numericRule=numeric_rule, reasoningMode=reasoning_mode),
             citations=_build_citations(hits),
@@ -274,6 +304,21 @@ def run_query_stream(req: QueryRequest):
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="guardrail-no-versions")
         return
 
+    # ── 0.5. Vision Query: Tải ảnh base64 từ MinIO & OCR (nếu có) ──────────────
+    image_base64: str | None = None
+    if req.imageStorageKey:
+        try:
+            from app.clients import minio_client, ocr_client
+            logger.info("Vision Query (stream): đang tải ảnh base64 & OCR file ảnh %s", req.imageStorageKey)
+            image_base64 = minio_client.get_object_base64(req.imageStorageKey)
+            pages = ocr_client.extract_pages(req.imageStorageKey, ["vi", "en"])
+            image_text = "\n".join(p.text for p in pages if p.text)
+            if image_text:
+                req.question = f"{req.question}\n[Thông tin từ OCR ảnh chụp]:\n{image_text}"
+                logger.info("Đã nối text OCR từ ảnh vào câu hỏi (%d ký tự)", len(image_text))
+        except Exception as exc:
+            logger.error("Xử lý Vision Query ảnh %s thất bại (stream): %s", req.imageStorageKey, exc)
+
     # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
     try:
         query_vec = embed_pipeline.embed_query(req.question)
@@ -320,14 +365,30 @@ def run_query_stream(req: QueryRequest):
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="guardrail-locked")
         return
 
+    # Nếu chưa có image_base64 từ SnapAsk, tự động bốc ảnh trang PDF của kết quả top 1 từ MinIO (nếu có)
+    if not image_base64 and hits:
+        top_hit = hits[0]
+        top_v_id = top_hit.get("version_id")
+        top_p_no = top_hit.get("page_no")
+        if top_v_id and top_p_no:
+            page_img_key = f"pages/{top_v_id}/{top_p_no}.png"
+            try:
+                from app.clients import minio_client
+                image_base64 = minio_client.get_object_base64(page_img_key)
+                logger.info("Auto-Vision RAG (stream): Đã bốc ảnh trang bản vẽ %s truyền sang Vision LLM", page_img_key)
+            except Exception as exc:
+                logger.debug("Tài liệu cũ chưa có ảnh trang %s trong MinIO (dùng Text RAG thuần): %s", page_img_key, exc)
+
     # ── 4. Build Prompt ──────────────────────────────────────────────────────
-    system_prompt = prompts.build_system_prompt(hits, numeric_rule=numeric_rule, reasoning_mode=reasoning_mode)
-    user_prompt = prompts.build_user_prompt(req.question, reasoning_mode=reasoning_mode, history=req.history)
+    system_prompt = prompts.build_system_prompt(numeric_rule=numeric_rule, reasoning_mode=reasoning_mode)
+    user_prompt = prompts.build_user_prompt(req.question, hits, reasoning_mode=reasoning_mode, history=req.history)
 
     # ── 5. Stream từ LM Studio ──────────────────────────────────────────────
     try:
         model_name = get_settings().lm_studio_model
-        for token in llm_client.generate_answer_stream(system_prompt, user_prompt):
+        for token in llm_client.generate_answer_stream(
+            system_prompt, user_prompt, history=req.history, image_base64=image_base64
+        ):
             yield _sse("delta", text=token)
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model=model_name)
 

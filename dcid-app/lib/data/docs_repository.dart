@@ -42,7 +42,7 @@ class DocsRepository implements IDocsRepository {
       'file': MultipartFile.fromBytes(imageBytes, filename: fileName),
     });
     final res = await _api.dio.post<Map<String, dynamic>>(
-      '/api/query',
+      '/api/query/vision',
       data: form,
     );
     return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);

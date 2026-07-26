@@ -31,8 +31,8 @@ class PageOcr:
     text: str
     width: int | None = None
     height: int | None = None
-    # TODO(đợt sau): bbox từng dòng/đoạn để crop citation (contract §3 — crops/{p}-{i}.png)
     boxes: list[tuple[float, float, float, float]] = field(default_factory=list)
+    image_bytes: bytes | None = None
 
 
 @lru_cache(maxsize=4)
@@ -67,6 +67,16 @@ def _pick_lang(langs: list[str]) -> str:
     return langs[0] if langs else "en"
 
 
+def _detect_filetype(data: bytes) -> str:
+    if data.startswith(b"%PDF-"):
+        return "pdf"
+    if data.startswith(b"\x89PNG"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    return "pdf"
+
+
 def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
     """Render từng trang PDF (PyMuPDF) rồi OCR (PaddleOCR). Lỗi PDF hỏng sẽ raise —
     caller chuyển thành callback FAILED.
@@ -78,9 +88,10 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
 
     lang = _pick_lang(langs)
     engine = _get_engine(lang)
+    ftype = _detect_filetype(pdf_bytes)
 
     pages: list[PageOcr] = []
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    doc = fitz.open(stream=pdf_bytes, filetype=ftype)
     try:
         for i, page in enumerate(doc, start=1):
             max_side_pt = max(page.rect.width, page.rect.height)
@@ -135,6 +146,8 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
                             pass
                 logger.debug("OCR trang %d: PaddleOCR doc duoc %d dong, %d boxes", i, len(lines), len(boxes))
 
+            png_bytes = pix.tobytes("png")
+
             pages.append(
                 PageOcr(
                     page_no=i,
@@ -142,6 +155,7 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
                     width=pix.width,
                     height=pix.height,
                     boxes=boxes,
+                    image_bytes=png_bytes,
                 )
             )
             logger.debug("OCR trang %d: %d x %d px -> %d dong (%d boxes)", i, pix.width, pix.height, len(lines), len(boxes))

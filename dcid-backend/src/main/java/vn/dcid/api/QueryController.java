@@ -40,4 +40,21 @@ public class QueryController {
                 UserRole.valueOf(principal.role()));
         return ResponseEntity.ok(ApiResponse.of(answer));
     }
+
+    @PostMapping(value = "/vision", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<AnswerDTO>> askWithVision(
+            @org.springframework.web.bind.annotation.RequestParam("question") String question,
+            @org.springframework.web.bind.annotation.RequestParam(value = "machineCode", required = false) String machineCode,
+            @org.springframework.web.bind.annotation.RequestParam(value = "reasoningMode", defaultValue = "false") boolean reasoningMode,
+            @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        UserPrincipal principal = SecurityContextHelper.getCurrentUser();
+        if (principal == null) {
+            throw new ForbiddenException("Chưa xác thực.");
+        }
+        AnswerDTO answer = queryService.askWithVision(
+                question, machineCode, reasoningMode, file,
+                UUID.fromString(principal.userId()),
+                UserRole.valueOf(principal.role()));
+        return ResponseEntity.ok(ApiResponse.of(answer));
+    }
 }

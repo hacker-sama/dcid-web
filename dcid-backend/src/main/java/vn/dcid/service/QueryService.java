@@ -34,13 +34,16 @@ public class QueryService {
     private final DocumentVersionRepository versionRepository;
     private final QueryLogRepository queryLogRepository;
     private final AiPipelineClient aiPipelineClient;
+    private final MinioService minioService;
 
     public QueryService(DocumentVersionRepository versionRepository,
                         QueryLogRepository queryLogRepository,
-                        AiPipelineClient aiPipelineClient) {
+                        AiPipelineClient aiPipelineClient,
+                        MinioService minioService) {
         this.versionRepository = versionRepository;
         this.queryLogRepository = queryLogRepository;
         this.aiPipelineClient = aiPipelineClient;
+        this.minioService = minioService;
     }
 
     public AnswerDTO ask(QueryRequest request, UUID actorId, UserRole actorRole) {
@@ -68,7 +71,8 @@ public class QueryService {
                         allowed,
                         request.machineCode(),
                         request.reasoningMode(),
-                        request.history() != null ? request.history() : List.of()
+                        request.history() != null ? request.history() : List.of(),
+                        null
                 ));
 
         int latencyMs = elapsedMs(start);
@@ -79,6 +83,61 @@ public class QueryService {
         UUID matchedVersionId = citations.isEmpty() ? null : citations.getFirst().versionId();
 
         saveLog(actorId, request.question(), matchedVersionId,
+                BigDecimal.valueOf(ai.confidence()).setScale(3, RoundingMode.HALF_UP),
+                numericFlag, lockedFlag, ai.answer(), latencyMs);
+
+        return new AnswerDTO(
+                ai.answer(),
+                ai.confidence(),
+                new AnswerDTO.Guard(lockedFlag, numericFlag, reasoningFlag),
+                citations.stream()
+                        .map(c -> new AnswerDTO.Citation(c.versionId(), c.pageNo(), c.bboxKey(), c.snippet()))
+                        .toList()
+        );
+    }
+
+    public AnswerDTO askWithVision(String question, String machineCode, boolean reasoningMode, org.springframework.web.multipart.MultipartFile file, UUID actorId, UserRole actorRole) {
+        long start = System.nanoTime();
+
+        List<UUID> allowed = resolveAllowedVersionIds(actorRole, machineCode);
+
+        if (allowed.isEmpty()) {
+            AnswerDTO locked = AnswerDTO.locked(NO_ACCESS_MESSAGE);
+            saveLog(actorId, question, null, null, false, true, locked.answer(), elapsedMs(start));
+            return locked;
+        }
+
+        String imageStorageKey = "temp/vision/" + UUID.randomUUID() + "-" + file.getOriginalFilename();
+        minioService.upload(file, imageStorageKey);
+
+        AiQueryResponse ai;
+        try {
+            ai = aiPipelineClient.query(
+                    new AiQueryRequest(
+                            question,
+                            TOP_K,
+                            allowed,
+                            machineCode,
+                            reasoningMode,
+                            List.of(),
+                            imageStorageKey
+                    ));
+        } finally {
+            try {
+                minioService.delete(imageStorageKey);
+            } catch (Exception e) {
+                // Ignore cleanup error
+            }
+        }
+
+        int latencyMs = elapsedMs(start);
+        boolean lockedFlag = ai.guard() != null && ai.guard().locked();
+        boolean numericFlag = ai.guard() != null && ai.guard().numericRule();
+        boolean reasoningFlag = ai.guard() != null && ai.guard().reasoningMode();
+        List<AiCitation> citations = ai.citations() != null ? ai.citations() : List.of();
+        UUID matchedVersionId = citations.isEmpty() ? null : citations.getFirst().versionId();
+
+        saveLog(actorId, question, matchedVersionId,
                 BigDecimal.valueOf(ai.confidence()).setScale(3, RoundingMode.HALF_UP),
                 numericFlag, lockedFlag, ai.answer(), latencyMs);
 

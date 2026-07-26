@@ -129,7 +129,8 @@ Terminal mới (chạy Celery Worker cho tác vụ Ingest E2E):
 ```bash
 cd dcid-ai
 .venv\Scripts\activate
-celery -A app.celery_app.celery_app worker --loglevel=info --concurrency=2 -Q ingest,default
+celery -A app.celery_app.celery_app worker --loglevel=info -P solo -Q ingest,default
+
 ```
 
 Verify:

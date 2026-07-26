@@ -67,6 +67,7 @@ class QueryRequest(BaseModel):
     machineCode: str | None = None
     reasoningMode: bool = False
     history: list[ChatMessage] = []
+    imageStorageKey: str | None = None
 
 
 class Guard(BaseModel):

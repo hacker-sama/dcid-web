@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/constrained_content.dart';
+import '../../data/models/answer_result.dart';
+import '../../state/providers.dart';
+import '../search/answer_view.dart';
 
 /// A single captured/uploaded image entry in the Snap & Ask gallery.
 class _SnapEntry {
@@ -32,6 +35,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   final _imagePicker = ImagePicker();
   final List<_SnapEntry> _snaps = [];
   bool _picking = false;
+  bool _isAsking = false;
+  final TextEditingController _questionController = TextEditingController();
+  AnswerResult? _answer;
 
   // ── Camera: chụp ảnh trực tiếp ────────────────────────────────────
   Future<void> _takePhoto() async {
@@ -101,6 +107,35 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   void _deleteSnap(int index) {
     setState(() => _snaps.removeAt(index));
+  }
+
+  Future<void> _askQuestion() async {
+    if (_snaps.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn hoặc chụp một ảnh trước')),
+      );
+      return;
+    }
+    final question = _questionController.text.trim();
+    if (question.isEmpty) return;
+
+    setState(() {
+      _isAsking = true;
+      _answer = null;
+    });
+
+    try {
+      final repo = ref.read(docsRepositoryProvider);
+      final entry = _snaps.first;
+      final answer = await repo.askWithImage(question, entry.bytes, entry.fileName);
+      setState(() => _answer = answer);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isAsking = false);
+    }
   }
 
   // ── Bottom sheet: chọn cách lấy ảnh ───────────────────────────────
@@ -260,6 +295,44 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                       );
                     },
                   ),
+          ),
+          
+          // ── ANSWER RESULT ──────────────────────────────────────────────
+          if (_answer != null)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: AnswerView(result: _answer!),
+              ),
+            ),
+          
+          // ── FOOTER: CHAT INPUT ─────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _questionController,
+                    decoration: InputDecoration(
+                      hintText: 'Hỏi về ảnh thiết bị này...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onSubmitted: (_) => _askQuestion(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  onPressed: _isAsking ? null : _askQuestion,
+                  icon: _isAsking 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                    : const Icon(Icons.send),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -50,9 +50,11 @@ _REASONING_PATTERN = re.compile(
     r"""
     \b(
         tư\s*vấn   | suy\s*luận | suy\s*đoán
+      | giải\s*thích | tóm\s*tắt | tổng\s*quan | giới\s*thiệu | nội\s*dung
+      | tài\s*liệu  | file\s*này | văn\s*bản
       | lắp\s*đặt  | lắp\s*ráp  | các\s*bước\s*lắp | quy\s*trình\s*lắp | hướng\s*dẫn\s*lắp
       | tháo\s*lắp | bảo\s*trì  | thao\s*tác
-      | reasoning  | assembly   | procedure
+      | reasoning  | assembly   | procedure | summary | explain
     )\b
     """,
     re.IGNORECASE | re.VERBOSE,

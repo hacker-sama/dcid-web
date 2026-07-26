@@ -15,7 +15,7 @@ Ghi chú:
 
 import logging
 
-from app.clients import backend_client, ocr_client
+from app.clients import backend_client, minio_client, ocr_client
 from app.pipeline import chunk as chunk_pipeline
 from app.pipeline import embed as embed_pipeline
 from app.pipeline import index as index_pipeline
@@ -59,21 +59,33 @@ def run_ingest(req: IngestRequest) -> None:
             metadata=req.metadata,  # lang, machine_code, min_role … từ BE
         )
 
-        # ── 6. Callback READY ────────────────────────────────────
-        callback = IngestCallback(
-            versionId=req.versionId,
-            status="READY",
-            pageCount=len(page_results),
-            pages=[
+        # ── 6. Lưu ảnh trang lên MinIO & Callback READY ─────────
+        pages_list = []
+        for p in page_results:
+            img_key = f"pages/{req.versionId}/{p.page_no}.png"
+            if p.image_bytes:
+                try:
+                    minio_client.put_object(img_key, p.image_bytes, content_type="image/png")
+                except Exception as exc:
+                    logger.warning("Không thể lưu ảnh trang %s lên MinIO: %s", img_key, exc)
+                    img_key = None
+            else:
+                img_key = None
+            pages_list.append(
                 PageInfo(
                     pageNo=p.page_no,
-                    imageKey=None,  # TODO(M3): render ảnh trang → MinIO cho viewer/bbox
+                    imageKey=img_key,
                     width=p.width,
                     height=p.height,
                     ocrText=p.text,
                 )
-                for p in page_results
-            ],
+            )
+
+        callback = IngestCallback(
+            versionId=req.versionId,
+            status="READY",
+            pageCount=len(page_results),
+            pages=pages_list,
             error=None,
         )
         logger.info(
