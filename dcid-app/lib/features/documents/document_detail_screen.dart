@@ -188,7 +188,7 @@ class _VersionTile extends ConsumerWidget {
       );
       final dio = ref.read(apiClientProvider).dio;
       final response = await dio.get(
-        '/documents/$documentId/versions/${version.id}/download',
+        '/api/documents/$documentId/versions/${version.id}/download',
         options: Options(responseType: ResponseType.bytes),
       );
       final bytes = response.data as Uint8List;
@@ -215,7 +215,7 @@ class _VersionTile extends ConsumerWidget {
       );
       final dio = ref.read(apiClientProvider).dio;
       final response =
-          await dio.get('/documents/$documentId/versions/${version.id}/pages');
+          await dio.get('/api/documents/$documentId/versions/${version.id}/pages');
       if (context.mounted) Navigator.pop(context); // close progress
 
       final data = (response.data?['data'] as List<dynamic>?) ?? [];
