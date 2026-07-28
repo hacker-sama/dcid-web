@@ -80,6 +80,7 @@ class Citation(BaseModel):
     versionId: UUID
     pageNo: int
     bboxKey: str | None = None
+    imagePath: str | None = None  # Đường dẫn file ảnh crop ở uploads/crops/ để Frontend UI render
     snippet: str | None = None
 
 

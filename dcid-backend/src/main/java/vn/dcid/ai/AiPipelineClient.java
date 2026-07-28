@@ -15,4 +15,8 @@ public interface AiPipelineClient {
 
     /** Truy vấn RAG đồng bộ. */
     AiQueryResponse query(AiQueryRequest request);
+
+    /** Thông báo AI service xóa toàn bộ vector chunks của tài liệu. */
+    void deleteDocument(java.util.UUID documentId);
 }
+

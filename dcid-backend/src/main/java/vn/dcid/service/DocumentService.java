@@ -176,7 +176,40 @@ public class DocumentService {
         }
     }
 
+    @Transactional
+    public void deleteDocument(UUID id, UUID actorId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Document", id.toString()));
+
+        List<DocumentVersion> versions = versionRepository.findByDocumentIdOrderByVersionNoDesc(id);
+        for (DocumentVersion version : versions) {
+            try {
+                if (version.getStorageKey() != null) {
+                    minioService.delete(version.getStorageKey());
+                }
+            } catch (Exception e) {
+                log.warn("Không thể xóa file MinIO storageKey={}: {}", version.getStorageKey(), e.getMessage());
+            }
+
+            pageRepository.deleteByVersionId(version.getId());
+        }
+
+        versionRepository.deleteAll(versions);
+
+        try {
+            aiPipelineClient.deleteDocument(id);
+        } catch (Exception e) {
+            log.warn("Không thể xóa vector chunks trên AI service cho docId={}: {}", id, e.getMessage());
+        }
+
+        documentRepository.delete(doc);
+
+        auditLogService.log(actorId, "DOCUMENT_DELETE", "DOCUMENT", id, null, null);
+        log.info("Đã xóa hoàn toàn documentId={} và {} versions", id, versions.size());
+    }
+
     private static String sha256(byte[] bytes) {
+
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(bytes);

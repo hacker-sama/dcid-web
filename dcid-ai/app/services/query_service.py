@@ -87,6 +87,7 @@ def run_query(req: QueryRequest) -> QueryResponse:
             query_embedding=query_vec,
             allowed_version_ids=req.allowedVersionIds,
             top_k=req.topK,
+            machine_code=req.machineCode,
         )
     except Exception as exc:
         logger.error("ChromaDB search thất bại: %s", exc)
@@ -119,28 +120,39 @@ def run_query(req: QueryRequest) -> QueryResponse:
             answer=LOCKED_ANSWER,
             confidence=LOCKED_CONFIDENCE,
             guard=Guard(locked=True, numericRule=numeric_rule, reasoningMode=reasoning_mode),
-            citations=_build_citations(hits),   # trả hits để kỹ sư tự xem
+            citations=_build_citations(hits, locked=True),   # trả hits để kỹ sư tự xem, nhưng ẩn snippet
             latencyMs=_elapsed_ms(start_ns),
             model="guardrail-locked",
         )
 
-    # Nếu chưa có image_base64 từ SnapAsk, tự động bốc ảnh trang PDF của kết quả top 1 từ MinIO (nếu có)
+    # Nếu chưa có image_base64 từ SnapAsk, tự động bốc/dựng ảnh trang PDF của kết quả top 1 từ MinIO
     if not image_base64 and hits:
         top_hit = hits[0]
         top_v_id = top_hit.get("version_id")
-        top_p_no = top_hit.get("page_no")
-        if top_v_id and top_p_no:
+        top_doc_id = top_hit.get("document_id")
+        top_p_no = top_hit.get("page_no", 1)
+        if top_v_id:
             page_img_key = f"pages/{top_v_id}/{top_p_no}.png"
             try:
                 from app.clients import minio_client
-                image_base64 = minio_client.get_object_base64(page_img_key)
-                logger.info("Auto-Vision RAG: Đã bốc ảnh trang bản vẽ %s truyền sang Vision LLM", page_img_key)
+                image_base64 = minio_client.get_or_render_page_base64(
+                    page_img_key=page_img_key,
+                    version_id=top_v_id,
+                    document_id=top_doc_id,
+                    page_no=int(top_p_no) if str(top_p_no).isdigit() else 1,
+                )
+                if image_base64:
+                    logger.info("Auto-Vision RAG: Đã bốc/dựng ảnh trang bản vẽ %s truyền sang Vision LLM", page_img_key)
             except Exception as exc:
-                logger.debug("Tài liệu cũ chưa có ảnh trang %s trong MinIO (dùng Text RAG thuần): %s", page_img_key, exc)
+                logger.warning("Không thể lấy/dựng ảnh trang %s: %s", page_img_key, exc)
 
     # ── 4. Build Prompt ──────────────────────────────────────────────────────
-    system_prompt = prompts.build_system_prompt(numeric_rule=numeric_rule, reasoning_mode=reasoning_mode)
-    user_prompt = prompts.build_user_prompt(req.question, hits, reasoning_mode=reasoning_mode, history=req.history)
+    has_img = bool(image_base64)
+    if has_img:
+        logger.info("Vision LLM Mode: Đã kích hoạt Vision Prompt đa thức thể kèm dữ liệu hình ảnh Base64")
+
+    system_prompt = prompts.build_system_prompt(numeric_rule=numeric_rule, reasoning_mode=reasoning_mode, has_image=has_img)
+    user_prompt = prompts.build_user_prompt(req.question, hits, reasoning_mode=reasoning_mode, history=req.history, has_image=has_img, machine_code=req.machineCode)
 
     # ── 5. Gọi LM Studio ────────────────────────────────────────────────────
     try:
@@ -198,7 +210,7 @@ def run_query(req: QueryRequest) -> QueryResponse:
                    "hoặc đặt câu hỏi cụ thể hơn về thông số kỹ thuật cần tra cứu.",
             confidence=confidence,
             guard=Guard(locked=True, numericRule=numeric_rule, reasoningMode=reasoning_mode),
-            citations=_build_citations(hits),
+            citations=_build_citations(hits, locked=True),
             latencyMs=_elapsed_ms(start_ns),
             model=model_name,
         )
@@ -247,8 +259,14 @@ def _locked_response(
     )
 
 
-def _build_citations(hits: list[dict]) -> list[Citation]:
-    """Chuyển ChromaDB hits thành danh sách Citation đúng contract §2.2 kèm tọa độ Bbox (Spatial Mapping)."""
+def _build_citations(hits: list[dict], locked: bool = False) -> list[Citation]:
+    """Chuyển ChromaDB hits thành danh sách Citation đúng contract §2.2 kèm tọa độ Bbox (Spatial Mapping).
+
+    Args:
+        hits:   Danh sách kết quả ChromaDB search.
+        locked: Nếu True (guardrail đã khóa), ẩn trường snippet để ngăn rò rỉ
+                nội dung tài liệu bảo mật qua API response.
+    """
     citations: list[Citation] = []
     for hit in hits:
         try:
@@ -259,13 +277,15 @@ def _build_citations(hits: list[dict]) -> list[Citation]:
 
         bbox_val = str(hit.get("bbox", "") or "").strip()
         bbox_key = f"p{hit.get('page_no', 1)}_[{bbox_val}]" if bbox_val and bbox_val != "N/A" else None
-        snippet_val = str(hit.get("snippet", "") or hit.get("text", "") or "")[:300].strip()
+        # Khi guardrail đã khóa → ẩn snippet để tránh rò rỉ 300 ký tự đầu tài liệu bảo mật
+        snippet_val = None if locked else str(hit.get("snippet", "") or hit.get("text", "") or "")[:300].strip()
 
         citations.append(
             Citation(
                 versionId=version_uuid,
                 pageNo=hit.get("page_no", 1),
                 bboxKey=bbox_key,
+                imagePath=hit.get("image_path") or None,
                 snippet=snippet_val or None,
             )
         )
@@ -334,6 +354,7 @@ def run_query_stream(req: QueryRequest):
             query_embedding=query_vec,
             allowed_version_ids=req.allowedVersionIds,
             top_k=req.topK,
+            machine_code=req.machineCode,
         )
     except Exception as exc:
         logger.error("ChromaDB search thất bại (stream): %s", exc)
@@ -353,7 +374,7 @@ def run_query_stream(req: QueryRequest):
             "bboxKey": c.bboxKey,
             "snippet": c.snippet,
         }
-        for c in _build_citations(hits)
+        for c in _build_citations(hits, locked=locked)
     ]
     guard_data = {"locked": locked, "numericRule": numeric_rule, "reasoningMode": reasoning_mode}
 
@@ -365,23 +386,34 @@ def run_query_stream(req: QueryRequest):
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="guardrail-locked")
         return
 
-    # Nếu chưa có image_base64 từ SnapAsk, tự động bốc ảnh trang PDF của kết quả top 1 từ MinIO (nếu có)
+    # Nếu chưa có image_base64 từ SnapAsk, tự động bốc/dựng ảnh trang PDF của kết quả top 1 từ MinIO (nếu có)
     if not image_base64 and hits:
         top_hit = hits[0]
         top_v_id = top_hit.get("version_id")
-        top_p_no = top_hit.get("page_no")
-        if top_v_id and top_p_no:
+        top_doc_id = top_hit.get("document_id")
+        top_p_no = top_hit.get("page_no", 1)
+        if top_v_id:
             page_img_key = f"pages/{top_v_id}/{top_p_no}.png"
             try:
                 from app.clients import minio_client
-                image_base64 = minio_client.get_object_base64(page_img_key)
-                logger.info("Auto-Vision RAG (stream): Đã bốc ảnh trang bản vẽ %s truyền sang Vision LLM", page_img_key)
+                image_base64 = minio_client.get_or_render_page_base64(
+                    page_img_key=page_img_key,
+                    version_id=top_v_id,
+                    document_id=top_doc_id,
+                    page_no=int(top_p_no) if str(top_p_no).isdigit() else 1,
+                )
+                if image_base64:
+                    logger.info("Auto-Vision RAG (stream): Đã bốc/dựng ảnh trang bản vẽ %s truyền sang Vision LLM", page_img_key)
             except Exception as exc:
-                logger.debug("Tài liệu cũ chưa có ảnh trang %s trong MinIO (dùng Text RAG thuần): %s", page_img_key, exc)
+                logger.warning("Không thể bốc/dựng ảnh trang (stream) %s: %s", page_img_key, exc)
 
     # ── 4. Build Prompt ──────────────────────────────────────────────────────
-    system_prompt = prompts.build_system_prompt(numeric_rule=numeric_rule, reasoning_mode=reasoning_mode)
-    user_prompt = prompts.build_user_prompt(req.question, hits, reasoning_mode=reasoning_mode, history=req.history)
+    has_img = bool(image_base64)
+    if has_img:
+        logger.info("Vision LLM Mode (stream): Đã kích hoạt Vision Prompt kèm dữ liệu hình ảnh Base64")
+
+    system_prompt = prompts.build_system_prompt(numeric_rule=numeric_rule, reasoning_mode=reasoning_mode, has_image=has_img)
+    user_prompt = prompts.build_user_prompt(req.question, hits, reasoning_mode=reasoning_mode, history=req.history, has_image=has_img, machine_code=req.machineCode)
 
     # ── 5. Stream từ LM Studio ──────────────────────────────────────────────
     try:

@@ -37,7 +37,11 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   bool _picking = false;
   bool _isAsking = false;
   final TextEditingController _questionController = TextEditingController();
+  final TextEditingController _machineCodeController = TextEditingController();
   AnswerResult? _answer;
+  List<Rect> _boundingBoxes = [];
+  
+  static final _locRegex = RegExp(r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]');
 
   // ── Camera: chụp ảnh trực tiếp ────────────────────────────────────
   Future<void> _takePhoto() async {
@@ -45,9 +49,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     try {
       final XFile? photo = await _imagePicker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 85,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
       );
       if (photo == null) return;
       final bytes = await photo.readAsBytes();
@@ -65,9 +69,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 85,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
       );
       if (image != null) {
         final bytes = await image.readAsBytes();
@@ -127,9 +131,40 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     try {
       final repo = ref.read(docsRepositoryProvider);
       final entry = _snaps.first;
-      final answer = await repo.askWithImage(question, entry.bytes, entry.fileName);
-      setState(() => _answer = answer);
+      final machineCode = _machineCodeController.text.trim();
+      final rawAnswer = await repo.askWithImage(question, entry.bytes, entry.fileName, machineCode: machineCode.isNotEmpty ? machineCode : null);
+      
+      String cleanText = rawAnswer.answer;
+      final matches = _locRegex.allMatches(cleanText);
+      final List<Rect> parsedBoxes = [];
+      for (final m in matches) {
+        try {
+          final x1 = double.parse(m.group(1)!);
+          final y1 = double.parse(m.group(2)!);
+          final x2 = double.parse(m.group(3)!);
+          final y2 = double.parse(m.group(4)!);
+          if (x1 < x2 && y1 < y2) {
+             parsedBoxes.add(Rect.fromLTRB(x1, y1, x2, y2));
+          }
+        } catch (_) {}
+      }
+      cleanText = cleanText.replaceAll(_locRegex, '').trim();
+
+      final finalAnswer = AnswerResult(
+        answer: cleanText,
+        confidence: rawAnswer.confidence,
+        locked: rawAnswer.locked,
+        numericRule: rawAnswer.numericRule,
+        reasoningMode: rawAnswer.reasoningMode,
+        citations: rawAnswer.citations,
+      );
+
+      setState(() {
+        _answer = finalAnswer;
+        _boundingBoxes = parsedBoxes;
+      });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lỗi: $e')),
       );
@@ -224,7 +259,12 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
           alignment: Alignment.topRight,
           children: [
             InteractiveViewer(
-              child: Image.memory(snap.bytes, fit: BoxFit.contain),
+              child: Center(
+                child: CustomPaint(
+                  foregroundPainter: _BBoxPainter(_boundingBoxes),
+                  child: Image.memory(snap.bytes),
+                ),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(8),
@@ -309,27 +349,50 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
           // ── FOOTER: CHAT INPUT ─────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _questionController,
-                    decoration: InputDecoration(
-                      hintText: 'Hỏi về ảnh thiết bị này...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
+                Row(
+                  children: [
+                    Icon(Icons.qr_code_scanner, color: scheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _machineCodeController,
+                        decoration: InputDecoration(
+                          hintText: 'Mã máy (tuỳ chọn, vd: CNC-01)',
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                    onSubmitted: (_) => _askQuestion(),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _isAsking ? null : _askQuestion,
-                  icon: _isAsking 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                    : const Icon(Icons.send),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _questionController,
+                        decoration: InputDecoration(
+                          hintText: 'Hỏi về ảnh thiết bị này (vd: vị trí ở đâu?)...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        onSubmitted: (_) => _askQuestion(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      onPressed: _isAsking ? null : _askQuestion,
+                      icon: _isAsking 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                        : const Icon(Icons.send),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -602,4 +665,33 @@ class _SnapCard extends StatelessWidget {
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)}KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
+}
+
+// ── Custom Painter for Bounding Boxes ──────────────────────────────────────
+class _BBoxPainter extends CustomPainter {
+  _BBoxPainter(this.boxes);
+  final List<Rect> boxes;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (boxes.isEmpty) return;
+
+    final paint = Paint()
+      ..color = Colors.redAccent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+    
+    for (final box in boxes) {
+      final rect = Rect.fromLTRB(
+        (box.left / 1000.0) * size.width,
+        (box.top / 1000.0) * size.height,
+        (box.right / 1000.0) * size.width,
+        (box.bottom / 1000.0) * size.height,
+      );
+      canvas.drawRect(rect, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BBoxPainter oldDelegate) => true;
 }

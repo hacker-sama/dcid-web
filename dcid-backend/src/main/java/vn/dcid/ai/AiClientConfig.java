@@ -25,9 +25,12 @@ public class AiClientConfig {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
 
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(180));
+
         return RestClient.builder()
                 .baseUrl(properties.baseUrl())
-                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                .requestFactory(requestFactory)
                 .defaultHeader(INTERNAL_TOKEN_HEADER, properties.internalToken())
                 .build();
     }

@@ -10,7 +10,7 @@ class ApiClient {
     dio = Dio(BaseOptions(
       baseUrl: Env.apiBaseUrl,
       connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 90),
+      receiveTimeout: const Duration(seconds: 180),
     ));
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {

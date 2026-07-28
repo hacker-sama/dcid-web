@@ -77,19 +77,13 @@ def _detect_filetype(data: bytes) -> str:
     return "pdf"
 
 
-def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
-    """Render từng trang PDF (PyMuPDF) rồi OCR (PaddleOCR). Lỗi PDF hỏng sẽ raise —
-    caller chuyển thành callback FAILED.
-    Lưu ý: fitz và numpy được import bên trong hàm để container `ai` (không cài OCR)
-    vẫn import được PageOcr mà không bị ModuleNotFoundError.
+def extract_pages(pdf_bytes: bytes, langs: list[str] | None = None) -> list[PageOcr]:
+    """Trích xuất dữ liệu chữ trực tiếp từ PDF (PyMuPDF / fitz) và render ảnh trang PNG.
+    Không chạy qua PaddleOCR để tránh làm méo chữ, làm chậm tiến trình và phụ thuộc ngôn ngữ.
     """
     import fitz  # PyMuPDF
-    import numpy as np
 
-    lang = _pick_lang(langs)
-    engine = _get_engine(lang)
     ftype = _detect_filetype(pdf_bytes)
-
     pages: list[PageOcr] = []
     doc = fitz.open(stream=pdf_bytes, filetype=ftype)
     try:
@@ -101,19 +95,11 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
             matrix = fitz.Matrix(scale, scale)
 
             pix = page.get_pixmap(matrix=matrix)
-            img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
-                pix.height, pix.width, pix.n
-            )
-            if pix.n == 4:  # RGBA -> RGB (PaddleOCR không cần kênh alpha)
-                img = img[:, :, :3]
-
             lines: list[str] = []
             boxes: list[tuple[float, float, float, float]] = []
 
-            # Cố gắng lấy text tự nhiên (native text) và tọa độ không gian (Bbox) từ PyMuPDF trước.
-            # PDF xuất từ Word/CAD thường có sẵn text 100% chính xác kèm tọa độ rect.
             native_text = page.get_text("text").strip()
-            if len(native_text) > 50:
+            if native_text:
                 for b in page.get_text("blocks"):
                     if len(b) >= 7 and b[6] == 0:  # text block
                         txt = str(b[4]).strip()
@@ -124,27 +110,8 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
                             boxes.extend([bbox] * len(block_lines))
                 if not lines:
                     lines = native_text.split("\n")
-                logger.info("OCR trang %d: Dung native text (%d ky tu, %d boxes) thay vi PaddleOCR", i, len(native_text), len(boxes))
             else:
-                # Nếu không có text (PDF scan), dùng PaddleOCR bóc tách chữ & Bbox polys
-                for res in engine.predict(img):
-                    rec_texts = res.get("rec_texts", []) if isinstance(res, dict) else getattr(res, "rec_texts", [])
-                    dt_polys = res.get("dt_polys", []) if isinstance(res, dict) else getattr(res, "dt_polys", [])
-                    if not dt_polys:
-                        dt_polys = res.get("boxes", []) if isinstance(res, dict) else getattr(res, "boxes", [])
-                    lines.extend(rec_texts)
-                    for poly in dt_polys:
-                        try:
-                            poly_arr = np.array(poly)
-                            if poly_arr.ndim == 2 and poly_arr.shape[1] >= 2:
-                                min_x = float(np.min(poly_arr[:, 0]))
-                                min_y = float(np.min(poly_arr[:, 1]))
-                                max_x = float(np.max(poly_arr[:, 0]))
-                                max_y = float(np.max(poly_arr[:, 1]))
-                                boxes.append((round(min_x, 1), round(min_y, 1), round(max_x, 1), round(max_y, 1)))
-                        except Exception:
-                            pass
-                logger.debug("OCR trang %d: PaddleOCR doc duoc %d dong, %d boxes", i, len(lines), len(boxes))
+                lines = [f"[Trang {i} chứa hình ảnh / bản vẽ kỹ thuật - xem ảnh đính kèm]"]
 
             png_bytes = pix.tobytes("png")
 
@@ -158,7 +125,7 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
                     image_bytes=png_bytes,
                 )
             )
-            logger.debug("OCR trang %d: %d x %d px -> %d dong (%d boxes)", i, pix.width, pix.height, len(lines), len(boxes))
+            logger.info("Trang %d: Trích xuất %d dòng (%d ký tự) trực tiếp từ PDF", i, len(lines), len(native_text))
     finally:
         doc.close()
 

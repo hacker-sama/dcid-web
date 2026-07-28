@@ -29,7 +29,7 @@ class MockDocsRepository implements IDocsRepository {
   }
 
   @override
-  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName) async {
+  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName, {String? machineCode}) async {
     await Future<void>.delayed(const Duration(seconds: 2));
     // Trả về một câu trả lời mock đặc thù cho Snap & Ask
     return AnswerResult(
@@ -94,4 +94,10 @@ class MockDocsRepository implements IDocsRepository {
       ],
     );
   }
+
+  @override
+  Future<void> deleteDocument(String id) async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+  }
 }
+

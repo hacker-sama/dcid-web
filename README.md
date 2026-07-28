@@ -6,9 +6,10 @@ Monorepo:
 
 | Thư mục | Vai trò |
 |---|---|
-| [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, quản lý tài liệu & version, audit ISO, storage MinIO, WebSocket STOMP. |
-| [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Web (Kiosk/Admin) + Mobile (Android). Đã có Tra cứu RAG, Upload tài liệu. |
-| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM. **OCR đã thật** (PaddleOCR+PyMuPDF); RAG thật với ChromaDB; LLM chạy local (LM Studio); Async workers (Celery+Redis); SSE Streaming. |
+| [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, quản lý tài liệu & version, API Xóa tài liệu, audit ISO, storage MinIO, WebSocket STOMP. |
+| [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Web (Kiosk/Admin) + Mobile (Android). Đã có Tra cứu RAG, Upload tài liệu, Xóa tài liệu (AlertDialog xác nhận). |
+| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM. Kiến trúc mô-đun hóa `src/`; Qwen2-VL-2B (Q4_K_M) Visual Bbox Crop & Pure-Text Skip; ChromaDB Persistent Vector DB; Static file server `/uploads`; Celery+Redis; SSE Streaming. |
+
 
 ## Tài liệu
 

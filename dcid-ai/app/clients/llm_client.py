@@ -83,25 +83,38 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
     )
 
-    messages = [{"role": "system", "content": system_prompt}]
+    messages = []
+    if system_prompt and system_prompt.strip():
+        messages.append({"role": "system", "content": system_prompt})
+    
+    history_text = ""
     if history:
         import re
+        history_lines = []
         for msg in history[-4:]:  # Giới hạn 4 lượt gần nhất
             role = getattr(msg, "role", None) if not isinstance(msg, dict) else msg.get("role")
             content = getattr(msg, "content", None) if not isinstance(msg, dict) else msg.get("content", "")
             if role and content:
-                role = "assistant" if role == "ai" else role
-                # Lọc sạch các từ khóa rác từ lịch sử cũ nếu có
-                clean_content = re.sub(r"\[CÂU HỎI\]|Câu hỏi:.*?\n", "", content).strip()
-                messages.append({"role": role, "content": clean_content or content})
+                role_name = "AI" if role in ("ai", "assistant") else "Người dùng"
+                # Lọc sạch các từ khóa rác và tiêm injection từ lịch sử cũ
+                clean_content = re.sub(r"\[CÂU HỎI\]|Câu hỏi mới nhất[^\n]*|Câu hỏi:[^\n]*", "", clean_content).strip()
+                # Cắt ngắn câu trả lời cũ của assistant
+                if role_name == "AI" and len(clean_content) > 150:
+                    clean_content = clean_content[:150] + "..."
+                history_lines.append(f"{role_name}: {clean_content}")
+        
+        if history_lines:
+            history_text = "[LỊCH SỬ HỘI THOẠI TRƯỚC ĐÓ]\n" + "\n".join(history_lines) + "\n\n"
+
+    final_user_prompt = history_text + user_prompt
 
     if image_base64:
         user_content: list[dict[str, Any]] | str = [
             {"type": "image_url", "image_url": {"url": image_base64}},
-            {"type": "text", "text": user_prompt},
+            {"type": "text", "text": final_user_prompt},
         ]
     else:
-        user_content = user_prompt
+        user_content = final_user_prompt
 
     messages.append({"role": "user", "content": user_content})
 
@@ -123,6 +136,13 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         call_kwargs["frequency_penalty"] = freq_p
     if pres_p:
         call_kwargs["presence_penalty"] = pres_p
+
+    rep_penalty = getattr(s, "llm_repetition_penalty", 0.0)
+    if rep_penalty and rep_penalty > 1.0 and "qwen2-vl" not in s.lm_studio_model.lower():
+        call_kwargs["extra_body"] = {
+            "repeat_penalty": rep_penalty,
+            "repetition_penalty": rep_penalty
+        }
 
     try:
         response = client.chat.completions.create(**call_kwargs)
@@ -193,7 +213,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     # Model 2B thường bịa đặt khi nhận OCR text rác: trả về các từ khóa
     # về tính năng hệ thống hoặc nội dung hoàn toàn không liên quan tài liệu.
     # Phát hiện → trả rỗng → query_service sẽ fallback sang thông báo an toàn.
-    answer = _detect_hallucination(answer)
+    answer = _detect_hallucination(answer, has_image=bool(image_base64))
 
     logger.info(
         "LLM OK: model=%s tokens_used=%s answer_chars=%d",
@@ -241,16 +261,22 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
         s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
     )
 
-    messages = [{"role": "system", "content": system_prompt}]
+    messages = []
+    if system_prompt and system_prompt.strip():
+        messages.append({"role": "system", "content": system_prompt})
     if history:
         import re
         for msg in history[-4:]:
             role = getattr(msg, "role", None) if not isinstance(msg, dict) else msg.get("role")
             content = getattr(msg, "content", None) if not isinstance(msg, dict) else msg.get("content", "")
             if role and content:
-                role = "assistant" if role == "ai" else role
-                clean_content = re.sub(r"\[CÂU HỎI\]|Câu hỏi:.*?\n", "", content).strip()
-                messages.append({"role": role, "content": clean_content or content})
+                role_name = "assistant" if role in ("ai", "assistant") else "user"
+                # Sanitize injection attacks trước khi append vào messages
+                clean_content = _sanitize_history_content(content)
+                clean_content = re.sub(r"\[CÂU HỎI\]|Câu hỏi mới nhất[^\n]*|Câu hỏi:[^\n]*", "", clean_content).strip()
+                if role_name == "assistant" and len(clean_content) > 150:
+                    clean_content = clean_content[:150] + "..."
+                messages.append({"role": role_name, "content": clean_content or content})
 
     if image_base64:
         user_content: list[dict[str, Any]] | str = [
@@ -273,6 +299,13 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
     top_p = getattr(s, "llm_top_p", 0.0)
     if top_p and 0.0 < top_p < 1.0:
         stream_kwargs["top_p"] = top_p
+
+    rep_penalty = getattr(s, "llm_repetition_penalty", 0.0)
+    if rep_penalty and rep_penalty > 1.0 and "qwen2-vl" not in s.lm_studio_model.lower():
+        stream_kwargs["extra_body"] = {
+            "repeat_penalty": rep_penalty,
+            "repetition_penalty": rep_penalty
+        }
 
     try:
         stream = client.chat.completions.create(**stream_kwargs)
@@ -341,37 +374,44 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
         logger.info("LLM stream OK: model=%s tokens_streamed=%d", s.lm_studio_model, token_count)
 
     except APIConnectionError as exc:
+        if image_base64:
+            logger.warning("LM Studio Vision stream kết nối lỗi (%s) → Thử lại chế độ Text RAG thuần...", exc)
+            yield from generate_answer_stream(system_prompt, user_prompt, history=history, image_base64=None)
+            return
         logger.error("LLM stream kết nối thất bại: %s", exc)
         raise LLMConnectionError(
             f"LM Studio không phản hồi tại {s.lm_studio_base_url}. "
             "Hãy mở LM Studio trên máy Host → nạp model → Start Server (port 1234)."
         ) from exc
     except APITimeoutError as exc:
+        if image_base64:
+            logger.warning("LM Studio Vision stream timeout (%s) → Thử lại chế độ Text RAG thuần...", exc)
+            yield from generate_answer_stream(system_prompt, user_prompt, history=history, image_base64=None)
+            return
         logger.error("LLM stream timeout sau %.1fs", s.llm_timeout)
         raise LLMInferenceError(
             f"LM Studio timeout sau {s.llm_timeout}s khi streaming."
         ) from exc
     except APIStatusError as exc:
+        if image_base64:
+            logger.warning("LM Studio Vision stream Channel/API error (%s) → Thử lại chế độ Text RAG thuần...", exc)
+            yield from generate_answer_stream(system_prompt, user_prompt, history=history, image_base64=None)
+            return
         logger.error("LLM stream Channel Error (status %s): %s", exc.status_code, exc.message)
         raise LLMInferenceError(
             f"LM Studio Channel Error (status {exc.status_code}) khi streaming."
         ) from exc
     except Exception as exc:  # noqa: BLE001
+        if image_base64:
+            logger.warning("LLM stream Vision lỗi không xác định (%s) → Thử lại chế độ Text RAG thuần...", exc)
+            yield from generate_answer_stream(system_prompt, user_prompt, history=history, image_base64=None)
+            return
         logger.error("LLM stream lỗi không xác định: %s", exc)
         raise LLMInferenceError(f"Lỗi LLM stream không xác định: {exc}") from exc
 
-def _detect_hallucination(answer: str) -> str:
-    """Phát hiện hallucination từ model 2B.
-
-    Khi model nhỏ nhận OCR text rác, nó thường bịa đặt về:
-    - Tính năng hệ thống (Search by Image, Image Recognition, Smart KCN Docs...)
-    - Nội dung hoàn toàn không liên quan tài liệu kỹ thuật
-    - Mô tả sản phẩm phần mềm thay vì nội dung bản vẽ
-
-    Nếu phát hiện hallucination → trả rỗng → query_service fallback sang thông báo an toàn.
-
-    Returns:
-        answer gốc nếu OK, hoặc chuỗi rỗng nếu hallucination.
+def _detect_hallucination(answer: str, has_image: bool = False) -> str:
+    """Phát hiện hallucination từ model 2B khi bị ảo giác về tính năng hệ thống phần mềm.
+    Nâng ngưỡng nếu đang ở chế độ Vision (has_image=True) để không phạt nhầm các từ mô tả hình ảnh.
     """
     if not answer or not answer.strip():
         return answer
@@ -402,10 +442,13 @@ def _detect_hallucination(answer: str) -> str:
 
     hallucination_count = sum(1 for kw in _HALLUCINATION_KEYWORDS if kw in answer_lower)
 
-    if hallucination_count >= 2:
+    # Nếu có ảnh (Vision Mode), cho phép từ ngữ mô tả hình ảnh, nâng threshold lên >= 3
+    threshold = 3 if has_image else 2
+
+    if hallucination_count >= threshold:
         logger.warning(
-            "HALLUCINATION DETECTED (%d keywords): %.300s",
-            hallucination_count, answer.replace("\n", "↵"),
+            "HALLUCINATION DETECTED (%d keywords, threshold %d): %.300s",
+            hallucination_count, threshold, answer.replace("\n", "↵"),
         )
         return ""
 
@@ -432,6 +475,9 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
         r"\[HẾT CONTEXT[^\]]*\]",
         r"\[KHÔNG CÓ CONTEXT[^\]]*\]",
         r"\[CÂU HỎI[^\]]*\][:.]?\s*(.*?)(?=\n|$)",
+        r"Câu hỏi mới nhất[^\n]*\n?",
+        r"Câu hỏi cần giải quyết[^\n]*\n?",
+        r"Câu hỏi:[^\n]*\n?",
     ]
     for pat in meta_patterns:
         cleaned = re.sub(pat, "", cleaned, flags=re.IGNORECASE | re.DOTALL)
@@ -439,24 +485,28 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
     # Loại bỏ đường viền phân cách "---" thừa ở đầu câu trả lời sau khi lọc meta
     cleaned = re.sub(r"^\s*---\s*", "", cleaned).strip()
 
+    # Danh sách các tiền tố rác / chép lại câu hỏi
+    bad_prefixes = (
+        "[CHỈ THỊ", "CHỈ THỊ CHUYÊN GIA", "CHỈ THỊ ĐẶC BIỆT",
+        "[YÊU CẦU", "YÊU CẦU TƯ VẤN", "NGUYÊN TẮC HƯỚNG DẪN",
+        "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN",
+        "Câu hỏi", "Câu hỏi:", "Câu hỏi :", "[CÂU HỎI", "Question:",
+        "Nhiệm vụ:", "Yêu cầu:"
+    )
+
     # Loại bỏ thêm nếu model chép lại tiêu đề không có ngoặc vuông ở đầu dòng (e.g. Câu hỏi: "...")
     lines = cleaned.split("\n")
     filtered = []
     for line in lines:
         stripped = line.strip()
-        if any(stripped.startswith(p) and len(stripped) < 120 for p in [
-            "[CHỈ THỊ", "CHỈ THỊ CHUYÊN GIA", "CHỈ THỊ ĐẶC BIỆT",
-            "[YÊU CẦU", "YÊU CẦU TƯ VẤN", "NGUYÊN TẮC HƯỚNG DẪN",
-            "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN",
-            "Câu hỏi:", "Câu hỏi :", "[CÂU HỎI"
-        ]):
+        if any(stripped.startswith(p) for p in bad_prefixes) and len(stripped) < 180:
             continue
         filtered.append(line)
 
     cleaned = "\n".join(filtered).strip()
     cleaned = re.sub(r"^\s*---\s*", "", cleaned).strip()
 
-    # Fallback 1: nếu sau khi xoá <think> mà cleaned rỗng (tức toàn bộ text nằm trong <think>)
+    # Fallback 1: nếu sau khi xoá <think> mà cleaned rỗng (tức toàn bộ text nằm trong <think> hoặc bị xoá do lặp câu hỏi)
     if not cleaned and text:
         think_match = re.search(r"<think>(.*?)(?:</think>|$)", text, flags=re.DOTALL)
         if think_match:
@@ -467,12 +517,7 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
             think_filtered = []
             for line in think_lines:
                 stripped = line.strip()
-                if any(stripped.startswith(p) and len(stripped) < 120 for p in [
-                    "[CHỈ THỊ", "CHỈ THỊ CHUYÊN GIA", "CHỈ THỊ ĐẶC BIỆT",
-                    "[YÊU CẦU", "YÊU CẦU TƯ VẤN", "NGUYÊN TẮC HƯỚNG DẪN",
-                    "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN",
-                    "Câu hỏi:", "Câu hỏi :", "[CÂU HỎI"
-                ]):
+                if any(stripped.startswith(p) for p in bad_prefixes) and len(stripped) < 180:
                     continue
                 think_filtered.append(line)
             cleaned = "\n".join(think_filtered).strip()
@@ -487,12 +532,7 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
         think_filtered = []
         for line in think_lines:
             stripped = line.strip()
-            if any(stripped.startswith(p) and len(stripped) < 120 for p in [
-                "[CHỈ THỊ", "CHỈ THỊ CHUYÊN GIA", "CHỈ THỊ ĐẶC BIỆT",
-                "[YÊU CẦU", "YÊU CẦU TƯ VẤN", "NGUYÊN TẮC HƯỚNG DẪN",
-                "NGUYÊN TẮC SUY LUẬN", "DƯỚI ĐÂY LÀ CÁC ĐOẠN",
-                "Câu hỏi:", "Câu hỏi :", "[CÂU HỎI"
-            ]):
+            if any(stripped.startswith(p) for p in bad_prefixes) and len(stripped) < 180:
                 continue
             think_filtered.append(line)
         cleaned = "\n".join(think_filtered).strip()
@@ -613,3 +653,56 @@ class LLMConnectionError(RuntimeError):
 
 class LLMInferenceError(RuntimeError):
     """Model đang chạy nhưng sinh câu trả lời thất bại."""
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Security Helper
+# ────────────────────────────────────────────────────────────────────────────
+
+_INJECTION_PATTERNS = [
+    # Các dạng jailbreak / override system prompt phổ biến
+    r"bỏ qua.*quy tắc",
+    r"ignore.*instructions?",
+    r"forget.*previous",
+    r"act as",
+    r"you are now",
+    r"disregard.*rules?",
+    r"override.*system",
+    r"as an ai without.*restrictions?",
+    r"pretend.*you.*have no.*guidelines?",
+    r"new.*system.*prompt",
+    r"--- (thông tin|hết|system|end|stop|override)",
+    r"\[system\]",
+    r"\[assistant\]",
+    r"\[human\]",
+    r"<\|im_start\|>",
+    r"<\|im_end\|>",
+    r"<\|system\|>",
+]
+
+_INJECTION_RE = re.compile(
+    "|".join(_INJECTION_PATTERNS),
+    re.IGNORECASE,
+)
+
+
+def _sanitize_history_content(content: str) -> str:
+    """Lọc bỏ các chuỗi tiêm lệnh / jailbreak từ nội dung history do client gửi lên.
+
+    Phòng chống tấn công: Client có thể giả mạo tin nhắn assistant chứa
+    các lệnh như "Bỏ qua quy tắc...", "Ignore instructions..." để đánh lừa LLM.
+    Hàm này xóa các pattern nguy hiểm và cắt ngắn nội dung quá dài.
+
+    Args:
+        content: Nội dung tin nhắn từ lịch sử hội thoại.
+
+    Returns:
+        Nội dung đã lọc injection patterns, giới hạn 500 ký tự.
+    """
+    if not content:
+        return content
+    # Cắt ngắn để tránh các payload quá lớn từ client
+    content = content[:500]
+    # Xoá các pattern injection
+    sanitized = _INJECTION_RE.sub("", content).strip()
+    return sanitized or content[:200]  # fallback nếu sanitize xoá hết nội dung

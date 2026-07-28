@@ -1,4 +1,4 @@
-# Smart KCN Docs — Roadmap (cập nhật 25/07/2026)
+# Smart KCN Docs — Roadmap (cập nhật 27/07/2026)
 
 > Dựa trực tiếp trên **code thực tế** trong repo (commit hiện tại) + tài liệu `PLAN-THESIS.md`,
 > `ARCHITECTURE.md`, `API-CONTRACT.md`, `ERD.md`, `FRONTEND.md`.
@@ -17,10 +17,17 @@
 | **Backend — Ingest callback** | `InternalIngestController` (`POST /api/internal/ingest-callback`) + `IngestService` -> ghi `document_pages`, auto-publish ACTIVE |
 | **Backend — Query** | `QueryController` (`POST /api/query`) + `QueryService` -> forward AI, ghi `query_logs` |
 | **Backend — Audit log** | `AuditLogService` + `AuditLog` entity (JSONB fix đã apply) |
+| **Backend — Xóa Tài Liệu (Delete API)** | `DocumentController` (`DELETE /api/documents/{id}`) + `DocumentService.deleteDocument` (MinIO PDF/page PNGs + Postgres DB + Audit log `DOCUMENT_DELETE` + AI vector purge) |
 | **Backend — DB schema** | V1 (users, audit_logs) + V2 (documents, versions, pages) + V3 (query_logs) + V4 (work_orders) |
 | **Backend — Entities** | `User`, `Document`, `DocumentVersion`, `DocumentPage`, `QueryLog`, `AuditLog` |
 | **Backend — WebSocket skeleton** | `WebSocketConfig` STOMP: endpoint `/ws` (SockJS), broker `/topic` + `/queue` — chưa có business broadcast |
-| **AI — FastAPI + endpoints** | `GET /ai/health`, `POST /ai/ingest` (202 async), `POST /ai/query`, `POST /ai/query/stream`, `GET /ai/status/{task_id}` |
+| **AI — FastAPI + endpoints** | `GET /ai/health`, `POST /ai/ingest` (202 async), `POST /ai/query`, `POST /ai/query/stream`, `GET /ai/status/{task_id}`, `DELETE /ai/documents/{document_id}` |
+| **AI — Codebase Restructuring (`src/`)** | Kiến trúc mô-đun hóa `src/ingestion`, `src/chunking`, `src/embeddings`, `src/vectordb`, `src/retrieval`, `src/prompts`, `src/llm`, `src/api`, `src/utils`, `config.yaml`, `main.py` |
+| **AI — Visual Bounding Box Chunking** | Tự động phát hiện sơ đồ/bản vẽ (`MIN_DRAWING_AREA`), crop vùng ảnh thành file `uploads/crops/{version_id}_p{page}_c{idx}.png`, lưu metadata `image_path` vào ChromaDB cho UI snippet rendering |
+| **AI — Qwen2-VL 2B (Q4_K_M) Visual Captioner** | Task-tuned prompts cho Qwen2-VL 2B khâu Ingestion (đọc nhãn, Markdown tables, tóm tắt hình vẽ 2-3 câu) |
+| **AI — Pure-Text Vision Skip** | Tự động bỏ qua lượt gọi Qwen2-VL 2B khi trang PDF là thuần văn bản để tối ưu Ingestion latency và tiết kiệm tài nguyên |
+| **AI — Static Upload Server (`/uploads`)** | Serve trực tiếp file ảnh crop qua FastAPI static files server (`http://localhost:8000/uploads/...`) |
+| **AI — Vector Purge on Delete** | `vector_store.delete_document_chunks` xóa sạch embeddings trong ChromaDB + dọn dẹp file crop đĩa khi xóa tài liệu |
 | **AI — Ingest thật (MinIO->OCR->callback)** | `ingest_service.py` goi `ocr_client.extract_pages()` + chunk + embed + index + callback BE |
 | **AI — OCR thật (Service ai-ocr)** | `main_ocr.py` & `pipeline/ocr.py`: **PyMuPDF** (rasterize) + **PaddleOCR 3.7** — EN: CER 0%, VI: CER ~10% |
 | **AI — Chunking thật** | `pipeline/chunk.py`: layout-aware (giu bang nguyen ven), sliding window 400 tu / overlap 60 |
@@ -37,11 +44,12 @@
 | **AI — ChatML & Prompt Optimization for Small Models** | `prompts.py` + `llm_client.py`: chuyen history ve mảng `messages` OpenAPI chuan, toi uu prompt ngan cho model 1.5B/3B (Qwen2.5, Llama-3.2) tranh hallucinate. |
 | **Flutter — Login** | `auth/login_screen.dart` noi API that |
 | **Flutter — Shell/Nav** | `shell/home_shell.dart` + routing role-guard |
-| **Flutter — Tai lieu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — noi API that |
+| **Flutter — Tai lieu & Xóa Tài Liệu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — nối API thật + nút Xóa (Thùng rác đỏ) + Dialog xác nhận cảnh báo |
 | **Flutter — Tra cuu (non-SSE)** | `search/search_screen.dart`: chat UI + reasoning mode toggle + doc filter, goi `POST /api/query` dong bo |
 | **Flutter — Layout & Density** | `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, responsive layout |
 | **Flutter — Placeholder** | `admin_screen.dart`, `snap_ask_screen.dart`, `document_viewer_screen.dart` — placeholder |
 | **Infra Docker** | postgres, redis, minio, zookeeper, kafka, chroma, backend, ai, ai-ocr, **ai-worker**, **ai-flower** — tat ca Up/Started |
+
 
 ### 🔴 CHUA CO — can lam trong T3–T6
 
@@ -245,6 +253,10 @@ data/eval/questions.csv
 | 18 | **STOMP WebSocket cho ingest progress (T3)** | BE broadcast per-step status qua `/topic/ingest/{versionId}` bang `SimpMessagingTemplate`. Flutter subscribe STOMP khi upload xong |
 | 19 | **True Multimodal Vision API (VLM)** | Ho tro gui `image_url` base64 qua LM Studio voi model **Qwen2-VL-2B-Instruct GGUF Q4_K_M** xem truc tiep va phan tich hinh ve ban ve ky thuat. |
 | 20 | **ChatML & Small Model Prompt Tuning** | Chuyen history ve OpenAI message list `[{"role": "user/assistant", ...}]`, rut gon system prompt de cac model 1.5B/3B (Qwen 2.5, Llama 3.2) chay mượt ma khong lặp lai system prompt. |
+| 21 | **Visual Bounding Box Chunking & `image_path`** | Cắt các vùng sơ đồ/bản vẽ thành file ảnh riêng trong `uploads/crops/`, lưu `image_path` vào metadata ChromaDB để Frontend UI render ảnh trích dẫn trực tiếp. |
+| 22 | **Pure-Text Vision Skip** | Tự động phát hiện và bỏ qua Qwen2-VL 2B khi trang PDF là thuần văn bản để tối ưu Ingestion latency và tiết kiệm tài nguyên CPU/GPU. |
+| 23 | **Fullstack Delete Document Pipeline** | Xóa tài liệu đồng bộ qua `DELETE /api/documents/{id}` ở Backend (MinIO PDF/pages + DB records) + `DELETE /ai/documents/{document_id}` ở AI Service (purge ChromaDB vectors + crop files) + nút xóa UI Flutter. |
+
 
 ---
 

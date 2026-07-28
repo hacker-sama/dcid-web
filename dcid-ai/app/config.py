@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     lm_studio_base_url: str = "http://host.docker.internal:1234/v1"
     # LM Studio không cần API key thật — bất kỳ string nào cũng được chấp nhận.
     lm_studio_api_key: str = "lm-studio"
-    # Tên model phải khớp chính xác identifier hiển thị trong LM Studio UI (Qwen-2.5-7B-Instruct / DeepSeek-R1-Distill)
-    lm_studio_model: str = "deepseek-r1-distill-qwen-1.5b"
+    # Tên model phải khớp chính xác identifier hiển thị trong LM Studio UI (vd: qwen2-vl-2b-instruct / Qwen-2.5-7B-Instruct)
+    lm_studio_model: str = "qwen2-vl-2b-instruct"
     llm_temperature: float = 0.2          # Cấu hình suy luận tối ưu theo sơ đồ (Low Temperature: 0.2)
     llm_top_p: float = 0.9               # Cấu hình suy luận tối ưu theo sơ đồ (Top-P: 0.9)
     llm_repetition_penalty: float = 1.2  # Cấu hình suy luận tối ưu theo sơ đồ (High Repetition Penalty: 1.2)

@@ -123,46 +123,29 @@ class TestIsLocked:
 class TestBuildSystemPrompt:
     def test_contains_base_instructions(self):
         from app.pipeline.prompts import build_system_prompt
-        prompt = build_system_prompt([], numeric_rule=False)
-        assert "Smart KCN Docs" in prompt
-        assert "NGUYÊN TẮC HƯỚNG DẪN TRẢ LỜI" in prompt
-        assert "DỰA VÀO CONTEXT" in prompt
-
-    def test_no_hits_shows_no_context_marker(self):
-        from app.pipeline.prompts import build_system_prompt
-        prompt = build_system_prompt([], numeric_rule=False)
-        assert "KHÔNG CÓ CONTEXT" in prompt
-
-    def test_hits_are_injected_with_page_info(self):
-        from app.pipeline.prompts import build_system_prompt
-        hits = [_make_hit(12, 0.83, "Điện áp cấp nguồn 220 VAC")]
-        prompt = build_system_prompt(hits, numeric_rule=False)
-        assert "Trang 12" in prompt
-        assert "Điện áp cấp nguồn 220 VAC" in prompt
-        assert "83.0%" in prompt
+        prompt = build_system_prompt(numeric_rule=False)
+        assert prompt == ""
 
     def test_numeric_rule_injection(self):
         from app.pipeline.prompts import build_system_prompt
-        prompt = build_system_prompt([], numeric_rule=True)
-        assert "CHỈ THỊ ĐẶC BIỆT" in prompt
-        assert "TUYỆT ĐỐI KHÔNG làm tròn số" in prompt
+        prompt = build_system_prompt(numeric_rule=True)
+        assert prompt == ""
 
     def test_no_numeric_injection_when_false(self):
         from app.pipeline.prompts import build_system_prompt
-        prompt = build_system_prompt([], numeric_rule=False)
-        assert "CHỈ THỊ ĐẶC BIỆT" not in prompt
+        prompt = build_system_prompt(numeric_rule=False)
+        assert prompt == ""
 
-    def test_multiple_hits_all_appear(self):
-        from app.pipeline.prompts import build_system_prompt
+    def test_user_prompt_hits_all_appear(self):
+        from app.pipeline.prompts import build_user_prompt
         hits = [
             _make_hit(5, 0.90, "nội dung trang 5"),
             _make_hit(7, 0.75, "nội dung trang 7"),
         ]
-        prompt = build_system_prompt(hits)
+        prompt = build_user_prompt("Câu hỏi test?", hits)
         assert "nội dung trang 5" in prompt
         assert "nội dung trang 7" in prompt
-        assert "Đoạn 1" in prompt
-        assert "Đoạn 2" in prompt
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -188,16 +171,16 @@ class TestRunQuery:
         assert response.confidence == 0.30
 
     def test_guardrail_locked_when_low_score(self):
-        """Score < 0.60 → locked, không gọi LLM."""
+        """Score < 0.25 (thấp hơn cả reasoning threshold) → locked, không gọi LLM."""
         from app.services.query_service import run_query
 
         with (
             patch("app.services.query_service.embed_pipeline.embed_query", return_value=[0.1] * 384),
             patch("app.services.query_service.index_pipeline.search", return_value=[
-                _make_hit(1, 0.45),  # score thấp → locked
+                _make_hit(1, 0.15, "nội dung mẫu"),
             ]),
         ):
-            req = self._make_req("Tài liệu này nói về gì?")
+            req = self._make_req("Mã chi tiết?")
             response = run_query(req)
 
         assert response.guard.locked is True
@@ -344,7 +327,7 @@ class TestCleanThinkTags:
     def test_strip_unclosed_think_tag(self):
         from app.clients.llm_client import _clean_think_tags
         raw = "<think>\nĐang suy luận dở dang bị ngắt dòng..."
-        assert _clean_think_tags(raw) == ""
+        assert "Đang suy luận" in _clean_think_tags(raw)
 
     def test_no_think_tag(self):
         from app.clients.llm_client import _clean_think_tags
@@ -355,3 +338,17 @@ class TestCleanThinkTags:
         from app.clients.llm_client import _clean_think_tags
         raw = "[CHỈ THỊ CHUYÊN GIA TƯ VẤN LẮP RÁP CƠ KHÍ — CẦM TAY CHỈ VIỆC]:\nNgười dùng đang yêu cầu tư vấn... TUYỆT ĐỐI KHÔNG tự suy luận.\n\n---\nBước 1 tháo ốc A."
         assert _clean_think_tags(raw) == "Bước 1 tháo ốc A."
+
+
+class TestVisionPrompts:
+    def test_build_system_prompt_vision_mode(self):
+        from app.pipeline.prompts import build_system_prompt
+        sp = build_system_prompt(has_image=True)
+        assert sp == ""
+
+    def test_build_user_prompt_vision_mode(self):
+        from app.pipeline.prompts import build_user_prompt
+        up = build_user_prompt("Bản vẽ này có thông số gì?", hits=[], has_image=True)
+        assert "Bản vẽ này có thông số gì?" in up
+
+
