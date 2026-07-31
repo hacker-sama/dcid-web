@@ -123,18 +123,7 @@ class OfflineCacheDocsRepository implements IDocsRepository {
 
   Future<void> _cacheDocsList(List<DocumentSummary> docs) async {
     try {
-      final jsonList = docs
-          .map((d) => {
-                'id': d.id,
-                'title': d.title,
-                'machineCode': d.machineCode,
-                'category': d.category,
-                'minRole': d.minRole,
-                'description': d.description,
-                'createdAt': d.createdAt?.toIso8601String(),
-                'updatedAt': d.updatedAt?.toIso8601String(),
-              })
-          .toList();
+      final jsonList = docs.map((d) => d.toJson()).toList();
       await _storage.write(key: _cacheKeyDocsList, value: jsonEncode(jsonList));
     } catch (_) {}
   }

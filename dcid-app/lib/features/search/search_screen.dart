@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/constrained_content.dart';
 import '../../data/models/answer_result.dart';
@@ -469,6 +470,14 @@ class _MessageBubble extends StatelessWidget {
                                   TextButton(
                                     onPressed: () => Navigator.of(ctx).pop(),
                                     child: const Text('Đóng'),
+                                  ),
+                                  FilledButton.icon(
+                                    onPressed: () {
+                                      Navigator.of(ctx).pop();
+                                      context.push('/viewer/${c.versionId}?page=${c.pageNo}');
+                                    },
+                                    icon: const Icon(Icons.open_in_new, size: 16),
+                                    label: const Text('Mở trang xem tài liệu (Viewer)'),
                                   ),
                                 ],
                               ),
