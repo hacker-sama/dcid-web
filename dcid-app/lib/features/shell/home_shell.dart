@@ -16,7 +16,9 @@ class _Dest {
 
 const _allDestinations = <_Dest>[
   _Dest('/search', Icons.search, 'Tra cứu'),
-  _Dest('/snap', Icons.camera_alt, 'Snap & Ask'), // Tạm thời hiện trên web để dễ test
+  // Snap & Ask is camera-based → mobile only (FRONTEND.md §3: OPERATOR/ENGINEER on Android).
+  // Hidden on wide/kiosk screens (NavigationRail).
+  _Dest('/snap', Icons.camera_alt, 'Snap & Ask', mobileOnly: true),
   _Dest('/documents', Icons.folder, 'Tài liệu'),
   _Dest('/admin', Icons.admin_panel_settings, 'Quản trị', adminOnly: true),
 ];
