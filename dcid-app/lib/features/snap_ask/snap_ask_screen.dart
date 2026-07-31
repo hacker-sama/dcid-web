@@ -15,7 +15,7 @@ import '../search/answer_view.dart';
 // Data Models
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// A single Q&A exchange associated with one captured image.
+/// One Q&A exchange stored per image.
 class _ChatMessage {
   _ChatMessage({
     required this.question,
@@ -23,6 +23,7 @@ class _ChatMessage {
     required this.answer,
     required this.boundingBoxes,
     required this.askedAt,
+    this.isError = false,
   });
 
   final String question;
@@ -30,10 +31,11 @@ class _ChatMessage {
   final AnswerResult answer;
   final List<Rect> boundingBoxes;
   final DateTime askedAt;
+  /// True when the answer was generated locally as a fallback (API 500 / offline).
+  final bool isError;
 }
 
-/// A single captured/uploaded image entry in the Snap & Ask gallery.
-/// Each entry owns its independent Q&A [messages] history.
+/// A single captured/uploaded image with its own independent Q&A thread.
 class _SnapEntry {
   _SnapEntry({
     required this.bytes,
@@ -44,10 +46,36 @@ class _SnapEntry {
   final Uint8List bytes;
   final String fileName;
   final DateTime capturedAt;
-
-  /// Per-image Q&A chat history. Populated as the user asks questions about
-  /// this specific image. Never cleared when switching to another image.
   final List<_ChatMessage> messages = [];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fallback answer used when API returns 5xx or is unreachable
+// ─────────────────────────────────────────────────────────────────────────────
+
+AnswerResult _buildFallbackAnswer(
+    String question, String fileName, String? machineCode) {
+  final machineTag = machineCode != null ? ' · Mã máy: **$machineCode**' : '';
+  return AnswerResult(
+    answer: '⚠️ **Phân tích ngoại tuyến (Mock)** — Dịch vụ AI tạm thời không '
+        'phản hồi$machineTag.\n\n'
+        '**Tệp:** `$fileName`\n\n'
+        '**OCR kỹ thuật (giả lập):**\n'
+        '| Thông số | Giá trị |\n'
+        '|---|---|\n'
+        '| Linh kiện | Servo Driver MR-J4-10A |\n'
+        '| Điện áp vào | 200–230 VAC ±10% |\n'
+        '| Dòng định mức | 3.5 A |\n'
+        '| Nhiệt độ vận hành | 0°C – 55°C |\n\n'
+        '**Gợi ý cho câu hỏi:** "$question"\n\n'
+        'Kiểm tra kết nối backend (`dcid-ai` port 8000) và LM Studio (port 1234). '
+        'Nếu dịch vụ sẵn sàng, thử lại câu hỏi — kết quả sẽ đến từ LLM thực.',
+    confidence: 0.0,
+    locked: false,
+    numericRule: false,
+    reasoningMode: false,
+    citations: [],
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,20 +93,22 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   final _imagePicker = ImagePicker();
   final List<_SnapEntry> _snaps = [];
 
-  /// Index of the currently "active" image in [_snaps]. null = nothing selected.
   int? _selectedIndex;
-
   bool _picking = false;
   bool _isAsking = false;
 
-  final TextEditingController _questionController = TextEditingController();
+  // Machine code field + scanned state
   final TextEditingController _machineCodeController = TextEditingController();
+  bool _machineCodeScanned = false; // true = green badge shown
+
+  final TextEditingController _questionController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
+  final ScrollController _thumbnailScrollController = ScrollController();
 
   static final _locRegex = RegExp(
       r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]');
 
-  // ── Convenience getters ───────────────────────────────────────────────────
+  // ── Getters ───────────────────────────────────────────────────────────────
 
   _SnapEntry? get _selectedSnap =>
       (_selectedIndex != null && _selectedIndex! < _snaps.length)
@@ -102,7 +132,6 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     } catch (_) {
       // Camera not available on web — silently ignore.
     } finally {
-      // FIX: always reset the loading state, even on early return.
       if (mounted) setState(() => _picking = false);
     }
   }
@@ -119,16 +148,12 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
       if (image != null) {
         final bytes = await image.readAsBytes();
         _addSnap(bytes, image.name);
-        // FIX: return without resetting _picking — the finally block handles it.
         return;
       }
-      // Fallback to file_picker (web / desktop)
       await _pickWithFilePicker();
     } catch (_) {
-      // image_picker threw (e.g. permissions denied) — try file_picker.
       await _pickWithFilePicker();
     } finally {
-      // FIX: guaranteed reset regardless of which branch was taken.
       if (mounted) setState(() => _picking = false);
     }
   }
@@ -145,22 +170,25 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   }
 
   void _addSnap(Uint8List bytes, String fileName) {
-    final newEntry = _SnapEntry(
-      bytes: bytes,
-      fileName: fileName,
-      capturedAt: DateTime.now(),
-    );
     setState(() {
-      _snaps.insert(0, newEntry);
-      // Auto-select the newly added image.
+      _snaps.insert(0, _SnapEntry(bytes: bytes, fileName: fileName, capturedAt: DateTime.now()));
       _selectedIndex = 0;
+    });
+    // Scroll thumbnail strip to the start (newest image).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_thumbnailScrollController.hasClients) {
+        _thumbnailScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
   void _selectSnap(int index) {
     if (_selectedIndex == index) return;
     setState(() => _selectedIndex = index);
-    // Scroll the chat area to the bottom after switching images.
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollChatToBottom());
   }
 
@@ -169,12 +197,22 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
       _snaps.removeAt(index);
       if (_snaps.isEmpty) {
         _selectedIndex = null;
-      } else if (_selectedIndex != null) {
-        if (_selectedIndex! >= _snaps.length) {
-          _selectedIndex = _snaps.length - 1;
-        }
+      } else if (_selectedIndex != null && _selectedIndex! >= _snaps.length) {
+        _selectedIndex = _snaps.length - 1;
       }
     });
+  }
+
+  // ── Machine code helpers ──────────────────────────────────────────────────
+
+  void _onMachineCodeChanged(String value) {
+    // Mark as "scanned/confirmed" if non-empty, clear badge when erased.
+    setState(() => _machineCodeScanned = value.trim().isNotEmpty);
+  }
+
+  void _clearMachineCode() {
+    _machineCodeController.clear();
+    setState(() => _machineCodeScanned = false);
   }
 
   // ── Q&A ──────────────────────────────────────────────────────────────────
@@ -193,6 +231,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     setState(() => _isAsking = true);
 
     final machineCode = _machineCodeController.text.trim();
+    AnswerResult finalAnswer;
+    List<Rect> parsedBoxes = [];
+    bool isError = false;
 
     try {
       final repo = ref.read(docsRepositoryProvider);
@@ -203,24 +244,20 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
         machineCode: machineCode.isNotEmpty ? machineCode : null,
       );
 
-      // Parse [LOC] bounding-box tags out of the answer text.
+      // Parse [LOC] bounding-box annotations.
       String cleanText = rawAnswer.answer;
-      final matches = _locRegex.allMatches(cleanText);
-      final List<Rect> parsedBoxes = [];
-      for (final m in matches) {
+      for (final m in _locRegex.allMatches(cleanText)) {
         try {
           final x1 = double.parse(m.group(1)!);
           final y1 = double.parse(m.group(2)!);
           final x2 = double.parse(m.group(3)!);
           final y2 = double.parse(m.group(4)!);
-          if (x1 < x2 && y1 < y2) {
-            parsedBoxes.add(Rect.fromLTRB(x1, y1, x2, y2));
-          }
+          if (x1 < x2 && y1 < y2) parsedBoxes.add(Rect.fromLTRB(x1, y1, x2, y2));
         } catch (_) {}
       }
       cleanText = cleanText.replaceAll(_locRegex, '').trim();
 
-      final finalAnswer = AnswerResult(
+      finalAnswer = AnswerResult(
         answer: cleanText,
         confidence: rawAnswer.confidence,
         locked: rawAnswer.locked,
@@ -228,32 +265,32 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
         reasoningMode: rawAnswer.reasoningMode,
         citations: rawAnswer.citations,
       );
-
-      if (!mounted) return;
-      setState(() {
-        snap.messages.add(
-          _ChatMessage(
-            question: question,
-            machineCode: machineCode.isNotEmpty ? machineCode : null,
-            answer: finalAnswer,
-            boundingBoxes: parsedBoxes,
-            askedAt: DateTime.now(),
-          ),
-        );
-        _questionController.clear();
-      });
-
-      // Scroll to the latest chat message.
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _scrollChatToBottom());
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e')),
+      // ── GRACEFUL FALLBACK: 500, DioException, TimeoutException, etc. ──────
+      // Never show a crash or black error bar. Instead surface a structured
+      // mock analysis so the screen stays functional even when backend is down.
+      finalAnswer = _buildFallbackAnswer(
+        question,
+        snap.fileName,
+        machineCode.isNotEmpty ? machineCode : null,
       );
-    } finally {
-      if (mounted) setState(() => _isAsking = false);
+      isError = true;
     }
+
+    if (!mounted) return;
+    setState(() {
+      snap.messages.add(_ChatMessage(
+        question: question,
+        machineCode: machineCode.isNotEmpty ? machineCode : null,
+        answer: finalAnswer,
+        boundingBoxes: parsedBoxes,
+        askedAt: DateTime.now(),
+        isError: isError,
+      ));
+      _questionController.clear();
+      _isAsking = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollChatToBottom());
   }
 
   void _scrollChatToBottom() {
@@ -266,7 +303,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     }
   }
 
-  // ── Bottom sheet: pick image source ──────────────────────────────────────
+  // ── Bottom sheet: image source picker ────────────────────────────────────
 
   void _showImageSourcePicker() {
     showModalBottomSheet(
@@ -292,14 +329,14 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text('Thêm ảnh thiết bị',
-                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        )),
+                    style: Theme.of(ctx)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 16),
-                if (!kIsWeb)
+                if (!kIsWeb) ...[
                   ListTile(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     tileColor: scheme.primaryContainer.withValues(alpha: 0.3),
                     leading: CircleAvatar(
                       backgroundColor: scheme.primaryContainer,
@@ -308,30 +345,21 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                     title: const Text('Chụp ảnh'),
                     subtitle: const Text('Mở camera để chụp thiết bị'),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _takePhoto();
-                    },
+                    onTap: () { Navigator.pop(ctx); _takePhoto(); },
                   ),
-                if (!kIsWeb) const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                ],
                 ListTile(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   tileColor: scheme.secondaryContainer.withValues(alpha: 0.3),
                   leading: CircleAvatar(
                     backgroundColor: scheme.secondaryContainer,
                     child: Icon(Icons.photo_library, color: scheme.secondary),
                   ),
-                  title: Text(
-                      kIsWeb ? 'Chọn ảnh từ máy tính' : 'Chọn từ thư viện'),
-                  subtitle: Text(kIsWeb
-                      ? 'Tải lên tệp ảnh từ máy tính'
-                      : 'Chọn ảnh có sẵn trên thiết bị'),
+                  title: Text(kIsWeb ? 'Chọn ảnh từ máy tính' : 'Chọn từ thư viện'),
+                  subtitle: Text(kIsWeb ? 'Tải lên tệp ảnh từ máy tính' : 'Chọn ảnh có sẵn trên thiết bị'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pickImage();
-                  },
+                  onTap: () { Navigator.pop(ctx); _pickImage(); },
                 ),
                 const SizedBox(height: 4),
               ],
@@ -342,7 +370,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     );
   }
 
-  // ── Full-screen image preview dialog ─────────────────────────────────────
+  // ── Full-screen preview dialog ─────────────────────────────────────────────
 
   void _showPreview(_SnapEntry snap, List<Rect> boxes) {
     showDialog(
@@ -381,14 +409,11 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
+    final diff = DateTime.now().difference(dt);
     if (diff.inSeconds < 60) return 'Vừa xong';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-    if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-    return '${dt.day}/${dt.month}/${dt.year} '
-        '${dt.hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')}';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} phút';
+    if (diff.inHours < 24) return '${diff.inHours} giờ';
+    return '${dt.day}/${dt.month}';
   }
 
   @override
@@ -396,6 +421,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     _questionController.dispose();
     _machineCodeController.dispose();
     _chatScrollController.dispose();
+    _thumbnailScrollController.dispose();
     super.dispose();
   }
 
@@ -405,216 +431,237 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final snap = _selectedSnap;
-    // Latest bboxes from the most recent message of the selected image.
-    final latestBoxes =
-        (snap != null && snap.messages.isNotEmpty)
-            ? snap.messages.last.boundingBoxes
-            : <Rect>[];
+    final latestBoxes = (snap != null && snap.messages.isNotEmpty)
+        ? snap.messages.last.boundingBoxes
+        : <Rect>[];
 
     return ConstrainedContent(
       maxWidth: 840,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── HEADER: Capture Zone ──────────────────────────────────────────
+          // ── SECTION 1: Add button header ──────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: _CaptureHeader(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _AddImageButton(
               onAdd: _showImageSourcePicker,
               loading: _picking,
-              snapCount: _snaps.length,
               scheme: scheme,
             ),
           ),
 
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-
-          // ── BODY: Image list (fixed height) ──────────────────────────────
-          if (_snaps.isEmpty)
+          // ── SECTION 2: Horizontal thumbnail strip ─────────────────────────
+          if (_snaps.isEmpty) ...[
             Expanded(
-              flex: 2,
               child: _EmptyState(onAdd: _showImageSourcePicker, scheme: scheme),
-            )
-          else
-            SizedBox(
-              height: 260,
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                itemCount: _snaps.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final entry = _snaps[index];
-                  return _SnapCard(
-                    snap: entry,
-                    index: index,
-                    isSelected: _selectedIndex == index,
-                    formatDate: _formatDate,
-                    onSelect: () => _selectSnap(index),
-                    onPreview: () => _showPreview(entry, latestBoxes),
-                    onDelete: () => _deleteSnap(index),
-                    scheme: scheme,
-                  );
-                },
-              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 10),
+            _ThumbnailStrip(
+              snaps: _snaps,
+              selectedIndex: _selectedIndex,
+              scrollController: _thumbnailScrollController,
+              formatDate: _formatDate,
+              onSelect: _selectSnap,
+              onDelete: _deleteSnap,
+              onPreview: (i) => _showPreview(_snaps[i], latestBoxes),
+              scheme: scheme,
+            ),
+            const Divider(height: 1),
+
+            // ── SECTION 3: Chat area ────────────────────────────────────────
+            Expanded(
+              child: _buildChatArea(snap, scheme),
             ),
 
-          // ── CHAT AREA: per-image Q&A history ─────────────────────────────
-          if (_snaps.isNotEmpty) ...[
+            // ── SECTION 4: Q&A input footer ─────────────────────────────────
             const Divider(height: 1),
-            Expanded(
-              child: snap == null
-                  ? Center(
-                      child: Text(
-                        'Chọn một ảnh để bắt đầu hỏi–đáp',
-                        style: TextStyle(color: scheme.onSurfaceVariant),
-                      ),
-                    )
-                  : snap.messages.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.chat_bubble_outline,
-                                  size: 40, color: scheme.outlineVariant),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Chưa có câu hỏi nào cho ảnh này',
-                                style: TextStyle(
-                                    color: scheme.onSurfaceVariant,
-                                    fontSize: 13),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Nhập câu hỏi bên dưới để phân tích ảnh',
-                                style: TextStyle(
-                                    color: scheme.outline, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          controller: _chatScrollController,
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                          itemCount: snap.messages.length,
-                          itemBuilder: (context, i) {
-                            final msg = snap.messages[i];
-                            return _ChatBubble(
-                              message: msg,
-                              scheme: scheme,
-                              formatDate: _formatDate,
-                            );
-                          },
-                        ),
+            _buildInputFooter(scheme),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ── Chat area ─────────────────────────────────────────────────────────────
+
+  Widget _buildChatArea(_SnapEntry? snap, ColorScheme scheme) {
+    if (snap == null) {
+      return Center(
+        child: Text(
+          'Chọn một ảnh để bắt đầu hỏi–đáp',
+          style: TextStyle(color: scheme.onSurfaceVariant),
+        ),
+      );
+    }
+    if (snap.messages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.chat_bubble_outline, size: 40, color: scheme.outlineVariant),
+            const SizedBox(height: 10),
+            Text(
+              'Chưa có câu hỏi nào cho ảnh này',
+              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Nhập câu hỏi bên dưới để phân tích',
+              style: TextStyle(color: scheme.outline, fontSize: 12),
             ),
           ],
+        ),
+      );
+    }
+    return ListView.builder(
+      controller: _chatScrollController,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      itemCount: snap.messages.length,
+      itemBuilder: (context, i) => _ChatBubble(
+        message: snap.messages[i],
+        scheme: scheme,
+        formatDate: _formatDate,
+      ),
+    );
+  }
 
-          // ── FOOTER: Q&A Input ─────────────────────────────────────────────
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Machine code field
-                Row(
-                  children: [
-                    Icon(Icons.qr_code_scanner,
-                        color: _selectedSnap != null
-                            ? scheme.primary
+  // ── Input footer ──────────────────────────────────────────────────────────
+
+  Widget _buildInputFooter(ColorScheme scheme) {
+    final hasSnap = _selectedSnap != null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Machine code row with scanned badge
+          Row(
+            children: [
+              Icon(
+                Icons.qr_code_scanner,
+                color: _machineCodeScanned ? Colors.green : (hasSnap ? scheme.primary : scheme.outlineVariant),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _machineCodeController,
+                  enabled: hasSnap,
+                  onChanged: _onMachineCodeChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Mã máy (tuỳ chọn, vd: CNC-01)',
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: _machineCodeScanned ? Colors.green : scheme.outline,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: _machineCodeScanned
+                            ? Colors.green
                             : scheme.outlineVariant,
-                        size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _machineCodeController,
-                        enabled: _selectedSnap != null,
-                        decoration: InputDecoration(
-                          hintText: 'Mã máy (tuỳ chọn, vd: CNC-01)',
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                        ),
+                        width: _machineCodeScanned ? 1.8 : 1.0,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Question input + send button
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _questionController,
-                        enabled: _selectedSnap != null && !_isAsking,
-                        maxLines: 3,
-                        minLines: 1,
-                        decoration: InputDecoration(
-                          hintText: _selectedSnap == null
-                              ? 'Chọn một ảnh để bắt đầu hỏi...'
-                              : 'Hỏi về ảnh thiết bị này (vd: Phân tích hình ảnh này)...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                        onSubmitted: _selectedSnap != null && !_isAsking
-                            ? (_) => _askQuestion()
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 48,
-                      child: IconButton.filled(
-                        onPressed: (_selectedSnap != null && !_isAsking)
-                            ? _askQuestion
-                            : null,
-                        icon: _isAsking
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2),
-                              )
-                            : const Icon(Icons.send),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Active image indicator
-                if (_selectedSnap != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.image_outlined,
-                          size: 13, color: scheme.primary),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Đang hỏi về: ${_selectedSnap!.fileName}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: scheme.primary,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                    ],
+                    // Green "Đã quét" badge as suffix
+                    suffixIcon: _machineCodeScanned
+                        ? GestureDetector(
+                            onTap: _clearMachineCode,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.green.shade300),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.check_circle, size: 13, color: Colors.green.shade700),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Đã quét: ${_machineCodeController.text.trim()}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.green.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.close, size: 12, color: Colors.green.shade400),
+                                ],
+                              ),
+                            ),
+                          )
+                        : null,
                   ),
-                ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Question input + send
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _questionController,
+                  enabled: hasSnap && !_isAsking,
+                  maxLines: 3,
+                  minLines: 1,
+                  decoration: InputDecoration(
+                    hintText: hasSnap
+                        ? 'Hỏi về ảnh thiết bị này (vd: Phân tích hình ảnh này)...'
+                        : 'Chọn một ảnh để bắt đầu hỏi...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  onSubmitted: (hasSnap && !_isAsking) ? (_) => _askQuestion() : null,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                child: IconButton.filled(
+                  onPressed: (hasSnap && !_isAsking) ? _askQuestion : null,
+                  icon: _isAsking
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send),
+                ),
+              ),
+            ],
+          ),
+
+          // Active image label
+          if (hasSnap) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.image_outlined, size: 12, color: scheme.primary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Đang hỏi về: ${_selectedSnap!.fileName}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11, color: scheme.primary, fontStyle: FontStyle.italic),
+                  ),
+                ),
               ],
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -622,7 +669,247 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Chat Bubble Widget
+// Add Image Button (compact header)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AddImageButton extends StatelessWidget {
+  const _AddImageButton({required this.onAdd, required this.loading, required this.scheme});
+
+  final VoidCallback onAdd;
+  final bool loading;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.tonalIcon(
+      onPressed: loading ? null : onAdd,
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: scheme.primaryContainer.withValues(alpha: 0.5),
+        foregroundColor: scheme.onPrimaryContainer,
+      ),
+      icon: loading
+          ? SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: scheme.primary),
+            )
+          : const Icon(Icons.add_a_photo_outlined, size: 20),
+      label: Text(
+        loading
+            ? 'Đang tải...'
+            : (kIsWeb ? 'Tải lên ảnh thiết bị' : 'Chụp / Tải lên ảnh thiết bị'),
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Horizontal Thumbnail Strip
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ThumbnailStrip extends StatelessWidget {
+  const _ThumbnailStrip({
+    required this.snaps,
+    required this.selectedIndex,
+    required this.scrollController,
+    required this.formatDate,
+    required this.onSelect,
+    required this.onDelete,
+    required this.onPreview,
+    required this.scheme,
+  });
+
+  final List<_SnapEntry> snaps;
+  final int? selectedIndex;
+  final ScrollController scrollController;
+  final String Function(DateTime) formatDate;
+  final void Function(int) onSelect;
+  final void Function(int) onDelete;
+  final void Function(int) onPreview;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 108,
+      child: ListView.separated(
+        controller: scrollController,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        itemCount: snaps.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final snap = snaps[index];
+          final isSelected = selectedIndex == index;
+          return _ThumbnailCard(
+            snap: snap,
+            index: index,
+            isSelected: isSelected,
+            formatDate: formatDate,
+            onTap: () => onSelect(index),
+            onDelete: () => onDelete(index),
+            onPreview: () => onPreview(index),
+            scheme: scheme,
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Individual Thumbnail Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ThumbnailCard extends StatelessWidget {
+  const _ThumbnailCard({
+    required this.snap,
+    required this.index,
+    required this.isSelected,
+    required this.formatDate,
+    required this.onTap,
+    required this.onDelete,
+    required this.onPreview,
+    required this.scheme,
+  });
+
+  final _SnapEntry snap;
+  final int index;
+  final bool isSelected;
+  final String Function(DateTime) formatDate;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final VoidCallback onPreview;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final chatCount = snap.messages.length;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 82,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.5),
+            width: isSelected ? 2.5 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [BoxShadow(color: scheme.primary.withValues(alpha: 0.25), blurRadius: 8, spreadRadius: 1)]
+              : [],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10.5),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Image fill
+              Image.memory(
+                snap.bytes,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  color: scheme.surfaceContainerHigh,
+                  child: Icon(Icons.broken_image, color: scheme.outlineVariant),
+                ),
+              ),
+
+              // Gradient overlay at bottom
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.45, 1.0],
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.72),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Timestamp bottom-left
+              Positioned(
+                left: 5,
+                bottom: 5,
+                right: 22,
+                child: Text(
+                  formatDate(snap.capturedAt),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w500),
+                ),
+              ),
+
+              // Chat count badge (top-left)
+              if (chatCount > 0)
+                Positioned(
+                  top: 5,
+                  left: 5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$chatCount',
+                      style: TextStyle(color: scheme.onPrimary, fontSize: 9, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+
+              // Active checkmark (top-right)
+              if (isSelected)
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.check, size: 11, color: scheme.onPrimary),
+                  ),
+                ),
+
+              // Delete button (bottom-right, overlaid)
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: GestureDetector(
+                  onTap: onDelete,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 11, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chat Bubble
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ChatBubble extends StatelessWidget {
@@ -648,8 +935,7 @@ class _ChatBubble extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: Container(
               constraints: const BoxConstraints(maxWidth: 480),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: scheme.primaryContainer,
                 borderRadius: const BorderRadius.only(
@@ -664,29 +950,26 @@ class _ChatBubble extends StatelessWidget {
                 children: [
                   Text(
                     message.question,
-                    style: TextStyle(
-                      color: scheme.onPrimaryContainer,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(color: scheme.onPrimaryContainer, fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                   if (message.machineCode != null) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      'Mã máy: ${message.machineCode}',
-                      style: TextStyle(
-                        color: scheme.onPrimaryContainer.withValues(alpha: 0.7),
-                        fontSize: 11,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.memory_outlined, size: 11, color: scheme.onPrimaryContainer.withValues(alpha: 0.7)),
+                        const SizedBox(width: 3),
+                        Text(
+                          message.machineCode!,
+                          style: TextStyle(color: scheme.onPrimaryContainer.withValues(alpha: 0.7), fontSize: 11),
+                        ),
+                      ],
                     ),
                   ],
                   const SizedBox(height: 4),
                   Text(
                     formatDate(message.askedAt),
-                    style: TextStyle(
-                      color: scheme.onPrimaryContainer.withValues(alpha: 0.6),
-                      fontSize: 10,
-                    ),
+                    style: TextStyle(color: scheme.onPrimaryContainer.withValues(alpha: 0.55), fontSize: 10),
                   ),
                 ],
               ),
@@ -695,10 +978,12 @@ class _ChatBubble extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          // Answer card (left-aligned, uses AnswerView)
+          // Answer / error card (left-aligned)
           Container(
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
+              color: message.isError
+                  ? Colors.amber.shade50
+                  : scheme.surfaceContainerLow,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(16),
@@ -706,94 +991,36 @@ class _ChatBubble extends StatelessWidget {
                 bottomRight: Radius.circular(16),
               ),
               border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                color: message.isError
+                    ? Colors.amber.shade300
+                    : scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
             ),
             padding: const EdgeInsets.all(12),
-            child: AnswerView(result: message.answer),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Fallback badge
+                if (message.isError) ...[
+                  Row(
+                    children: [
+                      Icon(Icons.wifi_off_rounded, size: 13, color: Colors.amber.shade800),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Phân tích ngoại tuyến — Backend không phản hồi',
+                        style: TextStyle(fontSize: 11, color: Colors.amber.shade800, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                ],
+                AnswerView(result: message.answer, shrinkWrap: true),
+              ],
+            ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Header / Capture Zone
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CaptureHeader extends StatelessWidget {
-  const _CaptureHeader({
-    required this.onAdd,
-    required this.loading,
-    required this.snapCount,
-    required this.scheme,
-  });
-
-  final VoidCallback onAdd;
-  final bool loading;
-  final int snapCount;
-  final ColorScheme scheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: scheme.primaryContainer.withValues(alpha: 0.35),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: loading ? null : onAdd,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: scheme.primaryContainer,
-                child: loading
-                    ? SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: scheme.primary,
-                        ),
-                      )
-                    : Icon(Icons.add_a_photo_outlined,
-                        size: 28, color: scheme.primary),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      kIsWeb
-                          ? 'Tải lên ảnh thiết bị'
-                          : 'Chụp hoặc tải lên ảnh thiết bị',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      snapCount == 0
-                          ? 'Nhấn để thêm ảnh đầu tiên'
-                          : 'Đang lưu $snapCount ảnh · Nhấn để thêm ảnh mới',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: scheme.primary),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -815,16 +1042,11 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.camera_roll_outlined,
-              size: 64, color: scheme.outlineVariant),
+          Icon(Icons.camera_roll_outlined, size: 64, color: scheme.outlineVariant),
           const SizedBox(height: 16),
           Text(
             'Chưa có ảnh thiết bị nào',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 6),
           Text(
@@ -845,193 +1067,7 @@ class _EmptyState extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Individual Snap Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SnapCard extends StatelessWidget {
-  const _SnapCard({
-    required this.snap,
-    required this.index,
-    required this.isSelected,
-    required this.formatDate,
-    required this.onSelect,
-    required this.onPreview,
-    required this.onDelete,
-    required this.scheme,
-  });
-
-  final _SnapEntry snap;
-  final int index;
-  final bool isSelected;
-  final String Function(DateTime) formatDate;
-  final VoidCallback onSelect;
-  final VoidCallback onPreview;
-  final VoidCallback onDelete;
-  final ColorScheme scheme;
-
-  @override
-  Widget build(BuildContext context) {
-    final displayName = snap.fileName.contains('.')
-        ? snap.fileName.substring(0, snap.fileName.lastIndexOf('.'))
-        : snap.fileName;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected
-              ? scheme.primary
-              : scheme.outlineVariant.withValues(alpha: 0.5),
-          width: isSelected ? 2.0 : 1.0,
-        ),
-        color: isSelected
-            ? scheme.primaryContainer.withValues(alpha: 0.15)
-            : scheme.surface,
-      ),
-      child: InkWell(
-        onTap: onSelect,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              // Selected indicator
-              if (isSelected)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Icon(Icons.check_circle,
-                      color: scheme.primary, size: 18),
-                ),
-
-              // Thumbnail
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  snap.bytes,
-                  width: 64,
-                  height: 64,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: 64,
-                    height: 64,
-                    color: scheme.surfaceContainerHigh,
-                    child: Icon(Icons.broken_image,
-                        color: scheme.outlineVariant),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName.isNotEmpty ? displayName : 'Ảnh ${index + 1}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: isSelected ? scheme.primary : null,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.access_time_rounded,
-                            size: 13, color: scheme.outline),
-                        const SizedBox(width: 4),
-                        Text(
-                          formatDate(snap.capturedAt),
-                          style: TextStyle(
-                              fontSize: 12, color: scheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: scheme.tertiaryContainer
-                                .withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _formatSize(snap.bytes.length),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: scheme.onTertiaryContainer,
-                            ),
-                          ),
-                        ),
-                        if (snap.messages.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: scheme.secondaryContainer
-                                  .withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '${snap.messages.length} câu hỏi',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: scheme.onSecondaryContainer,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Actions
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.zoom_in_rounded, color: scheme.primary),
-                    tooltip: 'Xem ảnh',
-                    onPressed: onPreview,
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.delete_outline,
-                        color: scheme.error.withValues(alpha: 0.8)),
-                    tooltip: 'Xóa ảnh',
-                    onPressed: onDelete,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '${bytes}B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(0)}KB';
-    }
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Custom Painter for Bounding Boxes
+// BBox Painter
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BBoxPainter extends CustomPainter {
@@ -1041,20 +1077,20 @@ class _BBoxPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (boxes.isEmpty) return;
-
     final paint = Paint()
       ..color = Colors.redAccent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0;
-
     for (final box in boxes) {
-      final rect = Rect.fromLTRB(
-        (box.left / 1000.0) * size.width,
-        (box.top / 1000.0) * size.height,
-        (box.right / 1000.0) * size.width,
-        (box.bottom / 1000.0) * size.height,
+      canvas.drawRect(
+        Rect.fromLTRB(
+          (box.left / 1000.0) * size.width,
+          (box.top / 1000.0) * size.height,
+          (box.right / 1000.0) * size.width,
+          (box.bottom / 1000.0) * size.height,
+        ),
+        paint,
       );
-      canvas.drawRect(rect, paint);
     }
   }
 
