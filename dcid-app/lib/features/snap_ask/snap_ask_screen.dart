@@ -11,7 +11,29 @@ import '../../data/models/answer_result.dart';
 import '../../state/providers.dart';
 import '../search/answer_view.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Data Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A single Q&A exchange associated with one captured image.
+class _ChatMessage {
+  _ChatMessage({
+    required this.question,
+    required this.machineCode,
+    required this.answer,
+    required this.boundingBoxes,
+    required this.askedAt,
+  });
+
+  final String question;
+  final String? machineCode;
+  final AnswerResult answer;
+  final List<Rect> boundingBoxes;
+  final DateTime askedAt;
+}
+
 /// A single captured/uploaded image entry in the Snap & Ask gallery.
+/// Each entry owns its independent Q&A [messages] history.
 class _SnapEntry {
   _SnapEntry({
     required this.bytes,
@@ -22,7 +44,15 @@ class _SnapEntry {
   final Uint8List bytes;
   final String fileName;
   final DateTime capturedAt;
+
+  /// Per-image Q&A chat history. Populated as the user asks questions about
+  /// this specific image. Never cleared when switching to another image.
+  final List<_ChatMessage> messages = [];
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen
+// ─────────────────────────────────────────────────────────────────────────────
 
 class SnapAskScreen extends ConsumerStatefulWidget {
   const SnapAskScreen({super.key});
@@ -34,16 +64,29 @@ class SnapAskScreen extends ConsumerStatefulWidget {
 class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   final _imagePicker = ImagePicker();
   final List<_SnapEntry> _snaps = [];
+
+  /// Index of the currently "active" image in [_snaps]. null = nothing selected.
+  int? _selectedIndex;
+
   bool _picking = false;
   bool _isAsking = false;
+
   final TextEditingController _questionController = TextEditingController();
   final TextEditingController _machineCodeController = TextEditingController();
-  AnswerResult? _answer;
-  List<Rect> _boundingBoxes = [];
-  
-  static final _locRegex = RegExp(r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]');
+  final ScrollController _chatScrollController = ScrollController();
 
-  // ── Camera: chụp ảnh trực tiếp ────────────────────────────────────
+  static final _locRegex = RegExp(
+      r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]');
+
+  // ── Convenience getters ───────────────────────────────────────────────────
+
+  _SnapEntry? get _selectedSnap =>
+      (_selectedIndex != null && _selectedIndex! < _snaps.length)
+          ? _snaps[_selectedIndex!]
+          : null;
+
+  // ── Image capture / pick ──────────────────────────────────────────────────
+
   Future<void> _takePhoto() async {
     setState(() => _picking = true);
     try {
@@ -57,13 +100,13 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
       final bytes = await photo.readAsBytes();
       _addSnap(bytes, photo.name);
     } catch (_) {
-      // Camera not available — silently ignore.
+      // Camera not available on web — silently ignore.
     } finally {
+      // FIX: always reset the loading state, even on early return.
       if (mounted) setState(() => _picking = false);
     }
   }
 
-  // ── Gallery/File: chọn ảnh từ thư viện hoặc máy tính ─────────────
   Future<void> _pickImage() async {
     setState(() => _picking = true);
     try {
@@ -76,13 +119,18 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
       if (image != null) {
         final bytes = await image.readAsBytes();
         _addSnap(bytes, image.name);
+        // FIX: return without resetting _picking — the finally block handles it.
         return;
       }
+      // Fallback to file_picker (web / desktop)
+      await _pickWithFilePicker();
     } catch (_) {
-      // Fallback to file_picker on web/desktop
+      // image_picker threw (e.g. permissions denied) — try file_picker.
+      await _pickWithFilePicker();
+    } finally {
+      // FIX: guaranteed reset regardless of which branch was taken.
+      if (mounted) setState(() => _picking = false);
     }
-    await _pickWithFilePicker();
-    if (mounted) setState(() => _picking = false);
   }
 
   Future<void> _pickWithFilePicker() async {
@@ -97,43 +145,65 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   }
 
   void _addSnap(Uint8List bytes, String fileName) {
+    final newEntry = _SnapEntry(
+      bytes: bytes,
+      fileName: fileName,
+      capturedAt: DateTime.now(),
+    );
     setState(() {
-      _snaps.insert(
-        0,
-        _SnapEntry(
-          bytes: bytes,
-          fileName: fileName,
-          capturedAt: DateTime.now(),
-        ),
-      );
+      _snaps.insert(0, newEntry);
+      // Auto-select the newly added image.
+      _selectedIndex = 0;
     });
   }
 
-  void _deleteSnap(int index) {
-    setState(() => _snaps.removeAt(index));
+  void _selectSnap(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
+    // Scroll the chat area to the bottom after switching images.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollChatToBottom());
   }
 
+  void _deleteSnap(int index) {
+    setState(() {
+      _snaps.removeAt(index);
+      if (_snaps.isEmpty) {
+        _selectedIndex = null;
+      } else if (_selectedIndex != null) {
+        if (_selectedIndex! >= _snaps.length) {
+          _selectedIndex = _snaps.length - 1;
+        }
+      }
+    });
+  }
+
+  // ── Q&A ──────────────────────────────────────────────────────────────────
+
   Future<void> _askQuestion() async {
-    if (_snaps.isEmpty) {
+    final snap = _selectedSnap;
+    if (snap == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn hoặc chụp một ảnh trước')),
+        const SnackBar(content: Text('Vui lòng chọn ảnh trước khi hỏi')),
       );
       return;
     }
     final question = _questionController.text.trim();
     if (question.isEmpty) return;
 
-    setState(() {
-      _isAsking = true;
-      _answer = null;
-    });
+    setState(() => _isAsking = true);
+
+    final machineCode = _machineCodeController.text.trim();
 
     try {
       final repo = ref.read(docsRepositoryProvider);
-      final entry = _snaps.first;
-      final machineCode = _machineCodeController.text.trim();
-      final rawAnswer = await repo.askWithImage(question, entry.bytes, entry.fileName, machineCode: machineCode.isNotEmpty ? machineCode : null);
-      
+      final rawAnswer = await repo.askWithImage(
+        question,
+        snap.bytes,
+        snap.fileName,
+        machineCode: machineCode.isNotEmpty ? machineCode : null,
+      );
+
+      // Parse [LOC] bounding-box tags out of the answer text.
       String cleanText = rawAnswer.answer;
       final matches = _locRegex.allMatches(cleanText);
       final List<Rect> parsedBoxes = [];
@@ -144,7 +214,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
           final x2 = double.parse(m.group(3)!);
           final y2 = double.parse(m.group(4)!);
           if (x1 < x2 && y1 < y2) {
-             parsedBoxes.add(Rect.fromLTRB(x1, y1, x2, y2));
+            parsedBoxes.add(Rect.fromLTRB(x1, y1, x2, y2));
           }
         } catch (_) {}
       }
@@ -159,10 +229,23 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
         citations: rawAnswer.citations,
       );
 
+      if (!mounted) return;
       setState(() {
-        _answer = finalAnswer;
-        _boundingBoxes = parsedBoxes;
+        snap.messages.add(
+          _ChatMessage(
+            question: question,
+            machineCode: machineCode.isNotEmpty ? machineCode : null,
+            answer: finalAnswer,
+            boundingBoxes: parsedBoxes,
+            askedAt: DateTime.now(),
+          ),
+        );
+        _questionController.clear();
       });
+
+      // Scroll to the latest chat message.
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _scrollChatToBottom());
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -173,7 +256,18 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     }
   }
 
-  // ── Bottom sheet: chọn cách lấy ảnh ───────────────────────────────
+  void _scrollChatToBottom() {
+    if (_chatScrollController.hasClients) {
+      _chatScrollController.animateTo(
+        _chatScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  // ── Bottom sheet: pick image source ──────────────────────────────────────
+
   void _showImageSourcePicker() {
     showModalBottomSheet(
       context: context,
@@ -226,10 +320,10 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                   tileColor: scheme.secondaryContainer.withValues(alpha: 0.3),
                   leading: CircleAvatar(
                     backgroundColor: scheme.secondaryContainer,
-                    child:
-                        Icon(Icons.photo_library, color: scheme.secondary),
+                    child: Icon(Icons.photo_library, color: scheme.secondary),
                   ),
-                  title: Text(kIsWeb ? 'Chọn ảnh từ máy tính' : 'Chọn từ thư viện'),
+                  title: Text(
+                      kIsWeb ? 'Chọn ảnh từ máy tính' : 'Chọn từ thư viện'),
                   subtitle: Text(kIsWeb
                       ? 'Tải lên tệp ảnh từ máy tính'
                       : 'Chọn ảnh có sẵn trên thiết bị'),
@@ -248,8 +342,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     );
   }
 
-  // ── Full-screen image preview dialog ──────────────────────────────
-  void _showPreview(_SnapEntry snap) {
+  // ── Full-screen image preview dialog ─────────────────────────────────────
+
+  void _showPreview(_SnapEntry snap, List<Rect> boxes) {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -261,7 +356,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
             InteractiveViewer(
               child: Center(
                 child: CustomPaint(
-                  foregroundPainter: _BBoxPainter(_boundingBoxes),
+                  foregroundPainter: _BBoxPainter(boxes),
                   child: Image.memory(snap.bytes),
                 ),
               ),
@@ -283,25 +378,45 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     );
   }
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
   String _formatDate(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
     if (diff.inSeconds < 60) return 'Vừa xong';
     if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
     if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-    return '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return '${dt.day}/${dt.month}/${dt.year} '
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
   }
+
+  @override
+  void dispose() {
+    _questionController.dispose();
+    _machineCodeController.dispose();
+    _chatScrollController.dispose();
+    super.dispose();
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final snap = _selectedSnap;
+    // Latest bboxes from the most recent message of the selected image.
+    final latestBoxes =
+        (snap != null && snap.messages.isNotEmpty)
+            ? snap.messages.last.boundingBoxes
+            : <Rect>[];
 
     return ConstrainedContent(
       maxWidth: 840,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── HEADER: Capture Zone ───────────────────────────────────────
+          // ── HEADER: Capture Zone ──────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: _CaptureHeader(
@@ -315,85 +430,188 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
           const SizedBox(height: 12),
           const Divider(height: 1),
 
-          // ── BODY: Snap list ────────────────────────────────────────────
-          Expanded(
-            child: _snaps.isEmpty
-                ? _EmptyState(onAdd: _showImageSourcePicker, scheme: scheme)
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                    itemCount: _snaps.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final snap = _snaps[index];
-                      return _SnapCard(
-                        snap: snap,
-                        index: index,
-                        formatDate: _formatDate,
-                        onPreview: () => _showPreview(snap),
-                        onDelete: () => _deleteSnap(index),
-                        scheme: scheme,
-                      );
-                    },
-                  ),
-          ),
-          
-          // ── ANSWER RESULT ──────────────────────────────────────────────
-          if (_answer != null)
+          // ── BODY: Image list (fixed height) ──────────────────────────────
+          if (_snaps.isEmpty)
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: AnswerView(result: _answer!),
+              flex: 2,
+              child: _EmptyState(onAdd: _showImageSourcePicker, scheme: scheme),
+            )
+          else
+            SizedBox(
+              height: 260,
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                itemCount: _snaps.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final entry = _snaps[index];
+                  return _SnapCard(
+                    snap: entry,
+                    index: index,
+                    isSelected: _selectedIndex == index,
+                    formatDate: _formatDate,
+                    onSelect: () => _selectSnap(index),
+                    onPreview: () => _showPreview(entry, latestBoxes),
+                    onDelete: () => _deleteSnap(index),
+                    scheme: scheme,
+                  );
+                },
               ),
             ),
-          
-          // ── FOOTER: CHAT INPUT ─────────────────────────────────────────
+
+          // ── CHAT AREA: per-image Q&A history ─────────────────────────────
+          if (_snaps.isNotEmpty) ...[
+            const Divider(height: 1),
+            Expanded(
+              child: snap == null
+                  ? Center(
+                      child: Text(
+                        'Chọn một ảnh để bắt đầu hỏi–đáp',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
+                    )
+                  : snap.messages.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_bubble_outline,
+                                  size: 40, color: scheme.outlineVariant),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Chưa có câu hỏi nào cho ảnh này',
+                                style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
+                                    fontSize: 13),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Nhập câu hỏi bên dưới để phân tích ảnh',
+                                style: TextStyle(
+                                    color: scheme.outline, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _chatScrollController,
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          itemCount: snap.messages.length,
+                          itemBuilder: (context, i) {
+                            final msg = snap.messages[i];
+                            return _ChatBubble(
+                              message: msg,
+                              scheme: scheme,
+                              formatDate: _formatDate,
+                            );
+                          },
+                        ),
+            ),
+          ],
+
+          // ── FOOTER: Q&A Input ─────────────────────────────────────────────
+          const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Machine code field
                 Row(
                   children: [
-                    Icon(Icons.qr_code_scanner, color: scheme.primary, size: 20),
+                    Icon(Icons.qr_code_scanner,
+                        color: _selectedSnap != null
+                            ? scheme.primary
+                            : scheme.outlineVariant,
+                        size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: _machineCodeController,
+                        enabled: _selectedSnap != null,
                         decoration: InputDecoration(
                           hintText: 'Mã máy (tuỳ chọn, vd: CNC-01)',
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+
+                // Question input + send button
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _questionController,
+                        enabled: _selectedSnap != null && !_isAsking,
+                        maxLines: 3,
+                        minLines: 1,
                         decoration: InputDecoration(
-                          hintText: 'Hỏi về ảnh thiết bị này (vd: vị trí ở đâu?)...',
+                          hintText: _selectedSnap == null
+                              ? 'Chọn một ảnh để bắt đầu hỏi...'
+                              : 'Hỏi về ảnh thiết bị này (vd: Phân tích hình ảnh này)...',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                         ),
-                        onSubmitted: (_) => _askQuestion(),
+                        onSubmitted: _selectedSnap != null && !_isAsking
+                            ? (_) => _askQuestion()
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    IconButton.filled(
-                      onPressed: _isAsking ? null : _askQuestion,
-                      icon: _isAsking 
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                        : const Icon(Icons.send),
+                    SizedBox(
+                      height: 48,
+                      child: IconButton.filled(
+                        onPressed: (_selectedSnap != null && !_isAsking)
+                            ? _askQuestion
+                            : null,
+                        icon: _isAsking
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Icon(Icons.send),
+                      ),
                     ),
                   ],
                 ),
+
+                // Active image indicator
+                if (_selectedSnap != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.image_outlined,
+                          size: 13, color: scheme.primary),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Đang hỏi về: ${_selectedSnap!.fileName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: scheme.primary,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -403,7 +621,106 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   }
 }
 
-// ── Header / Capture Zone widget ──────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Chat Bubble Widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ChatBubble extends StatelessWidget {
+  const _ChatBubble({
+    required this.message,
+    required this.scheme,
+    required this.formatDate,
+  });
+
+  final _ChatMessage message;
+  final ColorScheme scheme;
+  final String Function(DateTime) formatDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Question bubble (right-aligned)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 480),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(4),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    message.question,
+                    style: TextStyle(
+                      color: scheme.onPrimaryContainer,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (message.machineCode != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Mã máy: ${message.machineCode}',
+                      style: TextStyle(
+                        color: scheme.onPrimaryContainer.withValues(alpha: 0.7),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Text(
+                    formatDate(message.askedAt),
+                    style: TextStyle(
+                      color: scheme.onPrimaryContainer.withValues(alpha: 0.6),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Answer card (left-aligned, uses AnswerView)
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+              border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5)),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: AnswerView(result: message.answer),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Header / Capture Zone
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _CaptureHeader extends StatelessWidget {
   const _CaptureHeader({
     required this.onAdd,
@@ -482,7 +799,10 @@ class _CaptureHeader extends StatelessWidget {
   }
 }
 
-// ── Empty State widget ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty State
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onAdd, required this.scheme});
 
@@ -508,7 +828,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Chụp hoặc tải lên ảnh thiết bị\nđể lưu vào danh sách Snap & Ask',
+            'Chụp hoặc tải lên ảnh thiết bị\nđể bắt đầu phân tích bằng AI',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: scheme.outline),
           ),
@@ -524,12 +844,17 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ── Individual Snap Card ───────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Individual Snap Card
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _SnapCard extends StatelessWidget {
   const _SnapCard({
     required this.snap,
     required this.index,
+    required this.isSelected,
     required this.formatDate,
+    required this.onSelect,
     required this.onPreview,
     required this.onDelete,
     required this.scheme,
@@ -537,31 +862,48 @@ class _SnapCard extends StatelessWidget {
 
   final _SnapEntry snap;
   final int index;
+  final bool isSelected;
   final String Function(DateTime) formatDate;
+  final VoidCallback onSelect;
   final VoidCallback onPreview;
   final VoidCallback onDelete;
   final ColorScheme scheme;
 
   @override
   Widget build(BuildContext context) {
-    // Remove extension for display
     final displayName = snap.fileName.contains('.')
         ? snap.fileName.substring(0, snap.fileName.lastIndexOf('.'))
         : snap.fileName;
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: isSelected
+              ? scheme.primary
+              : scheme.outlineVariant.withValues(alpha: 0.5),
+          width: isSelected ? 2.0 : 1.0,
+        ),
+        color: isSelected
+            ? scheme.primaryContainer.withValues(alpha: 0.15)
+            : scheme.surface,
       ),
       child: InkWell(
-        onTap: onPreview,
+        onTap: onSelect,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
+              // Selected indicator
+              if (isSelected)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Icon(Icons.check_circle,
+                      color: scheme.primary, size: 18),
+                ),
+
               // Thumbnail
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -590,9 +932,10 @@ class _SnapCard extends StatelessWidget {
                       displayName.isNotEmpty ? displayName : 'Ảnh ${index + 1}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
+                        color: isSelected ? scheme.primary : null,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -615,12 +958,12 @@ class _SnapCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color:
-                                scheme.tertiaryContainer.withValues(alpha: 0.6),
+                            color: scheme.tertiaryContainer
+                                .withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            'Ảnh ${_formatSize(snap.bytes.length)}',
+                            _formatSize(snap.bytes.length),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -628,6 +971,26 @@ class _SnapCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (snap.messages.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: scheme.secondaryContainer
+                                  .withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${snap.messages.length} câu hỏi',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: scheme.onSecondaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -649,8 +1012,6 @@ class _SnapCard extends StatelessWidget {
                     tooltip: 'Xóa ảnh',
                     onPressed: onDelete,
                   ),
-                  Icon(Icons.arrow_forward_ios,
-                      size: 14, color: scheme.outline),
                 ],
               ),
             ],
@@ -662,12 +1023,17 @@ class _SnapCard extends StatelessWidget {
 
   String _formatSize(int bytes) {
     if (bytes < 1024) return '${bytes}B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)}KB';
+    if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(0)}KB';
+    }
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
 }
 
-// ── Custom Painter for Bounding Boxes ──────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Painter for Bounding Boxes
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _BBoxPainter extends CustomPainter {
   _BBoxPainter(this.boxes);
   final List<Rect> boxes;
@@ -680,7 +1046,7 @@ class _BBoxPainter extends CustomPainter {
       ..color = Colors.redAccent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0;
-    
+
     for (final box in boxes) {
       final rect = Rect.fromLTRB(
         (box.left / 1000.0) * size.width,
