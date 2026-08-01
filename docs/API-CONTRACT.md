@@ -110,25 +110,41 @@ numeric rule-extraction) → LLM sinh câu trả lời khi không bị khóa.
 {
   "answer": "Điện áp cấp cho servo trục X là 200–230 VAC...",
   "confidence": 0.83,
-  "guard": { "locked": false, "numericRule": true },
+  "guard": { "locked": false, "numericRule": true, "reasoningMode": false },
   "citations": [
-    { "versionId": "8f14e45f-...", "pageNo": 12,
-      "bboxKey": "documents/{documentId}/v1/crops/p12-1.png", "snippet": "..." }
+    {
+      "versionId": "8f14e45f-...",
+      "pageNo": 12,
+      "bboxKey": "p12_[105.2,230.5,450.8,280.0]",
+      "snippet": "### [Đoạn kỹ thuật - Trang 12 | Bbox: 105.2,230.5,450.8,280.0]\nĐiện áp cấp cho servo trục X là 200–230 VAC..."
+    }
   ],
   "latencyMs": 2100,
-  "model": "qwen2.5-1.5b-instruct-q4_k_m"
+  "model": "deepseek-r1-distill-qwen-1.5b"
 }
 ```
 
 Khi `locked=true`: `answer` = thông báo chuẩn *"Không đủ dữ liệu chắc chắn. Yêu cầu kỹ sư xác minh
-từ bản vẽ đính kèm."*, `citations` vẫn trả top-k để kỹ sư tự xem. `bboxKey`/`snippet` nullable.
+từ bản vẽ đính kèm."*, `citations` vẫn trả top-k để kỹ sư tự xem. `bboxKey` (tọa độ không gian `p{pageNo}_[minX,minY,maxX,maxY]`) / `snippet` (đoạn nội dung gốc được trích dẫn tối đa 300 ký tự) nullable.
 
-### 2.3. BE → App (giữ đúng shape Flutter đang parse):
+### 2.3. BE → App (giữ đúng shape Flutter đang parse & hiển thị Hộp thoại Trích dẫn Không gian):
 
 ```json
-{ "data": { "answer": "...", "confidence": 0.83,
-            "guard": { "locked": false, "numericRule": true },
-            "citations": [ { "versionId": "...", "pageNo": 12, "bboxKey": "..." } ] } }
+{
+  "data": {
+    "answer": "...",
+    "confidence": 0.83,
+    "guard": { "locked": false, "numericRule": true, "reasoningMode": false },
+    "citations": [
+      {
+        "versionId": "8f14e45f-...",
+        "pageNo": 12,
+        "bboxKey": "p12_[105.2,230.5,450.8,280.0]",
+        "snippet": "### [Đoạn kỹ thuật - Trang 12 | Bbox: 105.2,230.5,450.8,280.0]\nĐiện áp cấp cho servo trục X..."
+      }
+    ]
+  }
+}
 ```
 
 **BE ghi `query_logs`** mỗi lần hỏi: `actor_id, question, matched_version_id` (citation đầu),

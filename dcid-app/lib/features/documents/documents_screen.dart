@@ -5,8 +5,9 @@ import 'package:data_table_2/data_table_2.dart';
 
 import '../../core/responsive.dart';
 import '../../core/constrained_content.dart';
-import '../../state/auth_controller.dart';
 import '../../state/documents_providers.dart';
+import '../../state/providers.dart';
+import '../../state/role_filter.dart';
 import 'upload_document_sheet.dart';
 
 /// Danh sách tài liệu (`/documents`): loading / error / empty state,
@@ -17,9 +18,9 @@ class DocumentsScreen extends ConsumerWidget {
   Future<void> _openUploadSheet(BuildContext context, WidgetRef ref) async {
     final isWide = Responsive.isWide(context);
     final messenger = ScaffoldMessenger.of(context);
-    final bool? uploaded;
+    final Object? uploaded;
     if (isWide) {
-      uploaded = await showDialog<bool>(
+      uploaded = await showDialog<Object>(
         context: context,
         builder: (_) => Dialog(
           child: ConstrainedBox(
@@ -30,26 +31,67 @@ class DocumentsScreen extends ConsumerWidget {
       );
     } else {
       if (!context.mounted) return;
-      uploaded = await showModalBottomSheet<bool>(
+      uploaded = await showModalBottomSheet<Object>(
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
         builder: (_) => const UploadDocumentSheet(),
       );
     }
-    if (uploaded == true) {
+    if (uploaded != null && (uploaded == true || uploaded is String)) {
       ref.invalidate(documentsProvider);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Đã tải lên — đang xử lý OCR')),
+        const SnackBar(content: Text('Đã tải lên — đang xử lý OCR...')),
       );
+      if (uploaded is String && context.mounted) {
+        context.push('/documents/$uploaded');
+      }
+    }
+  }
+
+  Future<void> _confirmAndDeleteDocument(
+      BuildContext context, WidgetRef ref, String docId, String title) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận xóa tài liệu'),
+        content: Text('Bạn có chắc chắn muốn xóa "$title"? Hành động này sẽ xóa toàn bộ phiên bản và dữ liệu tra cứu liên quan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        final repo = ref.read(docsRepositoryProvider);
+        await repo.deleteDocument(docId);
+        ref.invalidate(documentsProvider);
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Đã xóa tài liệu thành công.')),
+        );
+      } catch (e) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Không thể xóa tài liệu: $e')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final docsAsync = ref.watch(documentsProvider);
-    final isAdminLevel =
-        ref.watch(authControllerProvider).user?.role.isAdminLevel ?? false;
+    final isAdminLevel = ref.watch(canUploadProvider);
+    final visibleCategories = ref.watch(visibleCategoriesProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -63,11 +105,23 @@ class DocumentsScreen extends ConsumerWidget {
             error: (_, _) => _ErrorState(
               onRetry: () => ref.invalidate(documentsProvider),
             ),
-            data: (docs) {
+            data: (allDocs) {
+              // Role-based filtering: show only categories visible to the user.
+              final docs = visibleCategories.isEmpty
+                  ? allDocs
+                  : allDocs
+                      .where((d) =>
+                          d.category == null ||
+                          visibleCategories.contains(d.category))
+                      .toList();
+
               if (docs.isEmpty) {
                 return RefreshIndicator(
                   onRefresh: () => ref.refresh(documentsProvider.future),
-                  child: const _EmptyState(),
+                  child: _EmptyState(
+                    isAdminLevel: isAdminLevel,
+                    onUploadPressed: () => _openUploadSheet(context, ref),
+                  ),
                 );
               }
 
@@ -144,10 +198,21 @@ class DocumentsScreen extends ConsumerWidget {
                                         DataCell(Text(
                                             _formatInstant(doc.updatedAt) ?? '—')),
                                         DataCell(
-                                          IconButton(
-                                            icon: const Icon(Icons.chevron_right),
-                                            onPressed: () =>
-                                                context.push('/documents/${doc.id}'),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (isAdminLevel)
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                                  tooltip: 'Xóa tài liệu',
+                                                  onPressed: () => _confirmAndDeleteDocument(context, ref, doc.id, doc.title),
+                                                ),
+                                              IconButton(
+                                                icon: const Icon(Icons.chevron_right),
+                                                onPressed: () =>
+                                                    context.push('/documents/${doc.id}'),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
@@ -188,12 +253,24 @@ class DocumentsScreen extends ConsumerWidget {
                       subtitle: subtitleParts.isEmpty
                           ? null
                           : Text(subtitleParts.join(' · ')),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isAdminLevel)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              tooltip: 'Xóa',
+                              onPressed: () => _confirmAndDeleteDocument(context, ref, doc.id, doc.title),
+                            ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
                       onTap: () => context.push('/documents/${doc.id}'),
                     ),
                   );
                 },
               );
+
 
               if (isTablet) {
                 return RefreshIndicator(
@@ -211,7 +288,7 @@ class DocumentsScreen extends ConsumerWidget {
               );
             },
           ),
-          floatingActionButton: (isAdminLevel && !isDesktop)
+          floatingActionButton: (isAdminLevel && (!isDesktop || docsAsync.value?.isEmpty == true))
               ? FloatingActionButton.extended(
                   onPressed: () => _openUploadSheet(context, ref),
                   icon: const Icon(Icons.upload_file),
@@ -225,14 +302,33 @@ class DocumentsScreen extends ConsumerWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({this.isAdminLevel = false, this.onUploadPressed});
+
+  final bool isAdminLevel;
+  final VoidCallback? onUploadPressed;
 
   @override
   Widget build(BuildContext context) {
     // ListView để pull-to-refresh hoạt động cả khi rỗng.
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(24),
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Danh sách tài liệu',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            if (isAdminLevel && onUploadPressed != null)
+              FilledButton.icon(
+                onPressed: onUploadPressed,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Tải tài liệu'),
+              ),
+          ],
+        ),
         const SizedBox(height: 120),
         Icon(Icons.folder_open,
             size: 56, color: Theme.of(context).colorScheme.outline),

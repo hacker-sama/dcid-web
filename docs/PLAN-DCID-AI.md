@@ -67,22 +67,23 @@ dcid-ai/
 │   │   ├── __init__.py
 │   │   ├── minio_client.py   # get_object(storage_key) -> bytes
 │   │   └── backend_client.py # post_ingest_callback(payload) — httpx, gắn token
-│   ├── pipeline/             # STUB đợt sau — mỗi file: signature + NotImplementedError
+│   ├── pipeline/             # Module xử lý RAG & OCR cấu trúc hóa không gian
 │   │   ├── __init__.py
-│   │   ├── ocr.py            # def extract_pages(pdf_bytes, langs) -> list[PageOcr]
-│   │   ├── chunk.py          # def chunk_pages(pages) -> list[Chunk]
-│   │   ├── embed.py          # def embed_texts(texts) -> list[list[float]]
-│   │   ├── index.py          # def upsert_chunks(...) / def search(...)
-│   │   └── guardrails.py     # THRESHOLD=0.60; def check_numeric(question) -> bool (stub)
+│   │   ├── ocr.py            # def extract_pages(pdf_bytes, langs) -> list[PageOcr] (bóc tách text & boxes Bbox [x0,y0,x1,y1] qua PyMuPDF / PaddleOCR)
+│   │   ├── chunk.py          # def chunk_pages(pages) -> list[Chunk] (tính union Bbox, cấu trúc hóa Markdown: ### [Bảng/Đoạn kỹ thuật - Trang X | Bbox: ...], trích xuất snippet)
+│   │   ├── embed.py          # def embed_texts(texts) -> list[list[float]] (sử dụng e5-small / sentence-transformers)
+│   │   ├── index.py          # def upsert_chunks(...) / def search(...) (lưu trữ vector kèm metadata bbox, snippet vào ChromaDB collection kcn_chunks)
+│   │   └── guardrails.py     # THRESHOLD=0.60; def check_numeric(question) -> bool
 │   └── services/
 │       ├── __init__.py
-│       └── ingest_service.py # run_ingest(req): MinIO → pypdf đếm trang → callback BE
+│       ├── ingest_service.py # run_ingest(req): MinIO → ocr.extract_pages → chunk.chunk_pages → index.upsert_chunks → callback BE
+│       └── query_service.py  # run_query(req): index.search → guardrails → llm_client.chat_completion → trả về AnswerDTO kèm bboxKey, snippet
 ├── tests/
 │   ├── test_health.py
 │   ├── test_auth.py          # thiếu/sai token → 401
 │   ├── test_ingest.py        # 202 + callback payload đúng shape (mock MinIO + httpx)
-│   └── test_query.py         # schema response đúng contract
-├── requirements.txt          # fastapi, uvicorn[standard], pydantic-settings, httpx, minio, pypdf, pytest
+│   └── test_query.py         # schema response đúng contract (có bboxKey và snippet)
+├── requirements.txt          # fastapi, uvicorn[standard], pydantic-settings, httpx, minio, pypdf, pytest, chromadb, sentence-transformers
 ├── Dockerfile                # python:3.11-slim, uvicorn port 8000
 ├── .env.example
 └── README.md
@@ -96,36 +97,46 @@ dcid-ai/
 ```json
 { "status": "ok", "model_loaded": false }
 ```
-(`model_loaded` cố định `false` ở skeleton.)
+(`model_loaded` cố định `false` ở skeleton/lúc mới khởi động.)
 
 ### 4.2. `POST /ai/ingest` — cần token, trả `202` ngay
 Request (contract §1.1): `versionId, documentId, storageKey, langs, metadata`.
 
-Trả `202 {"accepted": true}` rồi chạy nền qua `BackgroundTasks` (KHÔNG cần Celery):
+Trả `202 {"accepted": true}` rồi chạy nền qua `BackgroundTasks`:
 1. Tải `storageKey` từ MinIO (bucket từ env, mặc định `kcn-docs`).
-2. `pypdf.PdfReader` đếm `pageCount`.
-3. POST về `{BE_BASE_URL}/api/internal/ingest-callback` (kèm token):
+2. Gọi `ocr.extract_pages()` để bóc tách chữ và tọa độ `boxes` (`[x0, y0, x1, y1]`).
+3. Gọi `chunk.chunk_pages()` tạo các `Chunk` cấu trúc hóa Markdown kèm `bbox` và `snippet`.
+4. Gọi `index.upsert_chunks()` lập chỉ mục vào ChromaDB (`kcn_chunks`).
+5. POST về `{BE_BASE_URL}/api/internal/ingest-callback` (kèm token):
 ```json
-{ "versionId": "<uuid>", "status": "READY", "pageCount": <n>,
-  "pages": [ { "pageNo": 1, "imageKey": null, "width": null, "height": null,
-               "ocrText": "[skeleton] chưa OCR" } ],   // 1 phần tử / trang
-  "error": null }
+{
+  "versionId": "<uuid>",
+  "status": "READY",
+  "pageCount": <n>,
+  "pages": [
+    {
+      "pageNo": 1,
+      "imageKey": null,
+      "width": 1190,
+      "height": 1684,
+      "ocrText": "### [Đoạn kỹ thuật - Trang 1 | Bbox: 100,200,450,280]\nNội dung..."
+    }
+  ],
+  "error": null
+}
 ```
-4. Bất kỳ lỗi nào (MinIO chết, PDF hỏng, BE không phản hồi) → cố gắng gửi callback
-   `{"status": "FAILED", "error": "<mô tả>"}`; nếu chính callback lỗi → log, không crash service.
+6. Bất kỳ lỗi nào (MinIO chết, PDF hỏng, BE không phản hồi) → gửi callback `{"status": "FAILED", "error": "<mô tả>"}`.
 
 ### 4.3. `POST /ai/query` — cần token, đồng bộ
 Request (contract §2.2): `question, topK, allowedVersionIds, machineCode`.
 
-Logic mock **bắt buộc deterministic** (để backend/app/test dựa vào được):
-- `allowedVersionIds` rỗng **hoặc** câu hỏi chứa `"không có trong tài liệu"` →
-  `locked=true`, `confidence=0.30`, `answer="Không đủ dữ liệu chắc chắn. Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm."`, `citations=[]`.
-- Câu hỏi chứa một trong các từ khóa `điện áp|áp suất|nhiệt độ|dung sai|momen|volt|voltage` →
-  `numericRule=true`, `confidence=0.90`, answer mock dạng `"[MOCK-NUMERIC] Thông số trích xuất trực tiếp: 220V (nguồn: trang 1)"`.
-- Còn lại → `locked=false, numericRule=false, confidence=0.75`,
-  `answer="[MOCK] Trả lời cho câu hỏi: <question>"`.
-- Khi không locked: `citations=[{versionId: allowedVersionIds[0], pageNo: 1, bboxKey: null, snippet: "[mock snippet]"}]`.
-- Luôn kèm `latencyMs` (đo thật bằng `time.perf_counter`), `model="mock-skeleton"`.
+Logic thực thi pipeline & suy luận AI Model Local:
+- `allowedVersionIds` rỗng **hoặc** kết quả truy vấn ChromaDB có độ tương đồng `< 0.60` (`guardrails.py`) → `locked=true`, `confidence=0.30`, `answer="Không đủ dữ liệu chắc chắn. Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm."`, `citations=[]`.
+- Câu hỏi chứa từ khóa số liệu `điện áp|áp suất|nhiệt độ|dung sai|momen|volt|voltage` → `numericRule=true`.
+- Gửi Prompt tổng hợp (chỉ thị + các chunk `snippet` kèm tọa độ `Bbox` + câu hỏi) sang AI Model Local (`LM Studio` - `deepseek-r1-distill-qwen-1.5b`) qua `llm_client.py`.
+- `llm_client.py` cấu hình tối ưu `temperature=0.2`, `top_p=0.9`, đồng thời gửi `repetition_penalty=1.2` qua `extra_body` (kèm cơ chế tự động thử lại/Retry Fallback nếu model local từ chối nhận parameter này).
+- Trả về danh sách `citations` với `bboxKey="p{pageNo}_[{bbox}]"` và `snippet` (đoạn nội dung gốc), giúp người dùng xem trực tiếp trên **Hộp thoại Trích Dẫn Không Gian** của Flutter App.
+- Luôn kèm `latencyMs` (đo bằng `time.perf_counter`), `model="deepseek-r1-distill-qwen-1.5b"`.
 
 ---
 
@@ -138,6 +149,12 @@ Logic mock **bắt buộc deterministic** (để backend/app/test dựa vào đ�
 | `MINIO_ENDPOINT` | `localhost:9000` | trong compose: `minio:9000`; kèm `MINIO_SECURE=false` |
 | `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minioadmin`/`minioadmin` | compose dùng `minio`/`minio123` |
 | `MINIO_BUCKET` | `kcn-docs` | khớp backend |
+| `AI_OCR_URL` | `http://ai-ocr:8001` | Service OCR bóc tách hình ảnh chuyên dụng |
+| `CHROMA_HOST` / `CHROMA_PORT` | `localhost` / `8001` | trong compose: `chroma:8000` |
+| `LM_STUDIO_URL` | `http://host.docker.internal:1234/v1` | URL kết nối AI Model Local (Qwen 1.5B) |
+| `LM_STUDIO_MODEL` | `deepseek-r1-distill-qwen-1.5b` | Tên model local |
+| `LM_STUDIO_TEMP` / `LM_STUDIO_TOP_P` | `0.2` / `0.9` | Cấu hình nhiệt độ và độ tập trung |
+| `LM_STUDIO_REP_PENALTY` | `1.2` | Hệ số chống lặp từ (gửi trong `extra_body` + retry fallback) |
 
 ---
 
@@ -216,7 +233,7 @@ từng ký tự; test không phụ thuộc mạng/MinIO thật (mock).
 ## 8. Đợt sau (KHÔNG làm bây giờ — chỉ để hiểu hướng)
 
 Pipeline thật thay dần vào các stub: PaddleOCR (VI+EN) → chunk → `multilingual-e5-small` (ONNX)
-→ ChromaDB → `llama-cpp-python` (Qwen2.5-1.5B Q4_K_M) + guardrail θ=0.60 + numeric rule.
+→ ChromaDB → `LM Studio API` (`deepseek-r1-distill-qwen-1.5b`) + guardrail θ=0.60 + numeric rule.
 Thiết kế chi tiết: `docs/ARCHITECTURE.md` §B2, kế hoạch: `docs/PLAN-THESIS.md`.
 
 ---

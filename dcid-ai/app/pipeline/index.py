@@ -109,6 +109,9 @@ def upsert_chunks(
             "document_id": str(document_id),
             "page_no": c.page_no,
             "chunk_index": c.chunk_index,
+            "bbox": str(c.bbox or ""),
+            "image_path": str(getattr(c, "image_path", None) or ""),
+            "snippet": str(c.snippet or c.text[:300] or ""),
             **{k: v for k, v in metadata.items() if v is not None},
         }
         for c in chunks
@@ -131,31 +134,23 @@ def search(
     query_embedding: list[float],
     allowed_version_ids: list[UUID],
     top_k: int = 5,
+    machine_code: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Truy vấn top-k chunk với filter version_id ∈ allowed_version_ids.
-
-    Args:
-        query_embedding:     vector câu hỏi từ embed.embed_query().
-        allowed_version_ids: danh sách UUID phiên bản được phép truy cập
-                             (RBAC từ BE — contract §2.2).
-        top_k:               số chunk trả về.
-
-    Returns:
-        list dict, mỗi phần tử gồm:
-          {text, page_no, version_id, document_id, chunk_index, score (cosine similarity)}
-        Sắp xếp giảm dần theo score.
-
-    Raises:
-        Exception: ChromaDB unreachable — caller xử lý.
-    """
+    """Truy vấn top-k chunk với filter version_id ∈ allowed_version_ids."""
     collection = _get_collection()
 
     # Chroma where filter: version_id phải nằm trong danh sách cho phép
-    where: dict[str, Any]
+    where_clauses: list[dict[str, Any]] = []
+    
     if len(allowed_version_ids) == 1:
-        where = {"version_id": str(allowed_version_ids[0])}
+        where_clauses.append({"version_id": str(allowed_version_ids[0])})
     else:
-        where = {"version_id": {"$in": [str(v) for v in allowed_version_ids]}}
+        where_clauses.append({"version_id": {"$in": [str(v) for v in allowed_version_ids]}})
+        
+    if machine_code:
+        where_clauses.append({"machineCode": machine_code})
+        
+    where = {"$and": where_clauses} if len(where_clauses) > 1 else where_clauses[0]
 
     results = collection.query(
         query_embeddings=[query_embedding],
@@ -179,6 +174,11 @@ def search(
                 "version_id": meta.get("version_id"),
                 "document_id": meta.get("document_id"),
                 "chunk_index": meta.get("chunk_index"),
+                "bbox": meta.get("bbox", ""),
+                "image_path": meta.get("image_path", ""),
+                "snippet": meta.get("snippet", ""),
+                "title": meta.get("title", ""),
+                "category": meta.get("category", ""),
                 "score": round(similarity, 4),
             }
         )

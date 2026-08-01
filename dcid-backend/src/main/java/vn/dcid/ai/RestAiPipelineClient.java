@@ -8,8 +8,10 @@ import vn.dcid.ai.dto.AiIngestRequest;
 import vn.dcid.ai.dto.AiQueryRequest;
 import vn.dcid.ai.dto.AiQueryResponse;
 import vn.dcid.exception.ServiceUnavailableException;
+import java.util.UUID;
 
 @Component
+
 public class RestAiPipelineClient implements AiPipelineClient {
 
     private final RestClient restClient;
@@ -49,4 +51,20 @@ public class RestAiPipelineClient implements AiPipelineClient {
             throw new ServiceUnavailableException("AI service không phản hồi khi query", e);
         }
     }
+
+    @Override
+    public void deleteDocument(UUID documentId) {
+        try {
+            restClient.delete()
+                    .uri("/ai/documents/{documentId}", documentId)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            // Log warning nhưng không throw exception để tránh block luồng xóa DB
+            org.slf4j.LoggerFactory.getLogger(RestAiPipelineClient.class)
+                    .warn("Lỗi khi thông báo AI service xóa vector documentId={}: {}", documentId, e.getMessage());
+        }
+    }
 }
+
+

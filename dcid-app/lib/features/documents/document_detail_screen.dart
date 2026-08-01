@@ -1,8 +1,13 @@
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constrained_content.dart';
+import '../../core/file_viewer/file_viewer.dart';
 import '../../data/models/document_detail.dart';
 import '../../state/documents_providers.dart';
+import '../../state/providers.dart';
+import '../../state/role_filter.dart';
 
 /// Chi tiết tài liệu (`/documents/:id`): thông tin + danh sách version
 /// với chip trạng thái màu (PLAN-FLUTTER-DOCS.md §2-mục-5).
@@ -14,9 +19,58 @@ class DocumentDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(documentDetailProvider(documentId));
+    final isAdminLevel = ref.watch(canUploadProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chi tiết tài liệu')),
+      appBar: AppBar(
+        title: const Text('Chi tiết tài liệu'),
+        actions: [
+          if (isAdminLevel)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              tooltip: 'Xóa tài liệu',
+              onPressed: () async {
+                final title = detailAsync.value?.document.title ?? 'tài liệu này';
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Xác nhận xóa tài liệu'),
+                    content: Text('Bạn có chắc chắn muốn xóa "$title"? Hành động này không thể hoàn tác.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Hủy'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Xóa'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true && context.mounted) {
+                  final messenger = ScaffoldMessenger.of(context);
+                  try {
+                    final repo = ref.read(docsRepositoryProvider);
+                    await repo.deleteDocument(documentId);
+                    ref.invalidate(documentsProvider);
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Đã xóa tài liệu thành công.')),
+                    );
+                    if (context.mounted) Navigator.of(context).pop();
+                  } catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Không thể xóa tài liệu: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+        ],
+      ),
+
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
@@ -54,7 +108,7 @@ class DocumentDetailScreen extends ConsumerWidget {
                   const Text('Chưa có phiên bản nào.')
                 else
                   for (final version in detail.versions) ...[
-                    _VersionTile(version: version),
+                    _VersionTile(documentId: documentId, version: version),
                     const SizedBox(height: 8),
                   ],
               ],
@@ -120,13 +174,14 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _VersionTile extends StatelessWidget {
-  const _VersionTile({required this.version});
+class _VersionTile extends ConsumerWidget {
+  const _VersionTile({required this.documentId, required this.version});
 
+  final String documentId;
   final VersionSummary version;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dimmed =
         version.status == 'SUPERSEDED' || version.status == 'OBSOLETE';
     final subtitleParts = [
@@ -141,16 +196,129 @@ class _VersionTile extends StatelessWidget {
       opacity: dimmed ? 0.55 : 1,
       child: Card(
         margin: EdgeInsets.zero,
-        child: ListTile(
-          minVerticalPadding: 14,
-          leading: CircleAvatar(child: Text('v${version.versionNo}')),
-          title: Text('Phiên bản ${version.versionNo}'),
-          subtitle:
-              subtitleParts.isEmpty ? null : Text(subtitleParts.join(' · ')),
-          trailing: _StatusChip(status: version.status),
+        child: Column(
+          children: [
+            ListTile(
+              minVerticalPadding: 14,
+              leading: CircleAvatar(child: Text('v${version.versionNo}')),
+              title: Text('Phiên bản ${version.versionNo}'),
+              subtitle: subtitleParts.isEmpty
+                  ? null
+                  : Text(subtitleParts.join(' · ')),
+              trailing: _StatusChip(status: version.status),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+              child: Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _viewPdf(context, ref),
+                    icon: const Icon(Icons.picture_as_pdf, size: 18),
+                    label: const Text('Xem PDF gốc'),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _viewOcr(context, ref),
+                    icon: const Icon(Icons.description, size: 18),
+                    label: const Text('Xem chữ OCR'),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Future<void> _viewPdf(BuildContext context, WidgetRef ref) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đang tải file PDF...')),
+      );
+      final dio = ref.read(apiClientProvider).dio;
+      final response = await dio.get(
+        '/api/documents/$documentId/versions/${version.id}/download',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = response.data as Uint8List;
+      openOrDownloadFile(
+        bytes,
+        version.originalFilename ?? 'v${version.versionNo}.pdf',
+        'application/pdf',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không tải được file PDF: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _viewOcr(BuildContext context, WidgetRef ref) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      final dio = ref.read(apiClientProvider).dio;
+      final response =
+          await dio.get('/api/documents/$documentId/versions/${version.id}/pages');
+      if (context.mounted) Navigator.pop(context); // close progress
+
+      final data = (response.data?['data'] as List<dynamic>?) ?? [];
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(
+              'Văn bản OCR (${version.originalFilename ?? 'v${version.versionNo}'})'),
+          content: SizedBox(
+            width: 600,
+            height: 400,
+            child: data.isEmpty
+                ? const Center(
+                    child: Text('Chưa có dữ liệu OCR cho phiên bản này.'))
+                : ListView.separated(
+                    itemCount: data.length,
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemBuilder: (_, index) {
+                      final item = data[index] as Map<String, dynamic>;
+                      final pageNo = item['pageNo'] ?? (index + 1);
+                      final text = item['ocrText'] ?? '';
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Trang $pageNo',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 6),
+                          SelectableText(text.isEmpty
+                              ? '(Trang trắng / không có chữ)'
+                              : text),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // close progress if open
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không tải được dữ liệu OCR: $e')),
+        );
+      }
+    }
   }
 }
 

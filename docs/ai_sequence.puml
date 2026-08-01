@@ -1,0 +1,53 @@
+@startuml ai_sequence_diagram
+skinparam backgroundColor #0F172A
+skinparam defaultFontColor #F8FAFC
+skinparam ArrowColor #38BDF8
+skinparam ActorFontColor #F8FAFC
+skinparam ParticipantBackgroundColor #1E293B
+skinparam ParticipantBorderColor #38BDF8
+skinparam ParticipantFontColor #F8FAFC
+skinparam NoteBackgroundColor #1E293B
+skinparam NoteBorderColor #38BDF8
+skinparam NoteFontColor #F8FAFC
+skinparam GroupHeaderFontColor #38BDF8
+skinparam GroupBorderColor #38BDF8
+
+autonumber
+
+actor "Kỹ Sư / Xưởng" as User
+participant "Flutter App (:3000)" as App
+participant "Spring Boot BE (:8080)" as BE
+participant "dcid-ai-ocr (:8001)" as OCR
+participant "LM Studio (:1234)" as LLM
+participant "ChromaDB\n(Bộ nhớ bổ trợ)" as DB
+
+note over User, LLM : LUỒNG CỐT LÕI: BÓC TÁCH HÌNH ẢNH -> AI LOCAL SUY LUẬN TRẢ LỜI
+
+User -> App : Gửi hình ảnh bản vẽ / tài liệu + Câu hỏi ("Giải thích thông số bản vẽ này")
+App -> BE : Truyền ảnh và câu hỏi
+
+group BƯỚC 1: BÓC TÁCH HÌNH ẢNH QUA OCR
+    BE -> OCR : POST /ocr/extract (Hình ảnh / PDF bản vẽ)
+    note right of OCR
+        PyMuPDF dựng ảnh RGB 200 DPI
+        PaddleOCR bóc tách ký tự, số, dung sai
+    end note
+    OCR --> BE : Trả về văn bản thông số bóc tách (PageOcr Text + Bounding Box)
+end
+
+group BƯỚC 2: GỬI DỮ LIỆU OCR VỀ AI MODEL LOCAL ĐỂ SUY LUẬN
+    BE -> LLM : Gửi Prompt (Chỉ thị + Dữ liệu OCR bóc tách được + Câu hỏi kỹ sư)
+    note right of LLM
+        AI Model Local (deepseek-r1-distill-qwen-1.5b)
+        suy luận ý nghĩa kỹ thuật, chuẩn hóa lỗi OCR rớt dấu
+    end note
+    LLM --> BE : Trả về câu trả lời suy luận chi tiết kèm các bước thao tác
+end
+
+BE --> App : Trả kết quả hướng dẫn cho kỹ sư
+App --> User : Hiển thị câu trả lời cầm tay chỉ việc ngay trên màn hình
+
+note over BE, DB : BƯỚC BỔ TRỢ: LƯU TRỮ VÀO CHROMADB ĐỂ TRA CỨU SAU NÀY
+BE -> DB : Nhúng và lưu vector các đoạn OCR bản vẽ vào ChromaDB để tái sử dụng
+
+@enduml

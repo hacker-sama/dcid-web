@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/providers.dart';
 
 /// Bottom sheet upload PDF (PLAN-FLUTTER-DOCS.md §3.3, §4.3).
-/// Pop `true` khi upload thành công.
+/// Pop id của tài liệu mới (String) khi upload thành công.
 class UploadDocumentSheet extends ConsumerStatefulWidget {
   const UploadDocumentSheet({super.key});
 
@@ -87,7 +87,7 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
       _error = null;
     });
     try {
-      await ref.read(docsRepositoryProvider).uploadDocument(
+      final detail = await ref.read(docsRepositoryProvider).uploadDocument(
             title: _titleController.text.trim(),
             category: _category!,
             machineCode: _machineCodeController.text.trim(),
@@ -97,7 +97,7 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
             fileBytes: _fileBytes!,
             fileName: _fileName ?? 'document.pdf',
           );
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(detail.document.id);
     } catch (e) {
       if (mounted) {
         setState(() {

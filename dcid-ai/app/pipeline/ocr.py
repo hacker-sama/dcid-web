@@ -20,6 +20,7 @@ from typing import Any
 logger = logging.getLogger("dcid-ai.ocr")
 
 RENDER_DPI = 200  # đủ nét để OCR mà không quá nặng (A4 ~1650x2340px)
+MAX_SIDE_PIXELS = 2400  # giới hạn cạnh tối đa để tránh tạo ảnh quá lớn (6600x9300+) gây tràn RAM và sập OCR khi xử lý bản vẽ lớn (A0/A1/A2/A3)
 
 
 @dataclass
@@ -30,8 +31,8 @@ class PageOcr:
     text: str
     width: int | None = None
     height: int | None = None
-    # TODO(đợt sau): bbox từng dòng/đoạn để crop citation (contract §3 — crops/{p}-{i}.png)
     boxes: list[tuple[float, float, float, float]] = field(default_factory=list)
+    image_bytes: bytes | None = None
 
 
 @lru_cache(maxsize=4)
@@ -66,33 +67,53 @@ def _pick_lang(langs: list[str]) -> str:
     return langs[0] if langs else "en"
 
 
-def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
-    """Render từng trang PDF (PyMuPDF) rồi OCR (PaddleOCR). Lỗi PDF hỏng sẽ raise —
-    caller chuyển thành callback FAILED.
-    Lưu ý: fitz và numpy được import bên trong hàm để container `ai` (không cài OCR)
-    vẫn import được PageOcr mà không bị ModuleNotFoundError.
+def _detect_filetype(data: bytes) -> str:
+    if data.startswith(b"%PDF-"):
+        return "pdf"
+    if data.startswith(b"\x89PNG"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    return "pdf"
+
+
+def extract_pages(pdf_bytes: bytes, langs: list[str] | None = None) -> list[PageOcr]:
+    """Trích xuất dữ liệu chữ trực tiếp từ PDF (PyMuPDF / fitz) và render ảnh trang PNG.
+    Không chạy qua PaddleOCR để tránh làm méo chữ, làm chậm tiến trình và phụ thuộc ngôn ngữ.
     """
     import fitz  # PyMuPDF
-    import numpy as np
 
-    lang = _pick_lang(langs)
-    engine = _get_engine(lang)
-
+    ftype = _detect_filetype(pdf_bytes)
     pages: list[PageOcr] = []
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    doc = fitz.open(stream=pdf_bytes, filetype=ftype)
     try:
-        matrix = fitz.Matrix(RENDER_DPI / 72, RENDER_DPI / 72)
         for i, page in enumerate(doc, start=1):
-            pix = page.get_pixmap(matrix=matrix)
-            img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
-                pix.height, pix.width, pix.n
-            )
-            if pix.n == 4:  # RGBA -> RGB (PaddleOCR không cần kênh alpha)
-                img = img[:, :, :3]
+            max_side_pt = max(page.rect.width, page.rect.height)
+            scale_dpi = RENDER_DPI / 72.0
+            scale_max = MAX_SIDE_PIXELS / max_side_pt if max_side_pt > 0 else scale_dpi
+            scale = min(scale_dpi, scale_max)
+            matrix = fitz.Matrix(scale, scale)
 
+            pix = page.get_pixmap(matrix=matrix)
             lines: list[str] = []
-            for res in engine.predict(img):
-                lines.extend(res.get("rec_texts", []))
+            boxes: list[tuple[float, float, float, float]] = []
+
+            native_text = page.get_text("text").strip()
+            if native_text:
+                for b in page.get_text("blocks"):
+                    if len(b) >= 7 and b[6] == 0:  # text block
+                        txt = str(b[4]).strip()
+                        if txt:
+                            block_lines = txt.split("\n")
+                            lines.extend(block_lines)
+                            bbox = (round(float(b[0]), 1), round(float(b[1]), 1), round(float(b[2]), 1), round(float(b[3]), 1))
+                            boxes.extend([bbox] * len(block_lines))
+                if not lines:
+                    lines = native_text.split("\n")
+            else:
+                lines = [f"[Trang {i} chứa hình ảnh / bản vẽ kỹ thuật - xem ảnh đính kèm]"]
+
+            png_bytes = pix.tobytes("png")
 
             pages.append(
                 PageOcr(
@@ -100,9 +121,11 @@ def extract_pages(pdf_bytes: bytes, langs: list[str]) -> list[PageOcr]:
                     text="\n".join(lines),
                     width=pix.width,
                     height=pix.height,
+                    boxes=boxes,
+                    image_bytes=png_bytes,
                 )
             )
-            logger.debug("OCR trang %d: %d dong", i, len(lines))
+            logger.info("Trang %d: Trích xuất %d dòng (%d ký tự) trực tiếp từ PDF", i, len(lines), len(native_text))
     finally:
         doc.close()
 

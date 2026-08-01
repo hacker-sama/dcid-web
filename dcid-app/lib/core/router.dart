@@ -55,8 +55,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/admin', builder: (_, _) => const AdminScreen()),
           GoRoute(
             path: '/viewer/:versionId',
-            builder: (_, state) =>
-                DocumentViewerScreen(versionId: state.pathParameters['versionId']!),
+            builder: (_, state) {
+              final pageNo = int.tryParse(
+                state.uri.queryParameters['page'] ?? '',
+              );
+              return DocumentViewerScreen(
+                versionId: state.pathParameters['versionId']!,
+                pageNo: pageNo,
+              );
+            },
           ),
         ],
       ),

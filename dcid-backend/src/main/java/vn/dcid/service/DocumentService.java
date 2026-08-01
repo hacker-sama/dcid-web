@@ -17,14 +17,17 @@ import vn.dcid.domain.enums.VersionStatus;
 import vn.dcid.dto.request.CreateDocumentRequest;
 import vn.dcid.dto.response.DocumentDTO;
 import vn.dcid.dto.response.DocumentDetailDTO;
+import vn.dcid.dto.response.DocumentPageDTO;
 import vn.dcid.dto.response.DocumentVersionDTO;
 import vn.dcid.exception.NotFoundException;
 import vn.dcid.exception.PolicyViolationException;
+import vn.dcid.repository.DocumentPageRepository;
 import vn.dcid.repository.DocumentRepository;
 import vn.dcid.repository.DocumentVersionRepository;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -40,17 +43,20 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final DocumentVersionRepository versionRepository;
+    private final DocumentPageRepository pageRepository;
     private final MinioService minioService;
     private final AuditLogService auditLogService;
     private final AiPipelineClient aiPipelineClient;
 
     public DocumentService(DocumentRepository documentRepository,
                            DocumentVersionRepository versionRepository,
+                           DocumentPageRepository pageRepository,
                            MinioService minioService,
                            AuditLogService auditLogService,
                            AiPipelineClient aiPipelineClient) {
         this.documentRepository = documentRepository;
         this.versionRepository = versionRepository;
+        this.pageRepository = pageRepository;
         this.minioService = minioService;
         this.auditLogService = auditLogService;
         this.aiPipelineClient = aiPipelineClient;
@@ -121,6 +127,29 @@ public class DocumentService {
         return new DocumentDetailDTO(DocumentDTO.from(doc), versions);
     }
 
+    @Transactional(readOnly = true)
+    public DocumentVersion getVersionEntity(UUID documentId, UUID versionId) {
+        DocumentVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() -> new NotFoundException("DocumentVersion", versionId.toString()));
+        if (!version.getDocumentId().equals(documentId)) {
+            throw new NotFoundException("DocumentVersion", versionId.toString());
+        }
+        return version;
+    }
+
+    @Transactional(readOnly = true)
+    public InputStream downloadVersionFile(UUID documentId, UUID versionId) {
+        DocumentVersion version = getVersionEntity(documentId, versionId);
+        return minioService.download(version.getStorageKey());
+    }
+
+    @Transactional(readOnly = true)
+    public List<DocumentPageDTO> getVersionPages(UUID documentId, UUID versionId) {
+        getVersionEntity(documentId, versionId);
+        return pageRepository.findByVersionIdOrderByPageNo(versionId)
+                .stream().map(DocumentPageDTO::from).toList();
+    }
+
     private void triggerIngest(Document doc, DocumentVersion version) {
         List<String> langs = version.getLang() != null && !version.getLang().isBlank()
                 ? Arrays.stream(version.getLang().split(",")).map(String::trim).toList()
@@ -147,7 +176,40 @@ public class DocumentService {
         }
     }
 
+    @Transactional
+    public void deleteDocument(UUID id, UUID actorId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Document", id.toString()));
+
+        List<DocumentVersion> versions = versionRepository.findByDocumentIdOrderByVersionNoDesc(id);
+        for (DocumentVersion version : versions) {
+            try {
+                if (version.getStorageKey() != null) {
+                    minioService.delete(version.getStorageKey());
+                }
+            } catch (Exception e) {
+                log.warn("Không thể xóa file MinIO storageKey={}: {}", version.getStorageKey(), e.getMessage());
+            }
+
+            pageRepository.deleteByVersionId(version.getId());
+        }
+
+        versionRepository.deleteAll(versions);
+
+        try {
+            aiPipelineClient.deleteDocument(id);
+        } catch (Exception e) {
+            log.warn("Không thể xóa vector chunks trên AI service cho docId={}: {}", id, e.getMessage());
+        }
+
+        documentRepository.delete(doc);
+
+        auditLogService.log(actorId, "DOCUMENT_DELETE", "DOCUMENT", id, null, null);
+        log.info("Đã xóa hoàn toàn documentId={} và {} versions", id, versions.size());
+    }
+
     private static String sha256(byte[] bytes) {
+
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(bytes);

@@ -30,4 +30,17 @@ class DocumentSummary {
         createdAt: json['createdAt'] as String?,
         updatedAt: json['updatedAt'] as String?,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'machineCode': machineCode,
+        'category': category,
+        'minRole': minRole,
+        'description': description,
+        'createdAt': createdAt,
+        'updatedAt': updatedAt,
+      };
 }
+
+
