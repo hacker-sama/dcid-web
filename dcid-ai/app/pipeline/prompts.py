@@ -1,59 +1,77 @@
 """Prompt Templates cho Smart KCN Docs — RAG Query Pipeline.
 
-Thiết kế cho model nhỏ (1.5B–2B): prompt ngắn gọn, rõ ràng, ép buộc bám sát context,
+Thiết kế cho model nhỏ (1.5B–2B, hỗ trợ cả Text LLM lẫn Vision VLM như Qwen2-VL): prompt ngắn gọn, rõ ràng,
 KHÔNG cho phép hallucination (bịa đặt) khi context là OCR rác hoặc không đủ thông tin.
 """
 
 from __future__ import annotations
 
 # ────────────────────────────────────────────────────────────────────────────
-# System Prompts — Quy tắc chống hallucination CỨNG cho model nhỏ
+# Task-Tuned Prompts cho Qwen2-VL-2B (Visual Captioner ở khâu Ingestion)
 # ────────────────────────────────────────────────────────────────────────────
 
-_SYSTEM_BASE = """Bạn là chuyên gia phân tích tài liệu kỹ thuật.
+PROMPT_QWEN_VL_CAPTION = (
+    "Trích xuất toàn bộ văn bản trong ảnh này và mô tả ngắn gọn nội dung hình ảnh trong 2-3 câu."
+)
 
-NHIỆM VỤ: Đọc phần "THÔNG TIN TỪ TÀI LIỆU" bên dưới rồi trả lời câu hỏi của người dùng.
+PROMPT_QWEN_VL_LABELS = (
+    "Hãy đọc và liệt kê tất cả các nhãn chữ (labels), ký hiệu và con số có trong hình này."
+)
 
-QUY TẮC BẮT BUỘC:
-1. CHỈ ĐƯỢC sử dụng thông tin CÓ TRONG phần "THÔNG TIN TỪ TÀI LIỆU". TUYỆT ĐỐI KHÔNG ĐƯỢC bịa thêm thông tin không có trong tài liệu.
-2. Phải TRÍCH DẪN trực tiếp các con số, thông số, tên chi tiết, vật liệu tìm thấy trong tài liệu.
-3. Nếu text tài liệu khó đọc hoặc bị lỗi OCR (ví dụ: toàn ký tự rời rạc, số liệu không rõ ràng), hãy nói thẳng: "Text tài liệu bị lỗi OCR, chỉ đọc được một số thông tin sau: ..." rồi liệt kê những gì đọc được.
-4. KHÔNG ĐƯỢC nhắc tới các tính năng hệ thống (Search by Image, Image Recognition, Smart KCN Docs...). Chỉ trả lời về NỘI DUNG tài liệu.
-5. KHÔNG lặp lại câu hỏi. Trả lời bằng CÙNG NGÔN NGỮ với câu hỏi."""
+PROMPT_QWEN_VL_TABLE = (
+    "Trích xuất dữ liệu bảng này thành định dạng Markdown Table."
+)
 
-_SYSTEM_REASONING_BASE = """Bạn là chuyên gia phân tích tài liệu và bản vẽ kỹ thuật.
+PROMPT_QWEN_VL_CLASSIFY = (
+    "Bức ảnh này biểu diễn cái gì? Chọn 1 trong các loại: [Sơ đồ khối, Bảng biểu, Bản vẽ kỹ thuật, Sơ đồ mạch]."
+)
 
-NHIỆM VỤ: Đọc phần "THÔNG TIN TỪ TÀI LIỆU" bên dưới rồi giải thích chi tiết cho người dùng.
+# ────────────────────────────────────────────────────────────────────────────
+# System Prompts — Quy tắc chống hallucination CỨNG cho model nhỏ (Text & Vision)
+# ────────────────────────────────────────────────────────────────────────────
 
-QUY TẮC BẮT BUỘC:
-1. CHỈ ĐƯỢC sử dụng thông tin CÓ TRONG phần "THÔNG TIN TỪ TÀI LIỆU". TUYỆT ĐỐI KHÔNG ĐƯỢC bịa thêm thông tin không có trong tài liệu.
-2. Phải TRÍCH DẪN trực tiếp các con số, thông số, tên chi tiết, vật liệu tìm thấy trong tài liệu.
-3. Nếu text tài liệu khó đọc hoặc bị lỗi OCR (ví dụ: toàn ký tự rời rạc, số liệu không rõ ràng), hãy nói thẳng: "Text tài liệu bị lỗi OCR, chỉ đọc được một số thông tin sau: ..." rồi liệt kê những gì đọc được.
-4. KHÔNG ĐƯỢC nhắc tới các tính năng hệ thống (Search by Image, Image Recognition, Smart KCN Docs...). Chỉ trả lời về NỘI DUNG tài liệu.
-5. KHÔNG lặp lại câu hỏi. Trả lời bằng CÙNG NGÔN NGỮ với câu hỏi."""
+_SYSTEM_BASE = """Bạn là trợ lý AI phân tích tài liệu kỹ thuật.
+Hãy suy luận và trả lời câu hỏi của người dùng một cách trực tiếp, tự nhiên dựa trên thông tin tài liệu được cung cấp."""
 
-_NUMERIC_SUFFIX = "\nLƯU Ý THÊM: Phải trích xuất chính xác các con số và đơn vị đo từ tài liệu."
+_SYSTEM_REASONING_BASE = """Bạn là chuyên gia cơ khí tư vấn kỹ thuật và tháo lắp thiết bị.
+Hãy suy luận tự do và giải đáp chính xác câu hỏi của người dùng dựa trên dữ liệu tài liệu đính kèm."""
 
-_CONTEXT_HEADER = "\n--- THÔNG TIN TỪ TÀI LIỆU ---\n"
-_CONTEXT_FOOTER = "\n--- HẾT THÔNG TIN TÀI LIỆU ---\n"
-_NO_CONTEXT = "\n--- KHÔNG CÓ THÔNG TIN TÀI LIỆU ---\n"
+_SYSTEM_VISION_BASE = """Bạn là trợ lý AI đa thức thể phân tích bản vẽ kỹ thuật.
+Hãy trực tiếp quan sát hình ảnh bản vẽ đính kèm kết hợp với dữ liệu văn bản để suy luận và trả lời câu hỏi của người dùng một cách đầy đủ, tự nhiên."""
+
+_SYSTEM_VISION_REASONING_BASE = """Bạn là chuyên gia cơ khí đa thức thể phân tích bản vẽ và tư vấn kỹ thuật.
+Hãy quan sát hình ảnh bản vẽ đính kèm và đọc dữ liệu văn bản để suy luận tự do, trả lời đúng trọng tâm câu hỏi của người dùng."""
+
+_NUMERIC_SUFFIX = "\nLƯU Ý THÊM: Phải trích xuất chính xác các con số và đơn vị đo từ tài liệu/hình ảnh nếu có."
+
+_CONTEXT_HEADER = "\n<context_documents>\n"
+_CONTEXT_FOOTER = "</context_documents>\n"
+_NO_CONTEXT = "<context_documents><!-- Không tìm thấy tài liệu phù hợp --></context_documents>\n"
 
 
 def build_system_prompt(
     numeric_rule: bool = False,
     reasoning_mode: bool = False,
+    has_image: bool = False,
 ) -> str:
-    """Xây dựng system prompt (chỉ chứa chỉ dẫn hệ thống)."""
-    base = _SYSTEM_REASONING_BASE if reasoning_mode else _SYSTEM_BASE
-    if numeric_rule:
-        return base + _NUMERIC_SUFFIX
-    return base
+    """Không dùng System Prompt — để AI Local tự do tiếp nhận câu hỏi và trả lời tự nhiên."""
+    return ""
 
 
-def build_user_prompt(question: str, hits: list[dict], reasoning_mode: bool = False, history: list | None = None) -> str:
-    """Xây dựng user prompt với context chunks từ ChromaDB."""
+def build_user_prompt(
+    question: str,
+    hits: list[dict],
+    reasoning_mode: bool = False,
+    history: list | None = None,
+    has_image: bool = False,
+    machine_code: str | None = None,
+) -> str:
+    """Xây dựng user prompt trực tiếp: dữ liệu tài liệu + câu hỏi của người dùng."""
     parts: list[str] = []
     
+    if machine_code:
+        parts.append(f"\n[Bối cảnh: Bạn đang hỗ trợ bảo trì cho máy có mã {machine_code}. Hãy ưu tiên thông tin liên quan đến thiết bị này.]\n")
+
     parts.append(_CONTEXT_HEADER)
     if hits:
         for i, hit in enumerate(hits, start=1):
@@ -62,24 +80,37 @@ def build_user_prompt(question: str, hits: list[dict], reasoning_mode: bool = Fa
             page_no   = hit.get("page_no", "?")
             bbox_str  = hit.get("bbox", "").strip()
             text      = hit.get("text", "").strip()
+            if has_image and len(text) > 400:
+                text = text[:400] + "..."
 
-            # Header rõ ràng: tên tài liệu + loại + trang
             header_parts = []
             if title:
-                header_parts.append(f"Tài liệu: '{title}'")
+                header_parts.append(f"title='{title}'")
             if category:
-                header_parts.append(f"Loại: {category}")
-            header_parts.append(f"Trang {page_no}")
+                header_parts.append(f"category='{category}'")
+            header_parts.append(f"page='{page_no}'")
             if bbox_str and bbox_str.upper() != "N/A":
-                header_parts.append(f"Tọa độ: {bbox_str}")
-            location_info = " | ".join(header_parts)
+                header_parts.append(f"bbox='{bbox_str}'")
+            image_path = hit.get("image_path", "").strip()
+            if image_path:
+                header_parts.append(f"image_path='{image_path}'")
+            attrs = " ".join(header_parts)
 
-            parts.append(f"[Đoạn {i} - {location_info}]\n{text}\n")
+            parts.append(f"<document id=\"{i}\" {attrs}>\n{text}\n</document>\n")
         parts.append(_CONTEXT_FOOTER)
     else:
         parts.append(_NO_CONTEXT)
 
-    # Câu hỏi + chỉ thị bám sát context cứng
+    if has_image:
+        q_lower = question.lower()
+        if any(kw in q_lower for kw in ["chỉ ra", "ở đâu", "vùng nào", "chỗ nào", "vị trí"]):
+            parts.append(
+                "\n[YÊU CẦU ĐẶC BIỆT]: Người dùng đang hỏi về vị trí. "
+                "Nếu xác định được vị trí chi tiết trên ảnh, hãy thêm tọa độ vào cuối câu trả lời theo đúng định dạng:\n"
+                "[LOC] (x1,y1),(x2,y2) [/LOC]\n"
+                "Lưu ý: Tọa độ là các số nguyên từ 0 đến 1000.\n"
+            )
+
     parts.append(f"\nCâu hỏi: {question.strip()}\n")
-    parts.append("Trả lời DỰA TRÊN NỘI DUNG tài liệu ở trên. Nếu text khó đọc thì liệt kê những gì đọc được.")
     return "".join(parts)
+

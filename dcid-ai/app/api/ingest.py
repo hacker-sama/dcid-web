@@ -28,3 +28,17 @@ def ingest(req: IngestRequest) -> IngestAccepted:
         metadata=req.metadata,
     )
     return IngestAccepted(accepted=True, taskId=task.id)
+
+
+@router.delete("/documents/{document_id}")
+def delete_document_vector(document_id: str):
+    """DELETE /ai/documents/{document_id} — Endpoint cho Backend Spring Boot gọi xóa vector."""
+    from src.vectordb import vector_store
+    deleted_count = vector_store.delete_document_chunks(document_id=document_id)
+    return {
+        "status": "SUCCESS",
+        "message": f"Đã xóa vector chunks cho document_id={document_id}",
+        "documentId": document_id,
+        "deletedChunks": deleted_count,
+    }
+

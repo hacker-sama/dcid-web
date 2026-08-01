@@ -84,7 +84,16 @@ public class DocumentController {
                 .body(resource);
     }
 
+    /** Xóa hoàn toàn tài liệu + các phiên bản (QA_ADMIN / ADMIN). */
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('QA_ADMIN','ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+        documentService.deleteDocument(id, currentUserId());
+        return ResponseEntity.ok(ApiResponse.of(null));
+    }
+
     private UUID currentUserId() {
+
         String id = SecurityContextHelper.getCurrentUserId();
         if (id == null) {
             throw new ForbiddenException("Chưa xác thực.");

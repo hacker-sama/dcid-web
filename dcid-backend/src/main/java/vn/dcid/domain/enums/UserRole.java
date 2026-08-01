@@ -9,12 +9,27 @@ package vn.dcid.domain.enums;
  *     <li>{@link #ADMIN}     — quản trị hệ thống: quản lý người dùng, cấu hình, xem audit log.</li>
  * </ul>
  *
- * <p><b>Lưu ý:</b> thứ tự khai báo là thứ bậc quyền tăng dần — {@code ordinal()} được dùng để
- * so sánh phân quyền (QueryService). KHÔNG đổi thứ tự các hằng số.</p>
+ * <p><b>Lưu ý:</b> Sử dụng {@link #getLevel()} thay vì {@code ordinal()} để so sánh phân quyền.
+ * {@code ordinal()} phụ thuộc vào thứ tự khai báo và dễ bị vỡ RBAC khi thêm Enum mới.
+ * {@code level} là giá trị số nguyên CỐ ĐỊNH không thay đổi.</p>
  */
 public enum UserRole {
-    OPERATOR,
-    ENGINEER,
-    QA_ADMIN,
-    ADMIN
+    OPERATOR(1),
+    ENGINEER(2),
+    QA_ADMIN(3),
+    ADMIN(4);
+
+    private final int level;
+
+    UserRole(int level) {
+        this.level = level;
+    }
+
+    /**
+     * Trả về mức độ phân quyền cố định (1=thấp nhất, 4=cao nhất).
+     * Dùng thay thế {@code ordinal()} để đảm bảo RBAC không bị vỡ khi mở rộng Enum.
+     */
+    public int getLevel() {
+        return level;
+    }
 }

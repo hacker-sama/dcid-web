@@ -3,11 +3,15 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api import health, ingest, query, status
 from app.config import get_settings
+from src.api.routes import router as new_api_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,7 +46,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS Middleware cho phép Frontend UI kết nối
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount thư mục /uploads để Frontend UI truy cập trực tiếp file ảnh crop (image_path)
+uploads_dir = Path("./uploads")
+crops_dir = Path("./uploads/crops")
+uploads_dir.mkdir(parents=True, exist_ok=True)
+crops_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+
+# Include cả router cũ (app.api) và router mới (src.api)
 app.include_router(health.router)
 app.include_router(ingest.router)
 app.include_router(query.router)
 app.include_router(status.router)
+app.include_router(new_api_router)

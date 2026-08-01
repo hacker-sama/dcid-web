@@ -17,48 +17,21 @@ OCR_PATH = "/ocr"
 TIMEOUT_SECONDS = 300.0  # OCR có thể chậm với PDF nhiều trang
 
 
-def extract_pages(storage_key: str, langs: list[str]) -> list[PageOcr]:
-    """Gọi ai-ocr service để OCR PDF từ MinIO.
+def extract_pages(storage_key: str, langs: list[str] | None = None) -> list[PageOcr]:
+    """Tải PDF từ MinIO và trích xuất chữ trực tiếp (PyMuPDF) không qua OCR HTTP service.
 
     Args:
         storage_key: key MinIO của file PDF.
-        langs: danh sách ngôn ngữ, ví dụ ["vi", "en"].
+        langs: danh sách ngôn ngữ (không bắt buộc).
 
     Returns:
-        list[PageOcr] mỗi phần tử là dataclass PageOcr
-
-    Raises:
-        httpx.HTTPError: lỗi kết nối / timeout / HTTP error.
-        KeyError: response thiếu field bắt buộc.
+        list[PageOcr] chứa văn bản tự nhiên + ảnh trang PNG.
     """
-    s = get_settings()
-    url = f"{s.ocr_service_url.rstrip('/')}{OCR_PATH}"
-    payload = {"storageKey": storage_key, "langs": langs}
+    from app.clients import minio_client
+    from app.pipeline import ocr as ocr_pipeline
 
-    logger.info("Gọi ai-ocr: url=%s storageKey=%s", url, storage_key)
-    with httpx.Client(timeout=TIMEOUT_SECONDS) as client:
-        resp = client.post(
-            url,
-            json=payload,
-            headers={
-                "Content-Type": "application/json",
-                INTERNAL_TOKEN_HEADER: s.ai_internal_token,
-            },
-        )
-        resp.raise_for_status()
-
-    data = resp.json()
-    raw_pages = data.get("pages", [])
-    logger.info("ai-ocr trả về %d trang", len(raw_pages))
-
-    pages: list[PageOcr] = []
-    for item in raw_pages:
-        pages.append(
-            PageOcr(
-                page_no=item["pageNo"],
-                text=item["text"],
-                width=item.get("width"),
-                height=item.get("height"),
-            )
-        )
+    logger.info("Tải PDF từ MinIO và trích xuất văn bản trực tiếp: storageKey=%s", storage_key)
+    pdf_bytes = minio_client.get_object(storage_key)
+    pages = ocr_pipeline.extract_pages(pdf_bytes, langs)
+    logger.info("Đã trích xuất %d trang trực tiếp từ PDF %s", len(pages), storage_key)
     return pages

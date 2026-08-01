@@ -151,10 +151,10 @@ public class QueryService {
         );
     }
 
-    /** Các vai được xem = mọi minRole có ordinal ≤ vai user (thứ tự khai báo UserRole là thứ bậc). */
+    /** Các vai được xem = mọi minRole có level ≤ level của vai user (dùng getLevel() thay ordinal()). */
     private List<UUID> resolveAllowedVersionIds(UserRole actorRole, String machineCode) {
         List<UserRole> minRoles = Arrays.stream(UserRole.values())
-                .filter(r -> r.ordinal() <= actorRole.ordinal())
+                .filter(r -> r.getLevel() <= actorRole.getLevel())
                 .toList();
         if (machineCode != null && !machineCode.isBlank()) {
             return versionRepository.findVersionIdsByStatusAndMinRolesAndMachineCode(

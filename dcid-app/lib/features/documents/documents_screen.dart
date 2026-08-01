@@ -6,6 +6,7 @@ import 'package:data_table_2/data_table_2.dart';
 import '../../core/responsive.dart';
 import '../../core/constrained_content.dart';
 import '../../state/documents_providers.dart';
+import '../../state/providers.dart';
 import '../../state/role_filter.dart';
 import 'upload_document_sheet.dart';
 
@@ -44,6 +45,44 @@ class DocumentsScreen extends ConsumerWidget {
       );
       if (uploaded is String && context.mounted) {
         context.push('/documents/$uploaded');
+      }
+    }
+  }
+
+  Future<void> _confirmAndDeleteDocument(
+      BuildContext context, WidgetRef ref, String docId, String title) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận xóa tài liệu'),
+        content: Text('Bạn có chắc chắn muốn xóa "$title"? Hành động này sẽ xóa toàn bộ phiên bản và dữ liệu tra cứu liên quan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        final repo = ref.read(docsRepositoryProvider);
+        await repo.deleteDocument(docId);
+        ref.invalidate(documentsProvider);
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Đã xóa tài liệu thành công.')),
+        );
+      } catch (e) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Không thể xóa tài liệu: $e')),
+        );
       }
     }
   }
@@ -159,10 +198,21 @@ class DocumentsScreen extends ConsumerWidget {
                                         DataCell(Text(
                                             _formatInstant(doc.updatedAt) ?? '—')),
                                         DataCell(
-                                          IconButton(
-                                            icon: const Icon(Icons.chevron_right),
-                                            onPressed: () =>
-                                                context.push('/documents/${doc.id}'),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (isAdminLevel)
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                                  tooltip: 'Xóa tài liệu',
+                                                  onPressed: () => _confirmAndDeleteDocument(context, ref, doc.id, doc.title),
+                                                ),
+                                              IconButton(
+                                                icon: const Icon(Icons.chevron_right),
+                                                onPressed: () =>
+                                                    context.push('/documents/${doc.id}'),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
@@ -203,12 +253,24 @@ class DocumentsScreen extends ConsumerWidget {
                       subtitle: subtitleParts.isEmpty
                           ? null
                           : Text(subtitleParts.join(' · ')),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isAdminLevel)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                              tooltip: 'Xóa',
+                              onPressed: () => _confirmAndDeleteDocument(context, ref, doc.id, doc.title),
+                            ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
                       onTap: () => context.push('/documents/${doc.id}'),
                     ),
                   );
                 },
               );
+
 
               if (isTablet) {
                 return RefreshIndicator(

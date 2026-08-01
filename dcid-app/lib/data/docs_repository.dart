@@ -36,9 +36,10 @@ class DocsRepository implements IDocsRepository {
   }
 
   @override
-  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName) async {
+  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName, {String? machineCode}) async {
     final form = FormData.fromMap({
       'question': question,
+      if (machineCode != null && machineCode.isNotEmpty) 'machineCode': machineCode,
       'file': MultipartFile.fromBytes(imageBytes, filename: fileName),
     });
     final res = await _api.dio.post<Map<String, dynamic>>(
@@ -96,7 +97,14 @@ class DocsRepository implements IDocsRepository {
     return DocumentDetail.fromJson(res.data!['data'] as Map<String, dynamic>);
   }
 
+  /// `DELETE /api/documents/{id}` (§3.4).
+  @override
+  Future<void> deleteDocument(String id) async {
+    await _api.dio.delete<Map<String, dynamic>>('/api/documents/$id');
+  }
+
   /// Pure parser for the §3.1 PagedResponse body — unit-testable without HTTP.
+
   static List<DocumentSummary> parseDocumentList(Map<String, dynamic> body) {
     final data = body['data'] as Map<String, dynamic>? ?? const {};
     final items = data['items'] as List<dynamic>? ?? const [];

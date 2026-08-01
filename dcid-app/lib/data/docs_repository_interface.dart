@@ -19,7 +19,7 @@ abstract class IDocsRepository {
   });
 
   /// `POST /api/query` — Snap & Ask (multipart with image).
-  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName);
+  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName, {String? machineCode});
 
   /// `GET /api/documents` — paginated list.
   Future<List<DocumentSummary>> listDocuments();
@@ -38,4 +38,8 @@ abstract class IDocsRepository {
     required Uint8List fileBytes,
     required String fileName,
   });
+
+  /// `DELETE /api/documents/{id}` — delete document (QA_ADMIN/ADMIN only).
+  Future<void> deleteDocument(String id);
 }
+
