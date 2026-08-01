@@ -120,8 +120,10 @@ dcid-app/  (Flutter)
 
 ## 4. Luồng UX đặc thù hiện trường
 
-- **Snap & Ask** (mobile): `camera`/`image_picker` chụp → upload multipart tới `POST /api/query` (kèm ảnh)
-  → backend forward `dcid-ai` → answer + citation.
+- **Snap & Ask** (mobile + web): `image_picker` (chụp/gallery) & `file_picker` hỗ trợ **chọn cùng lúc nhiều ảnh thiết bị (`pickMultiImage` / `allowMultiple: true`)**. Quản lý toàn bộ danh sách ảnh + lịch sử Q&A theo từng ảnh thông qua global `SnapNotifier`.
+- **Lưu trữ & Giữ trạng thái Tabs (IndexedStack & SecureStorage):**
+  - Sử dụng `StatefulShellRoute.indexedStack` trong Router để duy trì toàn bộ trạng thái các tab (Tra cứu, Snap & Ask, Tài liệu, Quản trị) trong bộ nhớ, không bị hủy (destroy) khi chuyển tab.
+  - Tự động đồng bộ và lưu trữ danh sách ảnh (Base64) + lịch sử hội thoại vào `FlutterSecureStorage` (`localStorage` trên Web) để giữ nguyên dữ liệu ngay cả khi tải lại trang web.
 - **Side-by-side & Hộp thoại Trích dẫn Không Gian (`AlertDialog`):** Mỗi kết quả tra cứu hiển thị danh sách nhãn trích dẫn (`Trang X [Bbox]`). Khi click vào nhãn trích dẫn, hệ thống mở Hộp thoại hiển thị chính xác **Tọa độ Bbox (`p{pageNo}_[minX,minY,maxX,maxY]`)** kèm **đoạn văn bản gốc (`snippet` tối đa 300 ký tự)** được AI tham chiếu.
 - **Guardrail UI & Reasoning `<think>`:** `locked=true` (cosine < 0.60) → **banner đỏ** "Yêu cầu kỹ sư xác minh", ẩn câu trả lời tự sinh. Tự động lọc và hiển thị nội dung suy luận `<think>` trong thẻ gập (accordion/details) gọn gàng.
 - **Touch/glove:** target ≥ 48dp, chữ lớn, ít gõ phím, theme tối, haptic khi cảnh báo.

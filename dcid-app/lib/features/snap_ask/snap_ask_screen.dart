@@ -8,46 +8,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constrained_content.dart';
 import '../../data/models/answer_result.dart';
+import '../../data/models/snap_entry.dart';
 import '../../state/providers.dart';
+import '../../state/snap_providers.dart';
 import '../search/answer_view.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data Models
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// One Q&A exchange stored per image.
-class _ChatMessage {
-  _ChatMessage({
-    required this.question,
-    required this.machineCode,
-    required this.answer,
-    required this.boundingBoxes,
-    required this.askedAt,
-    this.isError = false,
-  });
-
-  final String question;
-  final String? machineCode;
-  final AnswerResult answer;
-  final List<Rect> boundingBoxes;
-  final DateTime askedAt;
-  /// True when the answer was generated locally as a fallback (API 500 / offline).
-  final bool isError;
-}
-
-/// A single captured/uploaded image with its own independent Q&A thread.
-class _SnapEntry {
-  _SnapEntry({
-    required this.bytes,
-    required this.fileName,
-    required this.capturedAt,
-  });
-
-  final Uint8List bytes;
-  final String fileName;
-  final DateTime capturedAt;
-  final List<_ChatMessage> messages = [];
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fallback answer used when API returns 5xx or is unreachable
@@ -91,9 +55,9 @@ class SnapAskScreen extends ConsumerStatefulWidget {
 
 class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   final _imagePicker = ImagePicker();
-  final List<_SnapEntry> _snaps = [];
 
-  int? _selectedIndex;
+  // Transient UI flags — these are fine as local state because they only
+  // matter while the user is actively on this screen.
   bool _picking = false;
   bool _isAsking = false;
 
@@ -107,13 +71,6 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   static final _locRegex = RegExp(
       r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]');
-
-  // ── Getters ───────────────────────────────────────────────────────────────
-
-  _SnapEntry? get _selectedSnap =>
-      (_selectedIndex != null && _selectedIndex! < _snaps.length)
-          ? _snaps[_selectedIndex!]
-          : null;
 
   // ── Image capture / pick ──────────────────────────────────────────────────
 
@@ -139,15 +96,18 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   Future<void> _pickImage() async {
     setState(() => _picking = true);
     try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
+      final List<XFile> images = await _imagePicker.pickMultiImage(
         maxWidth: 800,
         maxHeight: 800,
         imageQuality: 80,
       );
-      if (image != null) {
-        final bytes = await image.readAsBytes();
-        _addSnap(bytes, image.name);
+      if (images.isNotEmpty) {
+        final List<({Uint8List bytes, String fileName})> items = [];
+        for (final image in images) {
+          final bytes = await image.readAsBytes();
+          items.add((bytes: bytes, fileName: image.name));
+        }
+        _addSnaps(items);
         return;
       }
       await _pickWithFilePicker();
@@ -161,20 +121,29 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   Future<void> _pickWithFilePicker() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
+      allowMultiple: true,
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
-    final file = result.files.first;
-    if (file.bytes == null) return;
-    _addSnap(file.bytes!, file.name);
+    final List<({Uint8List bytes, String fileName})> items = [];
+    for (final file in result.files) {
+      if (file.bytes != null) {
+        items.add((bytes: file.bytes!, fileName: file.name));
+      }
+    }
+    if (items.isNotEmpty) {
+      _addSnaps(items);
+    }
   }
 
   void _addSnap(Uint8List bytes, String fileName) {
-    setState(() {
-      _snaps.insert(0, _SnapEntry(bytes: bytes, fileName: fileName, capturedAt: DateTime.now()));
-      _selectedIndex = 0;
-    });
-    // Scroll thumbnail strip to the start (newest image).
+    _addSnaps([(bytes: bytes, fileName: fileName)]);
+  }
+
+  void _addSnaps(List<({Uint8List bytes, String fileName})> items) {
+    if (items.isEmpty) return;
+    ref.read(snapProvider.notifier).addSnaps(items);
+    // Scroll thumbnail strip to the start (newest images).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_thumbnailScrollController.hasClients) {
         _thumbnailScrollController.animateTo(
@@ -187,26 +156,17 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   }
 
   void _selectSnap(int index) {
-    if (_selectedIndex == index) return;
-    setState(() => _selectedIndex = index);
+    ref.read(snapProvider.notifier).selectSnap(index);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollChatToBottom());
   }
 
   void _deleteSnap(int index) {
-    setState(() {
-      _snaps.removeAt(index);
-      if (_snaps.isEmpty) {
-        _selectedIndex = null;
-      } else if (_selectedIndex != null && _selectedIndex! >= _snaps.length) {
-        _selectedIndex = _snaps.length - 1;
-      }
-    });
+    ref.read(snapProvider.notifier).deleteSnap(index);
   }
 
   // ── Machine code helpers ──────────────────────────────────────────────────
 
   void _onMachineCodeChanged(String value) {
-    // Mark as "scanned/confirmed" if non-empty, clear badge when erased.
     setState(() => _machineCodeScanned = value.trim().isNotEmpty);
   }
 
@@ -218,8 +178,11 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   // ── Q&A ──────────────────────────────────────────────────────────────────
 
   Future<void> _askQuestion() async {
-    final snap = _selectedSnap;
-    if (snap == null) {
+    final snapState = ref.read(snapProvider);
+    final snapIndex = snapState.selectedIndex;
+    final snap = snapState.selectedSnap;
+
+    if (snap == null || snapIndex == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng chọn ảnh trước khi hỏi')),
       );
@@ -278,15 +241,20 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     }
 
     if (!mounted) return;
+
+    ref.read(snapProvider.notifier).addMessage(
+          snapIndex,
+          ChatMessage(
+            question: question,
+            machineCode: machineCode.isNotEmpty ? machineCode : null,
+            answer: finalAnswer,
+            boundingBoxes: parsedBoxes,
+            askedAt: DateTime.now(),
+            isError: isError,
+          ),
+        );
+
     setState(() {
-      snap.messages.add(_ChatMessage(
-        question: question,
-        machineCode: machineCode.isNotEmpty ? machineCode : null,
-        answer: finalAnswer,
-        boundingBoxes: parsedBoxes,
-        askedAt: DateTime.now(),
-        isError: isError,
-      ));
       _questionController.clear();
       _isAsking = false;
     });
@@ -372,7 +340,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   // ── Full-screen preview dialog ─────────────────────────────────────────────
 
-  void _showPreview(_SnapEntry snap, List<Rect> boxes) {
+  void _showPreview(SnapEntry snap, List<Rect> boxes) {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -429,8 +397,14 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the global snap state — rebuilds automatically when snaps or
+    // selection change, including when returning to this tab.
+    final snapState = ref.watch(snapProvider);
+    final snaps = snapState.snaps;
+    final snap = snapState.selectedSnap;
+    final selectedIndex = snapState.selectedIndex;
     final scheme = Theme.of(context).colorScheme;
-    final snap = _selectedSnap;
+
     final latestBoxes = (snap != null && snap.messages.isNotEmpty)
         ? snap.messages.last.boundingBoxes
         : <Rect>[];
@@ -451,20 +425,20 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
           ),
 
           // ── SECTION 2: Horizontal thumbnail strip ─────────────────────────
-          if (_snaps.isEmpty) ...[
+          if (snaps.isEmpty) ...[
             Expanded(
               child: _EmptyState(onAdd: _showImageSourcePicker, scheme: scheme),
             ),
           ] else ...[
             const SizedBox(height: 10),
             _ThumbnailStrip(
-              snaps: _snaps,
-              selectedIndex: _selectedIndex,
+              snaps: snaps,
+              selectedIndex: selectedIndex,
               scrollController: _thumbnailScrollController,
               formatDate: _formatDate,
               onSelect: _selectSnap,
               onDelete: _deleteSnap,
-              onPreview: (i) => _showPreview(_snaps[i], latestBoxes),
+              onPreview: (i) => _showPreview(snaps[i], latestBoxes),
               scheme: scheme,
             ),
             const Divider(height: 1),
@@ -476,7 +450,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
             // ── SECTION 4: Q&A input footer ─────────────────────────────────
             const Divider(height: 1),
-            _buildInputFooter(scheme),
+            _buildInputFooter(snap, scheme),
           ],
         ],
       ),
@@ -485,7 +459,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   // ── Chat area ─────────────────────────────────────────────────────────────
 
-  Widget _buildChatArea(_SnapEntry? snap, ColorScheme scheme) {
+  Widget _buildChatArea(SnapEntry? snap, ColorScheme scheme) {
     if (snap == null) {
       return Center(
         child: Text(
@@ -528,8 +502,8 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   // ── Input footer ──────────────────────────────────────────────────────────
 
-  Widget _buildInputFooter(ColorScheme scheme) {
-    final hasSnap = _selectedSnap != null;
+  Widget _buildInputFooter(SnapEntry? snap, ColorScheme scheme) {
+    final hasSnap = snap != null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
       child: Column(
@@ -653,7 +627,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    'Đang hỏi về: ${_selectedSnap!.fileName}',
+                    'Đang hỏi về: ${snap.fileName}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 11, color: scheme.primary, fontStyle: FontStyle.italic),
@@ -722,7 +696,7 @@ class _ThumbnailStrip extends StatelessWidget {
     required this.scheme,
   });
 
-  final List<_SnapEntry> snaps;
+  final List<SnapEntry> snaps;
   final int? selectedIndex;
   final ScrollController scrollController;
   final String Function(DateTime) formatDate;
@@ -776,7 +750,7 @@ class _ThumbnailCard extends StatelessWidget {
     required this.scheme,
   });
 
-  final _SnapEntry snap;
+  final SnapEntry snap;
   final int index;
   final bool isSelected;
   final String Function(DateTime) formatDate;
@@ -892,7 +866,7 @@ class _ThumbnailCard extends StatelessWidget {
                   child: Container(
                     width: 18,
                     height: 18,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.black54,
                       shape: BoxShape.circle,
                     ),
@@ -919,7 +893,7 @@ class _ChatBubble extends StatelessWidget {
     required this.formatDate,
   });
 
-  final _ChatMessage message;
+  final ChatMessage message;
   final ColorScheme scheme;
   final String Function(DateTime) formatDate;
 

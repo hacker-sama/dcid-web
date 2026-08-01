@@ -6,31 +6,30 @@ import '../../core/responsive.dart';
 import '../../state/auth_controller.dart';
 
 class _Dest {
-  const _Dest(this.path, this.icon, this.label, {this.adminOnly = false});
-  final String path;
+  const _Dest(this.icon, this.label, {this.adminOnly = false});
   final IconData icon;
   final String label;
   final bool adminOnly;
 }
 
+/// Branch ordering must stay in sync with [routerProvider] in router.dart:
+///   index 0 = /search, 1 = /snap, 2 = /documents, 3 = /admin
 const _allDestinations = <_Dest>[
-  _Dest('/search', Icons.search, 'Tra cứu'),
-  _Dest('/snap', Icons.camera_alt, 'Snap & Ask'),
-  _Dest('/documents', Icons.folder, 'Tài liệu'),
-  _Dest('/admin', Icons.admin_panel_settings, 'Quản trị', adminOnly: true),
+  _Dest(Icons.search, 'Tra cứu'),
+  _Dest(Icons.camera_alt, 'Snap & Ask'),
+  _Dest(Icons.folder, 'Tài liệu'),
+  _Dest(Icons.admin_panel_settings, 'Quản trị', adminOnly: true),
 ];
 
 /// Adaptive shell: NavigationRail on wide (kiosk/desktop), NavigationBar on
 /// narrow (mobile). Destinations are filtered by role.
 ///
-/// **Role-based filtering (FRONTEND.md §3):**
-/// - OPERATOR: Tra cứu + Snap & Ask (mobile) + Tài liệu (SOP/Safety filtered in list)
-/// - ENGINEER: All non-admin screens
-/// - QA_ADMIN / ADMIN: All screens including admin panel
+/// Uses [StatefulNavigationShell] from [StatefulShellRoute.indexedStack] —
+/// each branch is kept alive in an IndexedStack so tab state is preserved.
 class HomeShell extends ConsumerWidget {
-  const HomeShell({required this.child, super.key});
+  const HomeShell({required this.navigationShell, super.key});
 
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,26 +38,33 @@ class HomeShell extends ConsumerWidget {
     final isAdmin = role?.isAdminLevel ?? false;
     final isWide = Responsive.isWide(context);
 
-    // Filter destinations based on role.
-    final dests = _allDestinations.where((d) {
-      // Admin-only screens need admin role.
-      if (d.adminOnly && !isAdmin) return false;
-      return true;
-    }).toList();
+    // Filter destinations by role. Indices stay aligned with branch indices
+    // because admin is always the last entry in _allDestinations.
+    final dests = _allDestinations
+        .where((d) => !(d.adminOnly && !isAdmin))
+        .toList();
 
-    final location = GoRouterState.of(context).matchedLocation;
-    var index = dests.indexWhere((d) => location.startsWith(d.path));
-    if (index < 0) index = 0;
+    // Branch index (navigationShell.currentIndex) equals nav item index
+    // because the filtered list preserves order and admin is last.
+    final navIndex =
+        navigationShell.currentIndex.clamp(0, dests.length - 1);
 
-    void onSelect(int i) => context.go(dests[i].path);
-    void logout() => ref.read(authControllerProvider.notifier).logout();
+    // Tapping the active tab again resets to the branch root; tapping a
+    // different tab resumes where the user left off.
+    void onSelect(int i) => navigationShell.goBranch(
+          i,
+          initialLocation: navigationShell.currentIndex == i,
+        );
+
+    void logout() =>
+        ref.read(authControllerProvider.notifier).logout();
 
     if (isWide) {
       return Scaffold(
         body: Row(
           children: [
             NavigationRail(
-              selectedIndex: index,
+              selectedIndex: navIndex,
               onDestinationSelected: onSelect,
               labelType: NavigationRailLabelType.all,
               destinations: [
@@ -96,16 +102,17 @@ class HomeShell extends ConsumerWidget {
               ),
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: child),
+            // navigationShell IS the IndexedStack body — all branches alive.
+            Expanded(child: navigationShell),
           ],
         ),
       );
     }
 
     return Scaffold(
-      body: child,
+      body: navigationShell,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
+        selectedIndex: navIndex,
         onDestinationSelected: onSelect,
         destinations: [
           for (final d in dests)
