@@ -7,6 +7,8 @@ ThemeData buildAppTheme() {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
+    fontFamily: 'Roboto',
+    fontFamilyFallback: const ['Noto Sans', 'Segoe UI', 'Arial', 'sans-serif'],
     visualDensity: VisualDensity.adaptivePlatformDensity,
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(

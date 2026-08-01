@@ -18,10 +18,16 @@ import 'bbox_painter.dart';
 /// Query params:
 /// - `page` (int) — initial page number to display (default: 1).
 class DocumentViewerScreen extends StatefulWidget {
-  const DocumentViewerScreen({required this.versionId, this.pageNo, super.key});
+  const DocumentViewerScreen({
+    required this.versionId,
+    this.pageNo,
+    this.customBboxes,
+    super.key,
+  });
 
   final String versionId;
   final int? pageNo;
+  final List<BoundingBox>? customBboxes;
 
   @override
   State<DocumentViewerScreen> createState() => _DocumentViewerScreenState();
@@ -90,7 +96,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
               maxWidth: 1000,
               child: _PageViewer(
                 page: _pages[_currentPage - 1],
-                bboxes: MockData.bboxesForPage(_currentPage),
+                bboxes: widget.customBboxes ?? MockData.bboxesForPage(_currentPage),
               ),
             ),
     );

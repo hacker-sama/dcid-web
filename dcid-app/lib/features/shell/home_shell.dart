@@ -6,17 +6,16 @@ import '../../core/responsive.dart';
 import '../../state/auth_controller.dart';
 
 class _Dest {
-  const _Dest(this.path, this.icon, this.label, {this.adminOnly = false, this.mobileOnly = false});
+  const _Dest(this.path, this.icon, this.label, {this.adminOnly = false});
   final String path;
   final IconData icon;
   final String label;
   final bool adminOnly;
-  final bool mobileOnly;
 }
 
 const _allDestinations = <_Dest>[
   _Dest('/search', Icons.search, 'Tra cứu'),
-  _Dest('/snap', Icons.camera_alt, 'Snap & Ask'), // Tạm thời hiện trên web để dễ test
+  _Dest('/snap', Icons.camera_alt, 'Snap & Ask'),
   _Dest('/documents', Icons.folder, 'Tài liệu'),
   _Dest('/admin', Icons.admin_panel_settings, 'Quản trị', adminOnly: true),
 ];
@@ -40,12 +39,10 @@ class HomeShell extends ConsumerWidget {
     final isAdmin = role?.isAdminLevel ?? false;
     final isWide = Responsive.isWide(context);
 
-    // Filter destinations based on role + platform.
+    // Filter destinations based on role.
     final dests = _allDestinations.where((d) {
       // Admin-only screens need admin role.
       if (d.adminOnly && !isAdmin) return false;
-      // Mobile-only screens (Snap & Ask) hidden on wide/kiosk.
-      if (d.mobileOnly && isWide) return false;
       return true;
     }).toList();
 
