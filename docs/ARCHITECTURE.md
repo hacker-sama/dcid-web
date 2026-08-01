@@ -296,6 +296,11 @@ một tài liệu nhiều trang là việc nặng → đẩy vào Celery worker,
 | POST | `/api/query` | OPERATOR+ | hỏi–đáp (forward AI, ghi query_log) |
 | POST | `/api/integration/work-orders` | (token CMMS) | nhận Work Order |
 | GET | `/api/admin/audit-logs` | ADMIN | xem audit |
+| GET | `/api/admin/users` | ADMIN | danh sách tài khoản (phân trang) |
+| POST | `/api/admin/users` | ADMIN | tạo tài khoản người dùng mới |
+| PUT | `/api/admin/users/{id}` | ADMIN | cập nhật thông tin/vai trò |
+| PUT | `/api/admin/users/{id}/password` | ADMIN | đổi/reset mật khẩu người dùng |
+| PATCH | `/api/admin/users/{id}/status` | ADMIN | khóa/kích hoạt tài khoản |
 
 **Nội bộ Backend ↔ AI (token nội bộ, không ra ngoài LAN):**
 | Hướng | Endpoint | Payload |

@@ -210,3 +210,78 @@ class QueryResponse(BaseModel):
 | Callback `READY` | `PROCESSING → ACTIVE` (+ ACTIVE cũ → `SUPERSEDED`) |
 | Callback `FAILED` | `PROCESSING → FAILED` |
 | QA đánh dấu hết hiệu lực *(sau MVP)* | `ACTIVE → OBSOLETE` |
+
+---
+
+## 6. Luồng Admin Quản lý Người dùng (Admin User Management)
+
+Dành riêng cho vai trò `ADMIN`. Phục vụ việc khởi tạo, cấp quyền và quản lý tài khoản người dùng nội bộ.
+
+### 6.1. `GET /api/admin/users` (Lấy danh sách người dùng)
+- **Query Params**: `page` (int, default 0), `size` (int, default 20), `role` (optional: `OPERATOR|ENGINEER|QA_ADMIN|ADMIN`), `search` (optional: theo username/fullName/email).
+- **Response `200`**:
+  ```json
+  {
+    "data": {
+      "content": [
+        {
+          "id": "c9f0f895-...",
+          "username": "engineer1",
+          "fullName": "Nguyễn Văn A",
+          "email": "nva@kcn.vn",
+          "role": "ENGINEER",
+          "isActive": true,
+          "createdAt": "2026-07-26T10:00:00Z",
+          "updatedAt": "2026-07-26T10:00:00Z"
+        }
+      ],
+      "page": 0,
+      "size": 20,
+      "totalElements": 1,
+      "totalPages": 1
+    }
+  }
+  ```
+
+### 6.2. `POST /api/admin/users` (Tạo tài khoản người dùng mới)
+- **Request Body**:
+  ```json
+  {
+    "username": "operator2",
+    "password": "Password123!",
+    "fullName": "Trần Văn B",
+    "email": "tvb@kcn.vn",
+    "role": "OPERATOR"
+  }
+  ```
+- **Response `201`**: Tra về `UserProfileDTO` của user mới tạo.
+
+### 6.3. `PUT /api/admin/users/{id}` (Cập nhật thông tin/vai trò người dùng)
+- **Request Body**:
+  ```json
+  {
+    "fullName": "Trần Văn B (Updated)",
+    "email": "tvb_new@kcn.vn",
+    "role": "ENGINEER"
+  }
+  ```
+- **Response `200`**: Tra về `UserProfileDTO` đã cập nhật.
+
+### 6.4. `PUT /api/admin/users/{id}/password` (Đổi / Reset mật khẩu người dùng)
+- **Request Body**:
+  ```json
+  {
+    "newPassword": "NewPassword123!"
+  }
+  ```
+- **Response `200`**: `{"data": true, "message": "Password updated successfully"}`
+
+### 6.5. `PATCH /api/admin/users/{id}/status` (Khóa / Kích hoạt tài khoản)
+- **Request Body**:
+  ```json
+  {
+    "isActive": false
+  }
+  ```
+- **Response `200`**: Tra về `UserProfileDTO` đã cập nhật trạng thái `isActive`.
+
