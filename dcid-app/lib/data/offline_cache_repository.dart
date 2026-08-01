@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'docs_repository_interface.dart';
@@ -36,21 +36,38 @@ class OfflineCacheDocsRepository implements IDocsRepository {
       // Cache latest successful answer
       await _cacheAnswer(question, result);
       return result;
-    } catch (_) {
+    } catch (e) {
+      // ── LOG API CONNECTION ERRORS ───────────────────────────────────────
+      debugPrint('❌ [API CONNECTION ERROR] POST /api/query failed: $e');
+      if (e is Exception) {
+        debugPrint('   Exception details: $e');
+      }
+
       // Try retrieving cached answer for this query
       final cached = await _getCachedAnswer(question);
-      if (cached != null) return cached;
+      if (cached != null) {
+        return AnswerResult(
+          answer: cached.answer,
+          confidence: cached.confidence,
+          locked: cached.locked,
+          numericRule: cached.numericRule,
+          reasoningMode: cached.reasoningMode,
+          isOfflineFallback: true,
+          citations: cached.citations,
+        );
+      }
 
       // Offline fallback response
       return AnswerResult(
-        answer: '⚠️ **Chế độ Ngoại tuyến (Offline Cache)**\n\n'
-            'Dịch vụ máy chủ tạm thời không thể kết nối. '
-            'Hiển thị kết quả tra cứu gần nhất từ bộ nhớ tạm local.\n\n'
+        answer: '⚠️ **Backend/AI Offline — Không kết nối được API máy chủ**\n\n'
+            'Chi tiết lỗi kết nối: `$e`\n\n'
+            'Vui lòng kiểm tra lại dịch vụ Spring Boot (`dcid-backend` port 8080) và FastAPI (`dcid-ai` port 8000).\n\n'
             '**Câu hỏi:** "$question"',
-        confidence: 0.5,
+        confidence: 0.0,
         locked: false,
         numericRule: false,
         reasoningMode: reasoningMode,
+        isOfflineFallback: true,
         citations: [],
       );
     }

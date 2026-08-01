@@ -23,6 +23,7 @@ class AnswerResult {
     required this.locked,
     required this.numericRule,
     this.reasoningMode = false,
+    this.isOfflineFallback = false,
     required this.citations,
   });
 
@@ -37,6 +38,9 @@ class AnswerResult {
 
   /// Answer came from reasoning / assembly procedure mode.
   final bool reasoningMode;
+
+  /// True when backend/AI network request failed and fallback response is returned.
+  final bool isOfflineFallback;
   final List<Citation> citations;
 
   factory AnswerResult.fromJson(Map<String, dynamic> json) {
@@ -50,6 +54,7 @@ class AnswerResult {
       locked: guard['locked'] as bool? ?? false,
       numericRule: guard['numericRule'] as bool? ?? false,
       reasoningMode: guard['reasoningMode'] as bool? ?? false,
+      isOfflineFallback: json['isOfflineFallback'] as bool? ?? false,
       citations: citations,
     );
   }

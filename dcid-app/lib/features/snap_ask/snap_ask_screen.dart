@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,7 +10,12 @@ import '../../data/models/answer_result.dart';
 import '../../data/models/snap_entry.dart';
 import '../../state/providers.dart';
 import '../../state/snap_providers.dart';
-import '../search/answer_view.dart';
+import 'widgets/add_image_button.dart';
+import 'widgets/chat_bubble.dart';
+import 'widgets/empty_state.dart';
+import 'widgets/image_source_picker_sheet.dart';
+import 'widgets/snap_preview_dialog.dart';
+import 'widgets/thumbnail_strip.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fallback answer used when API returns 5xx or is unreachable
@@ -56,8 +60,7 @@ class SnapAskScreen extends ConsumerStatefulWidget {
 class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   final _imagePicker = ImagePicker();
 
-  // Transient UI flags — these are fine as local state because they only
-  // matter while the user is actively on this screen.
+  // Transient UI flags
   bool _picking = false;
   bool _isAsking = false;
 
@@ -229,9 +232,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
         citations: rawAnswer.citations,
       );
     } catch (e) {
-      // ── GRACEFUL FALLBACK: 500, DioException, TimeoutException, etc. ──────
-      // Never show a crash or black error bar. Instead surface a structured
-      // mock analysis so the screen stays functional even when backend is down.
+      // ── GRACEFUL FALLBACK ──────
       finalAnswer = _buildFallbackAnswer(
         question,
         snap.fileName,
@@ -271,106 +272,19 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     }
   }
 
-  // ── Bottom sheet: image source picker ────────────────────────────────────
-
-  void _showImageSourcePicker() {
-    showModalBottomSheet(
+  void _openImageSourcePicker() {
+    showImageSourcePickerSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        final scheme = Theme.of(ctx).colorScheme;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: scheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text('Thêm ảnh thiết bị',
-                    style: Theme.of(ctx)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                if (!kIsWeb) ...[
-                  ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    tileColor: scheme.primaryContainer.withValues(alpha: 0.3),
-                    leading: CircleAvatar(
-                      backgroundColor: scheme.primaryContainer,
-                      child: Icon(Icons.camera_alt, color: scheme.primary),
-                    ),
-                    title: const Text('Chụp ảnh'),
-                    subtitle: const Text('Mở camera để chụp thiết bị'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                    onTap: () { Navigator.pop(ctx); _takePhoto(); },
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  tileColor: scheme.secondaryContainer.withValues(alpha: 0.3),
-                  leading: CircleAvatar(
-                    backgroundColor: scheme.secondaryContainer,
-                    child: Icon(Icons.photo_library, color: scheme.secondary),
-                  ),
-                  title: Text(kIsWeb ? 'Chọn ảnh từ máy tính' : 'Chọn từ thư viện'),
-                  subtitle: Text(kIsWeb ? 'Tải lên tệp ảnh từ máy tính' : 'Chọn ảnh có sẵn trên thiết bị'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () { Navigator.pop(ctx); _pickImage(); },
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
-          ),
-        );
-      },
+      onTakePhoto: _takePhoto,
+      onPickImage: _pickImage,
     );
   }
 
-  // ── Full-screen preview dialog ─────────────────────────────────────────────
-
-  void _showPreview(SnapEntry snap, List<Rect> boxes) {
-    showDialog(
+  void _openPreview(SnapEntry snap, List<Rect> boxes) {
+    showSnapPreviewDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.black87,
-        insetPadding: const EdgeInsets.all(16),
-        child: Stack(
-          alignment: Alignment.topRight,
-          children: [
-            InteractiveViewer(
-              child: Center(
-                child: CustomPaint(
-                  foregroundPainter: _BBoxPainter(boxes),
-                  child: Image.memory(snap.bytes),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: IconButton.filled(
-                onPressed: () => Navigator.pop(ctx),
-                icon: const Icon(Icons.close),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      snap: snap,
+      boxes: boxes,
     );
   }
 
@@ -397,8 +311,6 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the global snap state — rebuilds automatically when snaps or
-    // selection change, including when returning to this tab.
     final snapState = ref.watch(snapProvider);
     final snaps = snapState.snaps;
     final snap = snapState.selectedSnap;
@@ -417,8 +329,8 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
           // ── SECTION 1: Add button header ──────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: _AddImageButton(
-              onAdd: _showImageSourcePicker,
+            child: AddImageButton(
+              onAdd: _openImageSourcePicker,
               loading: _picking,
               scheme: scheme,
             ),
@@ -427,18 +339,18 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
           // ── SECTION 2: Horizontal thumbnail strip ─────────────────────────
           if (snaps.isEmpty) ...[
             Expanded(
-              child: _EmptyState(onAdd: _showImageSourcePicker, scheme: scheme),
+              child: EmptyState(onAdd: _openImageSourcePicker, scheme: scheme),
             ),
           ] else ...[
             const SizedBox(height: 10),
-            _ThumbnailStrip(
+            ThumbnailStrip(
               snaps: snaps,
               selectedIndex: selectedIndex,
               scrollController: _thumbnailScrollController,
               formatDate: _formatDate,
               onSelect: _selectSnap,
               onDelete: _deleteSnap,
-              onPreview: (i) => _showPreview(snaps[i], latestBoxes),
+              onPreview: (i) => _openPreview(snaps[i], latestBoxes),
               scheme: scheme,
             ),
             const Divider(height: 1),
@@ -492,7 +404,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
       controller: _chatScrollController,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       itemCount: snap.messages.length,
-      itemBuilder: (context, i) => _ChatBubble(
+      itemBuilder: (context, i) => ChatBubble(
         message: snap.messages[i],
         scheme: scheme,
         formatDate: _formatDate,
@@ -514,7 +426,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
             children: [
               Icon(
                 Icons.qr_code_scanner,
-                color: _machineCodeScanned ? Colors.green : (hasSnap ? scheme.primary : scheme.outlineVariant),
+                color: _machineCodeScanned
+                    ? Colors.green
+                    : (hasSnap ? scheme.primary : scheme.outlineVariant),
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -526,7 +440,8 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                   decoration: InputDecoration(
                     hintText: 'Mã máy (tuỳ chọn, vd: CNC-01)',
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(
@@ -547,8 +462,10 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                         ? GestureDetector(
                             onTap: _clearMachineCode,
                             child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 5),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: Colors.green.shade50,
                                 borderRadius: BorderRadius.circular(20),
@@ -557,7 +474,8 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.check_circle, size: 13, color: Colors.green.shade700),
+                                  Icon(Icons.check_circle,
+                                      size: 13, color: Colors.green.shade700),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Đã quét: ${_machineCodeController.text.trim()}',
@@ -568,7 +486,8 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  Icon(Icons.close, size: 12, color: Colors.green.shade400),
+                                  Icon(Icons.close,
+                                      size: 12, color: Colors.green.shade400),
                                 ],
                               ),
                             ),
@@ -595,10 +514,13 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                     hintText: hasSnap
                         ? 'Hỏi về ảnh thiết bị này (vd: Phân tích hình ảnh này)...'
                         : 'Chọn một ảnh để bắt đầu hỏi...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border:
+                        OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  onSubmitted: (hasSnap && !_isAsking) ? (_) => _askQuestion() : null,
+                  onSubmitted:
+                      (hasSnap && !_isAsking) ? (_) => _askQuestion() : null,
                 ),
               ),
               const SizedBox(width: 8),
@@ -610,7 +532,8 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
                         )
                       : const Icon(Icons.send),
                 ),
@@ -630,7 +553,10 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                     'Đang hỏi về: ${snap.fileName}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, color: scheme.primary, fontStyle: FontStyle.italic),
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.primary,
+                        fontStyle: FontStyle.italic),
                   ),
                 ),
               ],
@@ -640,434 +566,4 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Add Image Button (compact header)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AddImageButton extends StatelessWidget {
-  const _AddImageButton({required this.onAdd, required this.loading, required this.scheme});
-
-  final VoidCallback onAdd;
-  final bool loading;
-  final ColorScheme scheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.tonalIcon(
-      onPressed: loading ? null : onAdd,
-      style: FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        backgroundColor: scheme.primaryContainer.withValues(alpha: 0.5),
-        foregroundColor: scheme.onPrimaryContainer,
-      ),
-      icon: loading
-          ? SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: scheme.primary),
-            )
-          : const Icon(Icons.add_a_photo_outlined, size: 20),
-      label: Text(
-        loading
-            ? 'Đang tải...'
-            : (kIsWeb ? 'Tải lên ảnh thiết bị' : 'Chụp / Tải lên ảnh thiết bị'),
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Horizontal Thumbnail Strip
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ThumbnailStrip extends StatelessWidget {
-  const _ThumbnailStrip({
-    required this.snaps,
-    required this.selectedIndex,
-    required this.scrollController,
-    required this.formatDate,
-    required this.onSelect,
-    required this.onDelete,
-    required this.onPreview,
-    required this.scheme,
-  });
-
-  final List<SnapEntry> snaps;
-  final int? selectedIndex;
-  final ScrollController scrollController;
-  final String Function(DateTime) formatDate;
-  final void Function(int) onSelect;
-  final void Function(int) onDelete;
-  final void Function(int) onPreview;
-  final ColorScheme scheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 108,
-      child: ListView.separated(
-        controller: scrollController,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        itemCount: snaps.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final snap = snaps[index];
-          final isSelected = selectedIndex == index;
-          return _ThumbnailCard(
-            snap: snap,
-            index: index,
-            isSelected: isSelected,
-            formatDate: formatDate,
-            onTap: () => onSelect(index),
-            onDelete: () => onDelete(index),
-            onPreview: () => onPreview(index),
-            scheme: scheme,
-          );
-        },
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Individual Thumbnail Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ThumbnailCard extends StatelessWidget {
-  const _ThumbnailCard({
-    required this.snap,
-    required this.index,
-    required this.isSelected,
-    required this.formatDate,
-    required this.onTap,
-    required this.onDelete,
-    required this.onPreview,
-    required this.scheme,
-  });
-
-  final SnapEntry snap;
-  final int index;
-  final bool isSelected;
-  final String Function(DateTime) formatDate;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-  final VoidCallback onPreview;
-  final ColorScheme scheme;
-
-  @override
-  Widget build(BuildContext context) {
-    final chatCount = snap.messages.length;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 82,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.5),
-            width: isSelected ? 2.5 : 1.0,
-          ),
-          boxShadow: isSelected
-              ? [BoxShadow(color: scheme.primary.withValues(alpha: 0.25), blurRadius: 8, spreadRadius: 1)]
-              : [],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10.5),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Image fill
-              Image.memory(
-                snap.bytes,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  color: scheme.surfaceContainerHigh,
-                  child: Icon(Icons.broken_image, color: scheme.outlineVariant),
-                ),
-              ),
-
-              // Gradient overlay at bottom
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.45, 1.0],
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.72),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Timestamp bottom-left
-              Positioned(
-                left: 5,
-                bottom: 5,
-                right: 22,
-                child: Text(
-                  formatDate(snap.capturedAt),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w500),
-                ),
-              ),
-
-              // Chat count badge (top-left)
-              if (chatCount > 0)
-                Positioned(
-                  top: 5,
-                  left: 5,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: scheme.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$chatCount',
-                      style: TextStyle(color: scheme.onPrimary, fontSize: 9, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-
-              // Active checkmark (top-right)
-              if (isSelected)
-                Positioned(
-                  top: 5,
-                  right: 5,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: scheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.check, size: 11, color: scheme.onPrimary),
-                  ),
-                ),
-
-              // Delete button (bottom-right, overlaid)
-              Positioned(
-                bottom: 4,
-                right: 4,
-                child: GestureDetector(
-                  onTap: onDelete,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.close, size: 11, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Chat Bubble
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({
-    required this.message,
-    required this.scheme,
-    required this.formatDate,
-  });
-
-  final ChatMessage message;
-  final ColorScheme scheme;
-  final String Function(DateTime) formatDate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Question bubble (right-aligned)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 480),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(4),
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    message.question,
-                    style: TextStyle(color: scheme.onPrimaryContainer, fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                  if (message.machineCode != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.memory_outlined, size: 11, color: scheme.onPrimaryContainer.withValues(alpha: 0.7)),
-                        const SizedBox(width: 3),
-                        Text(
-                          message.machineCode!,
-                          style: TextStyle(color: scheme.onPrimaryContainer.withValues(alpha: 0.7), fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 4),
-                  Text(
-                    formatDate(message.askedAt),
-                    style: TextStyle(color: scheme.onPrimaryContainer.withValues(alpha: 0.55), fontSize: 10),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Answer / error card (left-aligned)
-          Container(
-            decoration: BoxDecoration(
-              color: message.isError
-                  ? Colors.amber.shade50
-                  : scheme.surfaceContainerLow,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-              border: Border.all(
-                color: message.isError
-                    ? Colors.amber.shade300
-                    : scheme.outlineVariant.withValues(alpha: 0.5),
-              ),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Fallback badge
-                if (message.isError) ...[
-                  Row(
-                    children: [
-                      Icon(Icons.wifi_off_rounded, size: 13, color: Colors.amber.shade800),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Phân tích ngoại tuyến — Backend không phản hồi',
-                        style: TextStyle(fontSize: 11, color: Colors.amber.shade800, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
-                ],
-                AnswerView(result: message.answer, shrinkWrap: true),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Empty State
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd, required this.scheme});
-
-  final VoidCallback onAdd;
-  final ColorScheme scheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.camera_roll_outlined, size: 64, color: scheme.outlineVariant),
-          const SizedBox(height: 16),
-          Text(
-            'Chưa có ảnh thiết bị nào',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Chụp hoặc tải lên ảnh thiết bị\nđể bắt đầu phân tích bằng AI',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: scheme.outline),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add_a_photo),
-            label: const Text('Thêm ảnh đầu tiên'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// BBox Painter
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _BBoxPainter extends CustomPainter {
-  _BBoxPainter(this.boxes);
-  final List<Rect> boxes;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (boxes.isEmpty) return;
-    final paint = Paint()
-      ..color = Colors.redAccent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-    for (final box in boxes) {
-      canvas.drawRect(
-        Rect.fromLTRB(
-          (box.left / 1000.0) * size.width,
-          (box.top / 1000.0) * size.height,
-          (box.right / 1000.0) * size.width,
-          (box.bottom / 1000.0) * size.height,
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BBoxPainter oldDelegate) => true;
 }

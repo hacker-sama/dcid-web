@@ -350,6 +350,34 @@ class _MessageBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!isUser && entry.result?.isOfflineFallback == true) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade400, width: 1.2),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.wifi_off_rounded, size: 18, color: Colors.amber.shade900),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '⚠️ Backend/AI offline — Hiển thị kết quả ngoại tuyến / bộ nhớ tạm',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber.shade900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   Text(
                     entry.content,
                     style: TextStyle(
@@ -366,11 +394,18 @@ class _MessageBubble extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 4,
                       children: [
-                        _Badge(
-                          label: 'Độ tin cậy: ${(entry.result!.confidence * 100).toStringAsFixed(0)}%',
-                          color: colorScheme.secondaryContainer,
-                          textColor: colorScheme.onSecondaryContainer,
-                        ),
+                        if (entry.result!.isOfflineFallback)
+                          _Badge(
+                            label: 'Ngoại tuyến (Offline)',
+                            color: Colors.amber.shade200,
+                            textColor: Colors.amber.shade900,
+                          )
+                        else
+                          _Badge(
+                            label: 'Độ tin cậy: ${(entry.result!.confidence * 100).toStringAsFixed(0)}%',
+                            color: colorScheme.secondaryContainer,
+                            textColor: colorScheme.onSecondaryContainer,
+                          ),
                         if (entry.result!.numericRule)
                           _Badge(
                             label: 'Trích số liệu trực tiếp',
