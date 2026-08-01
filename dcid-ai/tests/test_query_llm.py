@@ -340,6 +340,50 @@ class TestCleanThinkTags:
         assert _clean_think_tags(raw) == "Bước 1 tháo ốc A."
 
 
+class TestContextWindow:
+    def test_long_rag_prompt_is_trimmed_but_keeps_question(self):
+        from types import SimpleNamespace
+        from app.clients.llm_client import _estimated_tokens, _fit_messages_to_context
+
+        settings = SimpleNamespace(
+            llm_context_window=4096,
+            llm_context_safety_tokens=256,
+            llm_max_tokens=2048,
+        )
+        messages = [
+            {"role": "system", "content": "Hãy trả lời dựa trên tài liệu."},
+            {"role": "user", "content": "Tài liệu kỹ thuật " * 3000 + "\nCâu hỏi: Điện áp là bao nhiêu?"},
+        ]
+
+        fitted = _fit_messages_to_context(messages, settings)
+        total = sum(_estimated_tokens(m["content"]) for m in fitted)
+
+        assert total <= 4096 - 2048 - 256
+        assert "Câu hỏi: Điện áp là bao nhiêu?" in fitted[-1]["content"]
+        assert "ngữ cảnh đã được rút gọn" in fitted[-1]["content"]
+
+    def test_old_history_is_removed_before_current_question(self):
+        from types import SimpleNamespace
+        from app.clients.llm_client import _fit_messages_to_context
+
+        settings = SimpleNamespace(
+            llm_context_window=1024,
+            llm_context_safety_tokens=128,
+            llm_max_tokens=512,
+        )
+        messages = [
+            {"role": "system", "content": "Chỉ dẫn"},
+            {"role": "user", "content": "lịch sử cũ " * 500},
+            {"role": "assistant", "content": "trả lời cũ " * 500},
+            {"role": "user", "content": "context mới\nCâu hỏi: Bảo trì thế nào?"},
+        ]
+
+        fitted = _fit_messages_to_context(messages, settings)
+
+        assert len(fitted) == 2
+        assert "Câu hỏi: Bảo trì thế nào?" in fitted[-1]["content"]
+
+
 class TestVisionPrompts:
     def test_build_system_prompt_vision_mode(self):
         from app.pipeline.prompts import build_system_prompt
@@ -350,5 +394,4 @@ class TestVisionPrompts:
         from app.pipeline.prompts import build_user_prompt
         up = build_user_prompt("Bản vẽ này có thông số gì?", hits=[], has_image=True)
         assert "Bản vẽ này có thông số gì?" in up
-
 

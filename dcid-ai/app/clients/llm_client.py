@@ -23,6 +23,84 @@ from app.config import get_settings
 logger = logging.getLogger("dcid-ai.llm_client")
 
 
+def _estimated_tokens(value: Any) -> int:
+    """Ước lượng token bảo thủ, không buộc cài tokenizer riêng cho từng model."""
+    if isinstance(value, str):
+        # UTF-8/3 an toàn hơn quy tắc chars/4 với tiếng Việt và dữ liệu OCR.
+        return max(1, (len(value.encode("utf-8")) + 2) // 3)
+    if isinstance(value, list):
+        total = 0
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "image_url":
+                # Ảnh được VLM chuyển thành visual tokens; chừa một ngân sách bảo thủ.
+                total += 1024
+            else:
+                total += _estimated_tokens(item.get("text", ""))
+        return total
+    return 0
+
+
+def _truncate_text_keep_ends(text: str, token_budget: int) -> str:
+    """Giữ tài liệu đầu tiên và câu hỏi ở cuối khi phải thu gọn RAG prompt."""
+    max_bytes = max(0, token_budget * 3)
+    raw = text.encode("utf-8")
+    if len(raw) <= max_bytes:
+        return text
+    if max_bytes < 96:
+        return raw[-max_bytes:].decode("utf-8", errors="ignore") if max_bytes else ""
+
+    marker = "\n...[ngữ cảnh đã được rút gọn để phù hợp model]...\n"
+    available = max_bytes - len(marker.encode("utf-8"))
+    head_size = available * 2 // 3
+    tail_size = available - head_size
+    head = raw[:head_size].decode("utf-8", errors="ignore")
+    tail = raw[-tail_size:].decode("utf-8", errors="ignore")
+    return head + marker + tail
+
+
+def _fit_messages_to_context(messages: list[dict[str, Any]], settings: Any) -> list[dict[str, Any]]:
+    """Rút gọn prompt trước khi gửi, luôn giữ system prompt và câu hỏi mới nhất."""
+    context_window = max(512, int(getattr(settings, "llm_context_window", 4096)))
+    safety = max(64, int(getattr(settings, "llm_context_safety_tokens", 256)))
+    completion = max(1, int(settings.llm_max_tokens))
+    input_budget = max(256, context_window - completion - safety)
+    overhead = 12 * len(messages) + 8
+    content_budget = max(128, input_budget - overhead)
+
+    fitted = [dict(message) for message in messages]
+    total = sum(_estimated_tokens(message.get("content", "")) for message in fitted)
+    if total <= content_budget:
+        return fitted
+
+    # Lịch sử là phần ít quan trọng nhất; loại lượt cũ trước.
+    while len(fitted) > 2 and total > content_budget:
+        removed = fitted.pop(1)
+        total -= _estimated_tokens(removed.get("content", ""))
+
+    if total > content_budget and fitted:
+        system_tokens = sum(_estimated_tokens(m.get("content", "")) for m in fitted[:-1])
+        last = fitted[-1]
+        content = last.get("content", "")
+        text_budget = max(64, content_budget - system_tokens)
+        if isinstance(content, str):
+            last["content"] = _truncate_text_keep_ends(content, text_budget)
+        elif isinstance(content, list):
+            copied = [dict(item) for item in content]
+            text_items = [item for item in copied if item.get("type") == "text"]
+            if text_items:
+                text_items[-1]["text"] = _truncate_text_keep_ends(text_items[-1].get("text", ""), text_budget)
+            last["content"] = copied
+
+    final_total = sum(_estimated_tokens(message.get("content", "")) for message in fitted)
+    logger.info(
+        "Prompt được giới hạn theo context: estimated=%d budget=%d context_window=%d",
+        final_total, content_budget, context_window,
+    )
+    return fitted
+
+
 @lru_cache(maxsize=1)
 def _get_client():
     """Khởi tạo OpenAI client một lần, cache theo process.
@@ -97,6 +175,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
             if role and content:
                 role_name = "AI" if role in ("ai", "assistant") else "Người dùng"
                 # Lọc sạch các từ khóa rác và tiêm injection từ lịch sử cũ
+                clean_content = _sanitize_history_content(str(content))
                 clean_content = re.sub(r"\[CÂU HỎI\]|Câu hỏi mới nhất[^\n]*|Câu hỏi:[^\n]*", "", clean_content).strip()
                 # Cắt ngắn câu trả lời cũ của assistant
                 if role_name == "AI" and len(clean_content) > 150:
@@ -117,6 +196,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         user_content = final_user_prompt
 
     messages.append({"role": "user", "content": user_content})
+    messages = _fit_messages_to_context(messages, s)
 
     call_kwargs: dict[str, Any] = {
         "model": s.lm_studio_model,
@@ -287,6 +367,7 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
         user_content = user_prompt
 
     messages.append({"role": "user", "content": user_content})
+    messages = _fit_messages_to_context(messages, s)
 
     stream_kwargs: dict = {
         "model": s.lm_studio_model,

@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     llm_frequency_penalty: float = 0.0
     llm_presence_penalty: float = 0.0
     llm_max_tokens: int = 2048
+    # Phải khớp Context Length đang cấu hình trong LM Studio.
+    llm_context_window: int = 4096
+    llm_context_safety_tokens: int = 256
     llm_timeout: float = 120.0
 
     # ── Redis / Celery (async task queue) ─────────────────────────────────────
