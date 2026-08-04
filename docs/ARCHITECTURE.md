@@ -160,7 +160,7 @@ Khi bắt đầu tích hợp, đề xuất một interface `AiPipelineClient` tr
 
 Callback AI → Spring Boot: `POST /api/internal/ingest-callback` (bảo vệ bằng token nội bộ).
 
-> Quyết định thiết kế hiện tại: **chưa dựng** interface/stub này — xem §9 roadmap.
+> **Đã triển khai:** Interface `AiPipelineClient.java` và implementation `RestAiPipelineClient.java` đã được tích hợp trong Spring Boot để gọi sang AI Service (từ phase P3).
 
 ---
 
@@ -169,11 +169,11 @@ Callback AI → Spring Boot: `POST /api/internal/ingest-callback` (bảo vệ b�
 | Phase (BC) | Việc | Trạng thái trong repo |
 |---|---|---|
 | — | Reset skeleton + self-JWT + RBAC + audit | ✅ **Đã xong** (lần format này) |
-| P1–P2 | AI Core & OCR & RAG (Python) | ⬜ Repo riêng / service Python |
-| P3 | Backend Governance: Document/Version/Query/WorkOrder + Admin | ⬜ Thêm domain vào Spring Boot (theo §5) |
-| P3 | `AiPipelineClient` + ingest callback | ⬜ Theo §8 |
-| P4 | Kiosk/Mobile UI (Snap & Ask, side-by-side) | ⬜ `dcid-app` (Flutter, Android + Windows) — tạo mới |
-| P5 | Pilot & UAT 01 dây chuyền | ⬜ |
+| P1–P2 | AI Core & OCR & RAG (Python) | ✅ **Đã xong** (đã triển khai thật với PaddleOCR, ChromaDB, LM Studio) |
+| P3 | Backend Governance: Document/Version/Query/WorkOrder + Admin | ✅ **Đã xong** |
+| P3 | `AiPipelineClient` + ingest callback | ✅ **Đã xong** (đã code trong backend) |
+| P4 | Kiosk/Mobile UI (Snap & Ask, side-by-side) | ✅ **Đã xong** (`dcid-app` Flutter với các tính năng cơ bản, Snap & Ask, Document viewing) |
+| P5 | Pilot & UAT 01 dây chuyền | ⬜ Sẽ triển khai |
 
 ---
 
@@ -213,27 +213,23 @@ dcid-web/                      (monorepo)
 
 ```
 dcid-ai/
-├── app/
+├── app/                      # Web & API layer
 │   ├── main.py               # FastAPI app + router
 │   ├── config.py             # pydantic-settings (env)
-│   ├── api/
-│   │   ├── health.py         # GET  /ai/health
-│   │   ├── ingest.py         # POST /ai/ingest   → enqueue Celery task
-│   │   └── query.py          # POST /ai/query    → RAG + guardrails (đồng bộ)
-│   ├── pipeline/
-│   │   ├── ocr.py            # PaddleOCR (multi-lang, TSR bảng biểu)
-│   │   ├── chunk.py          # structure-aware chunking (giữ cấu trúc bảng)
-│   │   ├── embed.py          # multilingual-e5-small (ONNX qua optimum)
-│   │   ├── index.py          # ChromaDB upsert
-│   │   └── bbox.py           # cắt bounding-box crop → MinIO
-│   ├── clients/
-│   │   ├── llm_client.py     # OpenAILike REST client tới LM Studio (deepseek-r1-distill-qwen-1.5b)
-│   │   ├── minio_client.py   # đọc PDF gốc / ghi crop
-│   │   └── backend_client.py # callback → dcid-backend (token nội bộ)
-│   ├── services/
-│   │   ├── ingest_service.py # điều phối luồng bóc tách PDF & index
-│   │   └── query_service.py  # RAG retrieve + guardrails + gọi llm_client
-│   └── tasks.py              # Celery: ingest bất đồng bộ
+│   ├── api/                  # API endpoints (health, ingest, query)
+│   ├── pipeline/             # RAG pipeline integrations (guardrails, chunks)
+│   ├── clients/              # llm_client.py, minio_client.py, backend_client.py
+│   ├── services/             # ingest_service.py, query_service.py
+│   └── workers/              # Celery workers (embed_worker.py)
+├── src/                      # Modular Core RAG Engine
+│   ├── ingestion/            # OCR, Loader (PaddleOCR, PyMuPDF)
+│   ├── chunking/             # Layout-aware chunking (cắt vùng sơ đồ/bản vẽ)
+│   ├── embeddings/           # Embedding model (multilingual-e5-small)
+│   ├── vectordb/             # Vector Store (ChromaDB)
+│   ├── retrieval/            # Tìm kiếm thông tin
+│   ├── prompts/              # Quản lý prompt templates
+│   ├── llm/                  # Tương tác với LLM (LM Studio)
+│   └── utils/                # Tiện ích chung
 ├── models/                   # GGUF + ONNX weights (đóng gói offline)
 ├── tests/
 ├── pyproject.toml

@@ -339,6 +339,12 @@ class TestCleanThinkTags:
         raw = "[CHỈ THỊ CHUYÊN GIA TƯ VẤN LẮP RÁP CƠ KHÍ — CẦM TAY CHỈ VIỆC]:\nNgười dùng đang yêu cầu tư vấn... TUYỆT ĐỐI KHÔNG tự suy luận.\n\n---\nBước 1 tháo ốc A."
         assert _clean_think_tags(raw) == "Bước 1 tháo ốc A."
 
+    def test_strip_echoed_user_request(self):
+        from app.clients.llm_client import _clean_think_tags
+
+        raw = "<user_request>Phân tích tài liệu cho tôi</user_request>\nTài liệu mô tả ba bước lắp đặt."
+        assert _clean_think_tags(raw) == "Tài liệu mô tả ba bước lắp đặt."
+
 
 class TestContextWindow:
     def test_long_rag_prompt_is_trimmed_but_keeps_question(self):
@@ -384,6 +390,28 @@ class TestContextWindow:
         assert "Câu hỏi: Bảo trì thế nào?" in fitted[-1]["content"]
 
 
+class TestNaturalAnswerGuard:
+    def test_detects_request_for_information(self):
+        from app.clients.llm_client import _is_unhelpful_answer
+
+        answer = "Xin vui lòng cung cấp thêm thông tin để tôi có thể phân tích."
+        assert _is_unhelpful_answer(answer) is True
+
+    def test_accepts_normal_document_summary(self):
+        from app.clients.llm_client import _is_unhelpful_answer
+
+        answer = "Tài liệu mô tả quy trình lắp đặt gồm ba bước chính."
+        assert _is_unhelpful_answer(answer) is False
+
+    def test_prompt_does_not_label_latest_question(self):
+        from app.pipeline.prompts import build_user_prompt
+
+        prompt = build_user_prompt("Phân tích tài liệu cho tôi", [{"text": "Nội dung kỹ thuật", "page_no": 2}])
+        assert "Câu hỏi mới nhất" not in prompt
+        assert "<user_request>" in prompt
+        assert "không chép lại yêu cầu" in prompt
+
+
 class TestVisionPrompts:
     def test_build_system_prompt_vision_mode(self):
         from app.pipeline.prompts import build_system_prompt
@@ -394,4 +422,3 @@ class TestVisionPrompts:
         from app.pipeline.prompts import build_user_prompt
         up = build_user_prompt("Bản vẽ này có thông số gì?", hits=[], has_image=True)
         assert "Bản vẽ này có thông số gì?" in up
-

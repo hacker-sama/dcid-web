@@ -20,6 +20,7 @@
 | **Backend — Xóa Tài Liệu (Delete API)** | `DocumentController` (`DELETE /api/documents/{id}`) + `DocumentService.deleteDocument` (MinIO PDF/page PNGs + Postgres DB + Audit log `DOCUMENT_DELETE` + AI vector purge) |
 | **Backend — DB schema** | V1 (users, audit_logs) + V2 (documents, versions, pages) + V3 (query_logs) + V4 (work_orders) |
 | **Backend — Entities** | `User`, `Document`, `DocumentVersion`, `DocumentPage`, `QueryLog`, `AuditLog` |
+| **Backend — AiPipelineClient** | `AiPipelineClient` và `RestAiPipelineClient` đã được triển khai, kết nối Backend với AI Service thông qua HTTP |
 | **Backend — WebSocket skeleton** | `WebSocketConfig` STOMP: endpoint `/ws` (SockJS), broker `/topic` + `/queue` — chưa có business broadcast |
 | **AI — FastAPI + endpoints** | `GET /ai/health`, `POST /ai/ingest` (202 async), `POST /ai/query`, `POST /ai/query/stream`, `GET /ai/status/{task_id}`, `DELETE /ai/documents/{document_id}` |
 | **AI — Codebase Restructuring (`src/`)** | Kiến trúc mô-đun hóa `src/ingestion`, `src/chunking`, `src/embeddings`, `src/vectordb`, `src/retrieval`, `src/prompts`, `src/llm`, `src/api`, `src/utils`, `config.yaml`, `main.py` |
@@ -47,7 +48,8 @@
 | **Flutter — Tai lieu & Xóa Tài Liệu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — nối API thật + nút Xóa (Thùng rác đỏ) + Dialog xác nhận cảnh báo |
 | **Flutter — Tra cuu (non-SSE)** | `search/search_screen.dart`: chat UI + reasoning mode toggle + doc filter, goi `POST /api/query` dong bo |
 | **Flutter — Layout & Density** | `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, responsive layout |
-| **Flutter — Placeholder** | `admin_screen.dart`, `snap_ask_screen.dart`, `document_viewer_screen.dart` — placeholder |
+| **Flutter — Snap & Ask** | `snap_ask_screen.dart` — Đã triển khai UI cơ bản cho luồng chụp ảnh và hỏi AI tại hiện trường |
+| **Flutter — Placeholder** | `admin_screen.dart`, `document_viewer_screen.dart` — placeholder |
 | **Infra Docker** | postgres, redis, minio, zookeeper, kafka, chroma, backend, ai, ai-ocr, **ai-worker**, **ai-flower** — tat ca Up/Started |
 
 

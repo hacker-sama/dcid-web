@@ -101,6 +101,38 @@ def _fit_messages_to_context(messages: list[dict[str, Any]], settings: Any) -> l
     return fitted
 
 
+_UNHELPFUL_ANSWER_PATTERNS = (
+    "vui lòng cung cấp thêm",
+    "xin vui lòng cung cấp thêm",
+    "hãy cung cấp thêm",
+    "không thể phân tích",
+    "không đủ thông tin để phân tích",
+    "i need more information",
+    "please provide more information",
+)
+
+
+def _is_unhelpful_answer(answer: str) -> bool:
+    """Nhận diện câu trả lời né tránh dù RAG đã cung cấp tài liệu."""
+    normalized = answer.casefold().strip()
+    return bool(normalized) and any(pattern in normalized for pattern in _UNHELPFUL_ANSWER_PATTERNS)
+
+
+def _messages_for_direct_retry(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Tạo prompt thử lại ngắn, ép model dùng context hiện có thay vì hỏi thêm."""
+    retry = [dict(message) for message in messages]
+    instruction = (
+        "Câu trả lời trước chưa hữu ích. Hãy dùng ngay dữ liệu trong context để trả lời. "
+        "Nếu người dùng yêu cầu phân tích tài liệu, hãy đưa ra bản tóm tắt có cấu trúc gồm "
+        "nội dung chính, chi tiết kỹ thuật và lưu ý. Không lặp câu hỏi và không yêu cầu thêm dữ liệu."
+    )
+    if retry and retry[0].get("role") == "system":
+        retry[0]["content"] = str(retry[0].get("content", "")) + "\n" + instruction
+    else:
+        retry.insert(0, {"role": "system", "content": instruction})
+    return retry
+
+
 @lru_cache(maxsize=1)
 def _get_client():
     """Khởi tạo OpenAI client một lần, cache theo process.
@@ -273,6 +305,33 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
     answer = _clean_think_tags(raw_content, fallback_reasoning=reasoning_content)
     model_used = response.model or s.lm_studio_model
+
+    # Model nhỏ đôi khi bỏ qua context và yêu cầu người dùng gửi thêm tài liệu.
+    # Thử lại một lần với chỉ dẫn trực tiếp, không mang theo sampling mở rộng.
+    if _is_unhelpful_answer(answer):
+        logger.warning("LLM trả lời né tránh dù đã có RAG context; đang thử lại một lần.")
+        try:
+            retry_response = client.chat.completions.create(
+                model=s.lm_studio_model,
+                messages=_fit_messages_to_context(_messages_for_direct_retry(messages), s),
+                temperature=min(s.llm_temperature, 0.2),
+                max_tokens=s.llm_max_tokens,
+            )
+            retry_msg = retry_response.choices[0].message
+            retry_answer = _clean_think_tags(
+                retry_msg.content or "",
+                fallback_reasoning=(
+                    getattr(retry_msg, "reasoning_content", None)
+                    or getattr(retry_msg, "reasoning", None)
+                    or ""
+                ),
+            )
+            if retry_answer.strip():
+                answer = retry_answer
+                response = retry_response
+                model_used = retry_response.model or s.lm_studio_model
+        except Exception as retry_exc:  # noqa: BLE001
+            logger.warning("Thử lại câu trả lời trực tiếp thất bại: %s", retry_exc)
 
     # DEBUG: log raw và cleaned để phát hiện blank answer
     logger.debug(
@@ -549,6 +608,7 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
 
     # Loại bỏ các block meta (ví dụ: [CHỈ THỊ CHUYÊN GIA...]: ... TUYỆT ĐỐI KHÔNG... \n\n hoặc ---)
     meta_patterns = [
+        r"<user_request>.*?</user_request>",
         r"\[CHỈ THỊ[^\]]*\][:.]?\s*(.*?)(?=\n\s*\n|\n\s*---|$)",
         r"\[YÊU CẦU[^\]]*\][:.]?\s*(.*?)(?=\n\s*\n|\n\s*---|$)",
         r"\[NGUYÊN TẮC[^\]]*\][:.]?\s*(.*?)(?=\n\s*\n|\n\s*---|$)",
