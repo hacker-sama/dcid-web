@@ -1,46 +1,33 @@
-# Báo cáo Hoàn thành: Nâng cấp True Multimodal Vision (VLM) Phân tích Bản vẽ
+# Báo cáo Hoàn thành: Nâng cấp Frontend (`dcid-app`) — Hỗ trợ Đa nền tảng (Web & Mobile)
 
-Đã nâng cấp hệ thống `dcid-ai` hỗ trợ chuẩn **OpenAI Multimodal Vision API (`image_url` Base64)**. Giờ đây khi người dùng gửi hình ảnh bản vẽ kỹ thuật hoặc truy vấn hình ảnh, hệ thống sẽ mã hóa ảnh thành Base64 và truyền trực tiếp dữ liệu điểm ảnh (pixels) sang các mô hình Vision (VLM) trên LM Studio.
+Đã hoàn tất việc tổng hợp các đề xuất và triển khai các nâng cấp quan trọng cho phân hệ Frontend Flutter ([`dcid-app`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app)), đảm bảo **không gây vỡ build hay gián đoạn các tính năng trên Mobile APK**.
 
 ---
 
 ## Các thay đổi chính
 
-### 1. [minio_client.py](file:///c:/project/new/dcid-web/dcid-ai/app/clients/minio_client.py)
-- Thêm hàm `get_object_base64(storage_key: str) -> str`: Tải dữ liệu ảnh từ MinIO bucket và tự động nhận diện MIME type để tạo chuỗi Data URI Base64 (`data:image/png;base64,...`).
+### 1. Quản lý Ngoại lệ Toàn cục (Global Exception Handling & Error Boundaries)
+- **[`api_client.dart`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app/lib/data/api_client.dart):** Bổ sung `onError` interceptor vào Dio. Tự động kiểm tra HTTP StatusCode 401 (hết hạn Token JWT) để giải phóng token và ngăn lỗi lặp lại.
+- **[`main.dart`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app/lib/main.dart):** Đăng ký `FlutterError.onError` và `PlatformDispatcher.instance.onError` để bắt tất cả các ngoại lệ UI/Async không lường trước, tránh hiện tượng Red Screen of Death trên thiết bị thật.
 
-### 2. [llm_client.py](file:///c:/project/new/dcid-web/dcid-ai/app/clients/llm_client.py)
-- Cập nhật cả 2 hàm `generate_answer` và `generate_answer_stream` nhận thêm tham số `image_base64`.
-- Khi có `image_base64`, đóng gói payload tin nhắn người dùng theo chuẩn Multimodal OpenAI specification:
-  ```json
-  [
-    {"type": "text", "text": "Câu hỏi..."},
-    {"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}
-  ]
-  ```
+### 2. Giao diện Chat Streaming SSE Realtime (`SSE Chat UI`)
+- **[`sse_event.dart`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app/lib/data/models/sse_event.dart):** Định nghĩa cấu trúc dữ liệu sự kiện SSE (`meta`, `delta`, `done`, `error`).
+- **[`docs_repository_interface.dart`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app/lib/data/docs_repository_interface.dart) & [`docs_repository.dart`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app/lib/data/docs_repository.dart):** Triển khai hàm `askStream(...)` đọc trực tiếp luồng `text/event-stream` từ Backend proxy (`/api/query/stream`).
+- **[`search_screen.dart`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app/lib/features/search/search_screen.dart):** Cập nhật giao diện chat nhận token realtime, hiển thị hiệu ứng gõ chữ (typing effect), cuộn tự động và hiện ngay thông tin Guardrail banner + Citation chip mà không phải chờ full response.
+- **[`mock_docs_repository.dart`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app/lib/data/mock/mock_docs_repository.dart):** Bổ sung trình giả lập Stream SSE để hỗ trợ chạy thử độc lập khi sử dụng dữ liệu Mock.
 
-### 3. [query_service.py](file:///c:/project/new/dcid-web/dcid-ai/app/services/query_service.py)
-- Cập nhật cả 2 luồng **Sync Query** và **SSE Streaming Query**:
-  - Tải ảnh Base64 từ MinIO thông qua `minio_client.get_object_base64`.
-  - Kết hợp đồng thời cả dữ liệu OCR text và dữ liệu ảnh Base64 truyền sang `llm_client` để gửi cho Vision LLM.
+### 3. Trình xem Trích dẫn Sơ đồ & Bounding Box Overlay
+- **[`document_viewer_screen.dart`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/dcid-app/lib/features/viewer/document_viewer_screen.dart):** Kết nối trực tiếp với API proxy ảnh MinIO (`/api/files/{imageKey}`) kèm header xác thực JWT.
+- Khi người dùng chọn trích dẫn, hệ thống tự động tải ảnh trang và sử dụng `BBoxOverlayPainter` vẽ đè khung chữ nhật khoanh vùng sơ đồ/bản vẽ kỹ thuật.
 
----
-
-## Kiểm thử & Xác minh
-
-- **Import Integrity:** Đã chạy thử nghiệm kiểm tra cú pháp Python và import mô hình:
-  ```bash
-  python -c "import app.clients.minio_client; import app.clients.llm_client; import app.services.query_service; print('Imports OK')"
-  ```
-  => Trả về `Imports OK` thành công.
+### 4. Cập nhật Tài liệu Dự án
+- **[`ROADMAP.md`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/docs/ROADMAP.md):** Cập nhật trạng thái hoàn thành cho các mục SSE Chat UI, Global Exception Handling, và BBox Document Viewer.
+- **[`implementation_plan.md`](file:///c:/Users/Admin/Documents/GitHub/dcid-web/implementation_plan.md):** Ghi nhận kế hoạch tổng thể triển khai nâng cấp Frontend theo giai đoạn.
 
 ---
 
-## Hướng dẫn sử dụng cho Giám khảo / Khách hàng
+## Đảm bảo An toàn cho Mobile (Mobile Compatibility Verified)
 
-1. **Trên LM Studio:** Tải và nạp một **Vision Model (VLM)** như:
-   - `Qwen2-VL-2B-Instruct` (siêu nhẹ, cho máy yếu)
-   - `Qwen2-VL-7B-Instruct` (cho máy vừa)
-   - `Llama-3.2-11B-Vision-Instruct`
-2. Đảm bảo tên `LM_STUDIO_MODEL` trong `.env` hoặc UI LM Studio khớp với model đang nạp.
-3. Chụp hoặc tải lên một hình ảnh bản vẽ kỹ thuật từ Flutter App / SnapAsk. AI sẽ phân tích trực tiếp hình dạng, nét vẽ và chi tiết kỹ thuật trên bản vẽ mà không bị giới hạn bởi chữ OCR!
+1. **Không sử dụng `dart:io` ở tầng dùng chung:** Không làm vỡ khả năng biên dịch sang Web (`flutter build web`).
+2. **Duy trì cơ chế Upload Bytes-based (`Uint8List`):** Đảm bảo tính năng upload tài liệu hoạt động đồng nhất trên cả Web và Android APK mà không phụ thuộc vào `file.path`.
+3. **Responsive UI Touch-friendly:** Các nút điều khiển và kích thước giao diện giữ nguyên chuẩn tối thiểu $\ge 48\text{dp}$ trên thiết bị di động hiện trường.

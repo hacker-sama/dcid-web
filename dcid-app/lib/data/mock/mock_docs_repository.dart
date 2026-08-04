@@ -4,6 +4,7 @@ import '../docs_repository_interface.dart';
 import '../models/answer_result.dart';
 import '../models/document_detail.dart';
 import '../models/document_summary.dart';
+import '../models/sse_event.dart';
 import 'mock_data.dart';
 
 /// Mock implementation of [IDocsRepository] for Week 1 development.
@@ -26,6 +27,36 @@ class MockDocsRepository implements IDocsRepository {
       return MockData.answerLocked;
     }
     return MockData.answerNormal;
+  }
+
+  @override
+  Stream<SseEvent> askStream(
+    String question, {
+    bool reasoningMode = false,
+    List<String>? selectedVersionIds,
+    List<Map<String, String>>? history,
+  }) async* {
+    final mockAns = question.toLowerCase().contains('test-locked')
+        ? MockData.answerLocked
+        : MockData.answerNormal;
+
+    yield SseEvent(
+      type: SseEventType.meta,
+      citations: mockAns.citations,
+      locked: mockAns.locked,
+      numericRule: mockAns.numericRule,
+      reasoningMode: reasoningMode || mockAns.reasoningMode,
+      confidence: mockAns.confidence,
+    );
+
+    final words = mockAns.answer.split(' ');
+    for (int i = 0; i < words.length; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+      final chunk = (i == 0 ? '' : ' ') + words[i];
+      yield SseEvent(type: SseEventType.delta, textDelta: chunk);
+    }
+
+    yield const SseEvent(type: SseEventType.done, latencyMs: 850);
   }
 
   @override

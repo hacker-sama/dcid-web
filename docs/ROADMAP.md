@@ -45,9 +45,10 @@
 | **Flutter — Login** | `auth/login_screen.dart` noi API that |
 | **Flutter — Shell/Nav** | `shell/home_shell.dart` + routing role-guard |
 | **Flutter — Tai lieu & Xóa Tài Liệu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — nối API thật + nút Xóa (Thùng rác đỏ) + Dialog xác nhận cảnh báo |
-| **Flutter — Tra cuu (non-SSE)** | `search/search_screen.dart`: chat UI + reasoning mode toggle + doc filter, goi `POST /api/query` dong bo |
-| **Flutter — Layout & Density** | `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, responsive layout |
-| **Flutter — Placeholder** | `admin_screen.dart`, `snap_ask_screen.dart`, `document_viewer_screen.dart` — placeholder |
+| **Flutter — Tra cuu SSE Realtime** | `search/search_screen.dart` + `DocsRepository.askStream`: streaming token-by-token (typing effect), metadata guard & citation render ngay lap tuc |
+| **Flutter — Global Exception Handling & Error Boundaries** | `ApiClient` Dio onError (401 auto token-clear) + `main.dart` Global Flutter & Async Error Catchers |
+| **Flutter — Document BBox Viewer** | `document_viewer_screen.dart` + `bbox_painter.dart`: viewer anh MinIO có JWT headers + CustomPaint ve bounding box ky thuat |
+| **Flutter — Layout & Density** | `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, responsive layout cho ca Web & Mobile APK |
 | **Infra Docker** | postgres, redis, minio, zookeeper, kafka, chroma, backend, ai, ai-ocr, **ai-worker**, **ai-flower**, **ollama** — tất cả Up/Started |
 | **BE — `POST /api/internal/ingest-status`** | Nhận per-step push từ AI, broadcast STOMP `/topic/ingest/{versionId}` — `SimpMessagingTemplate` |
 | **BE — `GET /api/query/stream`** | SSE proxy từ AI `/ai/query/stream` về Flutter — `SseEmitter`, `CompletableFuture.runAsync`, `@EnableAsync` |
