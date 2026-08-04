@@ -20,6 +20,12 @@ class ApiClient {
         }
         handler.next(options);
       },
+      onError: (DioException err, handler) async {
+        if (err.response?.statusCode == 401) {
+          await _storage.delete(key: tokenKey);
+        }
+        handler.next(err);
+      },
     ));
   }
 

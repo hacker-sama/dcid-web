@@ -7,6 +7,7 @@ import 'docs_repository_interface.dart';
 import 'models/answer_result.dart';
 import 'models/document_detail.dart';
 import 'models/document_summary.dart';
+import 'models/sse_event.dart';
 
 /// Decorator repository that caches document lists and Q&A answers in local storage.
 /// Provides offline fallback when network requests fail.
@@ -18,6 +19,21 @@ class OfflineCacheDocsRepository implements IDocsRepository {
 
   static const _cacheKeyDocsList = 'offline_cache_docs_list';
   static const _cacheKeyAnswersPrefix = 'offline_cache_answer_';
+
+  @override
+  Stream<SseEvent> askStream(
+    String question, {
+    bool reasoningMode = false,
+    List<String>? selectedVersionIds,
+    List<Map<String, String>>? history,
+  }) {
+    return _inner.askStream(
+      question,
+      reasoningMode: reasoningMode,
+      selectedVersionIds: selectedVersionIds,
+      history: history,
+    );
+  }
 
   @override
   Future<AnswerResult> ask(

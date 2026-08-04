@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,6 +19,18 @@ const bool _useMockData = bool.fromEnvironment(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Global error boundary handling
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Global UI Error: ${details.exception}');
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Global Async Error: $error\n$stack');
+    return true;
+  };
+
   // On Windows (kiosk) this will configure fullscreen; no-op elsewhere.
   await configureKioskIfDesktop();
 
