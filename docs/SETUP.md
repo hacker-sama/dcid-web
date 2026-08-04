@@ -1,6 +1,6 @@
 # Cài đặt & chạy dự án (Getting Started)
 
-> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (16/07/2026) —
+> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (04/08/2026) —
 > xem [§5](#5-cái-gì-chạy-được--cái-gì-còn-mock) để biết rõ phần nào là thật, phần nào còn mock.
 > **Toàn bộ luồng dưới đây đã chạy thật và verify end-to-end** (login → upload PDF → OCR qua `ai-ocr` →
 > chunking → embedding → index ChromaDB → version ACTIVE với đúng số trang → hỏi–đáp), không phải suy đoán từ code.
@@ -18,7 +18,7 @@ dcid-ai-ocr/    FastAPI (Python/Uvicorn)— worker bóc tách chữ chuyên dụ
 dcid-app/       Flutter                — web (kiosk/admin) + Android (mobile)            :3000 (web dev)
 ```
 
-Hạ tầng (Docker): **PostgreSQL** (bắt buộc) · **MinIO** (bắt buộc để upload) · **ChromaDB** (bắt buộc cho vector RAG) · Redis, Kafka, Zookeeper (đã cấu hình sẵn).
+Hạ tầng (Docker): **PostgreSQL** (bắt buộc) · **MinIO** (bắt buộc để upload) · **ChromaDB** (bắt buộc cho vector RAG) · **Ollama** (LLM inference headless — production) · Redis, Kafka, Zookeeper (đã cấu hình sẵn).
 
 ---
 
@@ -164,20 +164,38 @@ Cố định port **3000** để khớp CORS mặc định của backend (`CORS_
 flutter run --dart-define=API_BASE_URL=http://localhost:8080
 ```
 
-### 3.5. Local LLM Service (LM Studio — DeepSeek R1) — port 1234
+### 3.5. Local LLM Service — Ollama (production) hoặc LM Studio (dev local)
 
-Để tính năng Hỏi–đáp RAG (`/ai/query`) hoạt động thực tế với LLM, hệ thống sử dụng **LM Studio** chạy local (API tương thích OpenAI) thay vì chạy trực tiếp `llama-cpp-python` bên trong container Python:
+#### Option A — Ollama trong Docker (khuyến nghị cho production/server)
 
-1. Tải và cài đặt **[LM Studio](https://lmstudio.ai/)**.
-2. Tìm và tải model: `DeepSeek-R1-Distill-Qwen-1.5B-Q8_0` (Identifier hiển thị trong UI: `deepseek-r1-distill-qwen-1.5b`).
-3. Vào tab **Local Inference Server** trên LM Studio, bật server ở port **1234** (`http://localhost:1234/v1`).
-4. `dcid-ai` (`config.py` và `docker-compose.yml`) mặc định đã cấu hình kết nối tới `http://host.docker.internal:1234/v1` (`http://localhost:1234/v1` khi chạy uvicorn trực tiếp) với model `deepseek-r1-distill-qwen-1.5b`, kèm cấu hình tối ưu chuyên kỹ thuật: **`temperature=0.2`**, **`top_p=0.9`**, **`repetition_penalty=1.2`** (tự động thử lại không tham số nếu server local từ chối `repetition_penalty`).
+```bash
+# Ollama đã được thêm vào docker-compose.yml — chỉ cần pull model
+docker-compose up -d ollama
+docker exec dcid-ollama ollama pull qwen2-vl:2b-instruct-q4_k_m
 
-Verify local inference:
+# Verify
+curl http://localhost:11434/v1/models
+# Trả về danh sách model đang load
+```
+
+`dcid-ai` đã cấu hình mặc định trỏ về Ollama (`LM_STUDIO_BASE_URL=http://ollama:11434/v1`), không cần đổi gì nếu dùng docker-compose.
+
+#### Option B — LM Studio (dev local — GUI, dễ test)
+
+1. Tải và cài **[LM Studio](https://lmstudio.ai/)**.
+2. Tìm và tải model: `Qwen2-VL-2B-Instruct-GGUF` — chọn bản **Q4_K_M** (~2.78GB).
+3. Vào tab **Local Inference Server**, bật server ở port **1234** (`http://localhost:1234/v1`).
+4. Trong `dcid-ai/.env`, đổi:
+   ```
+   LM_STUDIO_BASE_URL=http://host.docker.internal:1234/v1
+   LM_STUDIO_MODEL=qwen2-vl-2b-instruct
+   ```
+
+Verify:
 ```bash
 curl http://localhost:1234/v1/models
-# Trả về danh sách model đang load trong LM Studio
 ```
+
 > Nếu chạy trên **thiết bị thật/emulator riêng** (không phải cùng máy với backend), đổi
 > `API_BASE_URL` thành IP LAN của máy chạy backend (`http://<ip-máy>:8080`), không dùng `localhost`.
 
@@ -216,16 +234,57 @@ python chroma-tools/clear_collection.py                  # Dọn dẹp collectio
 | Upload PDF → MinIO → tạo version | ✅ Thật |
 | Ingest pipeline (OCR + Chunking + Embedding + ChromaDB index) | ✅ Thật — PaddleOCR 3.7 + PyMuPDF bóc tách chữ và tọa độ Bbox + cấu trúc hóa Markdown + `multilingual-e5-small` + `ChromaDB` (`kcn_chunks` kèm metadata `bbox`, `snippet`) |
 | `document_pages` (ảnh trang, bbox) | ✅ `ocrText` và `bbox` (`boxes` Bbox `[x0,y0,x1,y1]`) đã bóc tách thật; `imageKey` sẵn sàng cho crop render |
-| Hỏi–đáp `/api/query` & Trích dẫn Không gian | ✅ **Thật (RAG + LLM)** — retrieve top-k từ ChromaDB, kiểm tra guardrail (`allowedVersionIds`, threshold θ=0.60), sinh câu trả lời qua LM Studio (`deepseek-r1-distill-qwen-1.5b`) kèm trích dẫn `bboxKey` & `snippet`. Tự động bóc tách thẻ `<think>` (reasoning mode). Tự động trả lời cùng ngôn ngữ với câu hỏi người dùng. Nhấp vào nhãn trích dẫn mở Hộp thoại Tọa độ & Nội dung gốc trên Flutter App. |
-| Guardrail (ngưỡng tin cậy, trích số liệu) | ✅ **Thật** — kiểm tra allowed versions, cosine confidence gate < 0.60 → locked, và numeric rule detection trong `query_service.py` |
-| Kiosk fullscreen, Snap & Ask (camera) | ⬜ Chưa làm (M4) |
+| Hỏi–đáp `POST /api/query` & Trích dẫn Không gian | ✅ **Thật (RAG + LLM)** — retrieve top-k từ ChromaDB, kiểm tra guardrail, sinh câu trả lời qua Ollama/LM Studio (Qwen2-VL 2B Q4_K_M) kèm trích dẫn `bboxKey` & `snippet` |
+| Hỏi–đáp SSE stream `GET /api/query/stream` | ✅ **Thật** — BE proxy SSE từ AI về Flutter qua `SseEmitter`, stream từng token |
+| File proxy `GET /api/files/{versionId}/{pageNo}/{bboxKey}` | ✅ **Thật** — BE proxy ảnh trang từ MinIO, JWT-protected |
+| Ingest status STOMP broadcast | ✅ **Thật** — `POST /api/internal/ingest-status` broadcast `/topic/ingest/{versionId}` |
+| Guardrail (ngưỡng tin cậy, trích số liệu) | ✅ **Thật** — kiểm tra allowed versions, cosine confidence gate < 0.60 → locked, và numeric rule detection |
+| Flutter SSE Chat UI (typing effect) | ⏾ Chưa làm (T3) |
+| Flutter Upload progress UI (STOMP) | ⏾ Chưa làm (T3) |
+| Flutter Citation Viewer (bbox overlay) | ⏾ Chưa làm (T3) |
+| Kiosk fullscreen, Snap & Ask (camera) | ⏾ Chưa làm (M4) |
 | Redis / Kafka | Cấu hình sẵn, **chưa có tính năng nào thực sự dùng** — an toàn khi bỏ qua lúc dev |
 
 Chi tiết lộ trình: [`PLAN-THESIS.md`](PLAN-THESIS.md) §5 (bảng cột mốc 8 tuần).
 
 ---
 
-## 6. Troubleshooting
+## 6. Production Deploy (VPS / Server)
+
+Xem hướng dẫn đầy đủ trong các file sau (tạo ngày 04/08/2026):
+
+| File | Mục đích |
+|---|---|
+| [`docker-compose.prod.yml`](../docker-compose.prod.yml) | Override production: tắt expose internal ports, memory limits, `${ENV}` secrets |
+| [`nginx/dcid.conf`](../nginx/dcid.conf) | Nginx reverse proxy: HTTPS, SSE `proxy_buffering off`, WebSocket Upgrade |
+| [`.env.example`](../.env.example) | Template để tạo `.env.production` với secrets thật |
+| [`scripts/deploy.sh`](../scripts/deploy.sh) | Helper script: `--full`, `--restart`, `--logs`, `--status` |
+| [`scripts/backup.sh`](../scripts/backup.sh) | Backup PostgreSQL tự động (giữ 7 bản) |
+| [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) | GitHub Actions CI/CD: build → SCP → SSH deploy |
+
+**Khởi động production:**
+```bash
+# Sau khi clone repo lên server và tạo .env.production từ .env.example:
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
+  --env-file .env.production up -d
+
+# Tải LLM model (lần đầu tiên, đợi ~5 phút)
+docker exec dcid-ollama ollama pull qwen2-vl:2b-instruct-q4_k_m
+```
+
+**GitHub Secrets cần thiết lập:**
+```
+VPS_HOST        — IP hoặc hostname của VPS
+VPS_USER        — user SSH (thường là root hoặc deploy)
+VPS_SSH_KEY     — private SSH key (PEM format)
+VPS_PORT        — SSH port (mặc định 22)
+API_BASE_URL    — URL công khai của backend (ví dụ: https://your-domain.io/api)
+ENV_FILE_CONTENT — nội dung đầy đủ của file .env.production
+```
+
+---
+
+## 7. Troubleshooting
 
 Đã tìm và sửa 3 bug thật khi verify E2E lần đầu (đều đã fix trong code/config hiện tại — liệt kê
 ở đây để hiểu nếu bạn checkout một commit cũ hơn, hoặc gặp biến thể tương tự):
