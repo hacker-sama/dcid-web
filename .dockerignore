@@ -1,0 +1,9 @@
+# Root .dockerignore — từng service có Dockerfile riêng
+.git
+.github
+*.md
+docs/
+dcid-app/
+.env*
+nginx/
+scripts/
