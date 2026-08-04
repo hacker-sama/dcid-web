@@ -1,0 +1,43 @@
+@startuml ai_block_diagram
+skinparam backgroundColor #0F172A
+skinparam defaultFontColor #F8FAFC
+skinparam ArrowColor #38BDF8
+skinparam packageBorderColor #38BDF8
+skinparam packageFontColor #38BDF8
+skinparam rectangle {
+    BackgroundColor #1E293B
+    BorderColor #38BDF8
+    FontColor #F8FAFC
+}
+
+package "1. Đầu Vào (Nhà Xưởng)" as Input {
+    rectangle "🖼️ Hình Ảnh / Bản Vẽ Kỹ Thuật" as Img
+    rectangle "❓ Câu Hỏi / Yêu Cầu Của Kỹ Sư" as Q
+}
+
+package "2. Bóc Tách Hình Ảnh" as OCR_Layer {
+    rectangle "👁️ AI OCR: PaddleOCR + PyMuPDF\n(Bóc Tách Chữ, Số, Kích Thước, Bbox)" as OCR
+}
+
+package "3. AI Model Local (Suy Luận & Trả Lời)" as LLM_Layer {
+    rectangle "🧠 LM Studio: Qwen 1.5B Local\n(Suy Luận Kỹ Thuật & Cầm Tay Chỉ Việc)" as LLM
+}
+
+package "4. Đầu Ra" as Output {
+    rectangle "💡 Hướng Dẫn Thao Tác Chi Tiết\n(Tường Minh + Trích Dẫn Trang)" as Ans
+}
+
+package "Tầng Bộ Nhớ Lịch Sử (Bổ Trợ)" as Storage {
+    rectangle "🧬 e5-small Embedding" as EMB
+    rectangle "🗄️ ChromaDB Vector Store" as Chroma
+}
+
+Img --> OCR : 1. Đưa hình ảnh vào bóc tách
+OCR ===> LLM : 2. Gửi dữ liệu thông số OCR
+Q ===> LLM : 3. Câu hỏi tra cứu
+LLM ===> Ans : 4. Trả lời chuyên sâu
+
+OCR ..> EMB : Lưu trữ lâu dài
+EMB ..> Chroma
+Chroma ..> LLM : Tra cứu lại tài liệu cũ
+@enduml
