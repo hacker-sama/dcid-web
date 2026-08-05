@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,10 +12,25 @@ import 'state/providers.dart';
 /// Set to `true` during Week 1 (APIs not ready) to use mock data.
 /// Flip to `false` when the real backend is available — zero other
 /// code changes required.
-const bool _useMockData = false;
+const bool _useMockData = bool.fromEnvironment(
+  'USE_MOCK_DATA',
+  defaultValue: true,
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Global error boundary handling
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Global UI Error: ${details.exception}');
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Global Async Error: $error\n$stack');
+    return true;
+  };
+
   // On Windows (kiosk) this will configure fullscreen; no-op elsewhere.
   await configureKioskIfDesktop();
 

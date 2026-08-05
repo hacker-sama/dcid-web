@@ -1,0 +1,47 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../dcid-web 3/.claude"
+		},
+		{
+			"path": "../dcid-web 3/.codegraph"
+		},
+		{
+			"path": "../dcid-web 3/.idea"
+		},
+		{
+			"path": "../dcid-web 3/.vscode"
+		},
+		{
+			"path": "../dcid-web 3/chroma-tools"
+		},
+		{
+			"path": "../dcid-web 3/dcid-ai"
+		},
+		{
+			"path": "../dcid-web 3/dcid-app"
+		},
+		{
+			"path": "../dcid-web 3/dcid-backend"
+		},
+		{
+			"path": "../dcid-web 3/docs"
+		},
+		{
+			"path": "../dcid-web 3/scripts"
+		},
+		{
+			"path": "../dcid-web 3/src"
+		},
+		{
+			"path": "../dcid-web 3/tests"
+		},
+		{
+			"path": "../dcid-web 3/uploads"
+		}
+	],
+	"settings": {}
+}

@@ -13,6 +13,7 @@ class _Dest {
   final bool adminOnly;
 }
 
+
 const _allDestinations = <_Dest>[
   _Dest('/search', Icons.search, 'Tra cứu'),
   _Dest('/snap', Icons.camera_alt, 'Snap & Ask'),

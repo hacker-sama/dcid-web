@@ -19,6 +19,9 @@ import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Hỏi–đáp RAG: BE tính allowedVersionIds theo RBAC (ACTIVE + min_role ≤ vai user),
@@ -179,5 +182,61 @@ public class QueryService {
 
     private static int elapsedMs(long startNanos) {
         return (int) ((System.nanoTime() - startNanos) / 1_000_000);
+    }
+
+    public SseEmitter askStreaming(QueryRequest request, UUID actorId, UserRole actorRole) {
+        List<UUID> allowed = resolveAllowedVersionIds(actorRole, request.machineCode());
+        if (request.selectedVersionIds() != null && !request.selectedVersionIds().isEmpty()) {
+            List<UUID> selected = request.selectedVersionIds();
+            allowed = versionRepository.findAllById(allowed).stream()
+                    .filter(v -> selected.contains(v.getId()) || selected.contains(v.getDocumentId()))
+                    .map(DocumentVersion::getId)
+                    .toList();
+        }
+
+        SseEmitter emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(5));
+
+        if (allowed.isEmpty()) {
+            try {
+                emitter.send(NO_ACCESS_MESSAGE);
+                emitter.complete();
+            } catch (Exception e) {
+                emitter.completeWithError(e);
+            }
+            return emitter;
+        }
+
+        final List<UUID> finalAllowed = allowed;
+        CompletableFuture.runAsync(() -> {
+            long start = System.nanoTime();
+            aiPipelineClient.queryStream(
+                new AiQueryRequest(
+                    request.question(),
+                    TOP_K,
+                    finalAllowed,
+                    request.machineCode(),
+                    request.reasoningMode(),
+                    request.history() != null ? request.history() : List.of(),
+                    null
+                ),
+                token -> {
+                    try {
+                        emitter.send(token);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                () -> {
+                    int latencyMs = elapsedMs(start);
+                    saveLog(actorId, request.question(), null, null, false, false, "[Streaming Response]", latencyMs);
+                    emitter.complete();
+                },
+                e -> {
+                    emitter.completeWithError(e);
+                }
+            );
+        });
+
+        return emitter;
     }
 }

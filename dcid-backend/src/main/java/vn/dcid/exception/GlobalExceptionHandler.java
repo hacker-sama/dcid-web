@@ -110,7 +110,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        ErrorResponse response = ErrorResponse.of("BAD_REQUEST", "Invalid request body: " + ex.getMostSpecificCause().getMessage(), getTraceId());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(Throwable.class)
+
     public ResponseEntity<ErrorResponse> handleThrowable(Throwable ex) {
         log.error("Unhandled exception", ex);
         ErrorResponse response = ErrorResponse.of(

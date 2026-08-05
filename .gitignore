@@ -33,3 +33,12 @@ venv/
 *.log
 .DS_Store
 Thumbs.db
+
+# Production secrets
+.env.production
+.env.local
+backups/
+
+.codegraph
+.codegraph/codegraph.db
+.codegraph/codegraph.db-shm

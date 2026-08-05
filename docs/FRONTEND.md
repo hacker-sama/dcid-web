@@ -112,7 +112,7 @@ dcid-app/  (Flutter)
 | **OPERATOR** | tra cứu **SOP & cảnh báo an toàn**; Search + Ask; **Snap & Ask** | mobile |
 | **ENGINEER** | + **bản vẽ / sơ đồ mạch / nhật ký bảo trì**; **side-by-side viewer** | mobile + kiosk |
 | **QA_ADMIN** | **upload** tài liệu; **quản lý version** (ACTIVE/SUPERSEDED/OBSOLETE) | web (màn lớn) |
-| **ADMIN** | quản lý user/role; **audit log viewer** | web (màn lớn) |
+| **ADMIN** | quản lý user/role (`admin_screen.dart`: Bảng danh sách, Dialog tạo user mới, Đổi mật khẩu/role, Khóa/Mở tài khoản); **audit log viewer** | web (màn lớn) |
 
 > Chốt chặn quyền thật ở backend `@PreAuthorize`; UI chỉ ẩn/hiện cho gọn.
 
@@ -147,7 +147,10 @@ dcid-app/  (Flutter)
 `POST /api/auth/login` · `GET /api/auth/me` · `POST /api/query` *(multipart khi Snap & Ask)* ·
 `GET /api/documents` · `POST /api/documents` · `POST /api/documents/{id}/versions` ·
 `POST /api/documents/{versionId}/obsolete` · `GET /api/admin/audit-logs` ·
+`GET /api/admin/users` · `POST /api/admin/users` · `PUT /api/admin/users/{id}` ·
+`PUT /api/admin/users/{id}/password` · `PATCH /api/admin/users/{id}/status` ·
 `GET /api/files/...` (proxy ảnh/crop từ MinIO, có auth). Base URL qua build flavor (`API_BASE_URL`).
+
 
 ---
 

@@ -11,6 +11,8 @@ import vn.dcid.dto.request.IngestCallbackRequest;
 import vn.dcid.exception.NotFoundException;
 import vn.dcid.repository.DocumentPageRepository;
 import vn.dcid.repository.DocumentVersionRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import vn.dcid.dto.response.IngestProgressMessage;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,13 +29,16 @@ public class IngestService {
     private final DocumentVersionRepository versionRepository;
     private final DocumentPageRepository pageRepository;
     private final AuditLogService auditLogService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public IngestService(DocumentVersionRepository versionRepository,
                          DocumentPageRepository pageRepository,
-                         AuditLogService auditLogService) {
+                         AuditLogService auditLogService,
+                         SimpMessagingTemplate messagingTemplate) {
         this.versionRepository = versionRepository;
         this.pageRepository = pageRepository;
         this.auditLogService = auditLogService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional
@@ -48,6 +53,8 @@ public class IngestService {
             log.warn("Ingest FAILED cho version {}: {}", version.getId(), req.error());
             auditLogService.log(version.getCreatedBy(), "DOCUMENT_INGEST_FAILED", "DOCUMENT_VERSION",
                     version.getId(), null, req.error());
+            messagingTemplate.convertAndSend("/topic/ingest/" + version.getId(),
+                    new IngestProgressMessage(version.getId(), "FAILED", 0, req.error()));
             return;
         }
 
@@ -82,5 +89,7 @@ public class IngestService {
         log.info("Ingest READY: version {} → ACTIVE ({} trang)", version.getId(), version.getPageCount());
         auditLogService.log(version.getCreatedBy(), "DOCUMENT_INGESTED", "DOCUMENT_VERSION",
                 version.getId(), null, null);
+        messagingTemplate.convertAndSend("/topic/ingest/" + version.getId(),
+                new IngestProgressMessage(version.getId(), "READY", 100, "Xử lý thành công"));
     }
 }

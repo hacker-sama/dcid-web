@@ -6,6 +6,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import vn.dcid.common.ApiResponse;
 import vn.dcid.domain.enums.UserRole;
 import vn.dcid.dto.request.QueryRequest;
@@ -56,5 +59,18 @@ public class QueryController {
                 UUID.fromString(principal.userId()),
                 UserRole.valueOf(principal.role()));
         return ResponseEntity.ok(ApiResponse.of(answer));
+    }
+
+    @GetMapping(value = "/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter askStreaming(
+            @RequestParam("question") String question,
+            @RequestParam(value = "machineCode", required = false) String machineCode,
+            @RequestParam(value = "reasoningMode", defaultValue = "false") boolean reasoningMode) {
+        UserPrincipal principal = SecurityContextHelper.getCurrentUser();
+        if (principal == null) {
+            throw new ForbiddenException("Chưa xác thực.");
+        }
+        QueryRequest req = new QueryRequest(question, machineCode, reasoningMode, null, null);
+        return queryService.askStreaming(req, UUID.fromString(principal.userId()), UserRole.valueOf(principal.role()));
     }
 }

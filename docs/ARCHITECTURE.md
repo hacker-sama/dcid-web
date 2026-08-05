@@ -29,7 +29,7 @@
 flowchart TB
     subgraph Edge["🏭 Edge Device / Kiosk (CPU, phân xưởng)"]
         UI["Flutter app (dcid-app)\nKiosk (Windows) + Mobile (Android)\nSnap & Ask, side-by-side"]
-        AISVC["AI Service (Python, FastAPI + Celery)\nPaddleOCR · e5-small(ONNX) · LM Studio API(DeepSeek R1)\nRAG retrieval + Guardrails"]
+        AISVC["AI Service (Python, FastAPI + Celery)\nPaddleOCR · e5-small(ONNX) · Ollama API (Qwen2-VL 2B Q4)\nRAG retrieval + Guardrails"]
         CHROMA[("ChromaDB\nvector store")]
     end
 
@@ -62,7 +62,7 @@ flowchart TB
 | Thành phần | Công nghệ | Trách nhiệm chính |
 |---|---|---|
 | **Governance plane** | Spring Boot 3.3, Java 21 | Auth/RBAC, quản lý tài liệu + version, audit ISO, storage MinIO, tích hợp CMMS/MES, điều phối job AI |
-| **AI plane** | Python, FastAPI, Celery | OCR (PaddleOCR), embedding (e5-small ONNX), retrieval (ChromaDB), LLM (DeepSeek R1 Distill Qwen 1.5B qua LM Studio REST API), guardrails |
+| **AI plane** | Python, FastAPI, Celery | OCR (PaddleOCR), embedding (e5-small ONNX), retrieval (ChromaDB), LLM (Qwen2-VL 2B Instruct Q4_K_M qua Ollama REST API), guardrails |
 | **Vector store** | ChromaDB | Semantic search trên chunk + metadata (trang, ngôn ngữ, version) |
 | **Relational DB** | PostgreSQL 16 | users, roles, document/version metadata, query_logs, audit_logs, work_orders |
 | **Object storage** | MinIO | PDF gốc, ảnh trang, **bounding-box crop** (bằng chứng số liệu) |
@@ -97,7 +97,7 @@ Kỹ sư hỏi (UI) → AI Service:
                                   trả cảnh báo đỏ "Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm"
   IF query chạm 'điện áp/áp suất/nhiệt độ/dung sai'
                                 → trích số liệu trực tiếp từ metadata gốc (rule-based)
-  ELSE → AI Model Local (LM Studio / Qwen 1.5B, temp=0.2, top_p=0.9, repetition_penalty=1.2)
+  ELSE → AI Model Local (Ollama / Qwen2-VL 2B Q4, temp=0.2, top_p=0.9)
          sinh câu trả lời chuyên môn tường minh kèm trích dẫn tọa độ không gian
   Trả về AnswerDTO (answer, confidence, guard, citations[versionId, pageNo, bboxKey, snippet])
   Flutter App hiển thị câu trả lời và nhãn Trang X [Bbox] → Click mở Hộp thoại Trích Dẫn Không Gian
@@ -288,17 +288,27 @@ một tài liệu nhiều trang là việc nặng → đẩy vào Celery worker,
 | POST | `/api/documents` | QA_ADMIN | tạo tài liệu + upload version đầu |
 | POST | `/api/documents/{id}/versions` | QA_ADMIN | upload version mới |
 | POST | `/api/documents/{versionId}/obsolete` | QA_ADMIN | đánh dấu obsolete |
+| DELETE | `/api/documents/{id}` | QA_ADMIN | xóa tài liệu + vector + MinIO |
 | GET | `/api/documents` | any (lọc theo role) | danh sách/tra cứu |
-| POST | `/api/query` | OPERATOR+ | hỏi–đáp (forward AI, ghi query_log) |
+| POST | `/api/query` | OPERATOR+ | hỏi–đáp đồng bộ (forward AI, ghi query_log) |
+| GET | `/api/query/stream` | OPERATOR+ | **[Mới]** SSE stream từng token (proxy từ AI) |
+| GET | `/api/files/{versionId}/{pageNo}/{bboxKey}` | OPERATOR+ | **[Mới]** Proxy ảnh trang từ MinIO (JWT-protected) |
 | POST | `/api/integration/work-orders` | (token CMMS) | nhận Work Order |
 | GET | `/api/admin/audit-logs` | ADMIN | xem audit |
+| GET | `/api/admin/users` | ADMIN | danh sách tài khoản (phân trang) |
+| POST | `/api/admin/users` | ADMIN | tạo tài khoản người dùng mới |
+| PUT | `/api/admin/users/{id}` | ADMIN | cập nhật thông tin/vai trò |
+| PUT | `/api/admin/users/{id}/password` | ADMIN | đổi/reset mật khẩu người dùng |
+| PATCH | `/api/admin/users/{id}/status` | ADMIN | khóa/kích hoạt tài khoản |
 
 **Nội bộ Backend ↔ AI (token nội bộ, không ra ngoài LAN):**
 | Hướng | Endpoint | Payload |
 |---|---|---|
 | BE→AI | `POST /ai/ingest` | `{versionId, storageKey, langs}` |
 | BE→AI | `POST /ai/query` | `{userId, role, question, filters:{machineCode?}}` |
+| BE→AI | `POST /ai/query/stream` | **[Mới]** SSE stream từng token |
 | AI→BE | `POST /api/internal/ingest-callback` | `{versionId, status, pageCount, error?}` |
+| AI→BE | `POST /api/internal/ingest-status` | **[Mới]** Per-step push: `{versionId, step, progress, message}` |
 | — | `GET /ai/health` | readiness model |
 
 `POST /ai/query` → response:
@@ -358,21 +368,25 @@ sequenceDiagram
 
 | Thành phần | Định dạng | ~Dung lượng | ~RAM khi chạy |
 |---|---|---|---|
-| DeepSeek R1 Distill Qwen 1.5B | GGUF Q8_0 (LM Studio) | ~1.8 GB | ~3–4 GB |
+| Qwen2-VL 2B Instruct | GGUF Q4_K_M (Ollama) | ~2.78 GB | ~1.3 GB |
 | multilingual-e5-small | ONNX | <400 MB | vài trăm MB |
 | PaddleOCR mobile (multi-lang) | — | vài trăm MB | ~1 GB khi OCR |
 | ChromaDB | persistent dir | theo dữ liệu | thấp |
 
-**Yêu cầu Edge tối thiểu:** CPU Core i5, **RAM 8 GB**, SSD. Không cần GPU. Đạt latency <5s/truy vấn
-là **mục tiêu cần đo sớm ở M1** (rủi ro #2 trong ROADMAP).
+**Yêu cầu tối thiểu:** CPU Core i5, **RAM 8 GB**, SSD. Không cần GPU. Model Qwen2-VL 2B Q4 chỉ cần ~1.3GB RAM cho inference. Đạt latency <5s/truy vấn là **mục tiêu cần đo sớm ở M1** (rủi ro #2 trong ROADMAP).
 
-## B7. Triển khai & đóng gói offline cho Edge
+## B7. Triển khai & đóng gói (2 mô hình)
 
-- **Không internet lúc chạy:** models (GGUF/ONNX/PaddleOCR) đóng vào image `dcid-ai` hoặc volume
-  `models/`; không tải runtime.
-- **Đóng gói:** `docker save` các image (backend, ai, postgres, redis, minio, chroma) → chuyển USB/registry nội bộ.
+### On-premise / Edge (mô hình gốc)
+- **Không internet lúc chạy:** models (GGUF/ONNX/PaddleOCR) đóng vào image `dcid-ai` hoặc volume `models/`; không tải runtime.
+- **Đóng gói:** `docker save` các image (backend, ai, postgres, redis, minio, chroma, ollama) → chuyển USB/registry nội bộ.
 - **Persistence Edge:** volume cho Postgres, MinIO, ChromaDB (survive restart).
-- **2 kiểu deploy pilot (còn mở):** (a) full-stack trên 1 Edge; (b) Central (PG+MinIO+BE) + Edge (AI+Chroma+UI).
+
+### Public Internet (mô hình VPS — thêm ngày 04/08/2026)
+- **VPS** (16GB RAM khuyến nghị): chạy toàn bộ stack + Ollama headless.
+- **Domain** + Let's Encrypt HTTPS: Nginx reverse proxy, SSE `X-Accel-Buffering: no`.
+- **CI/CD**: GitHub Actions → SSH deploy tự động khi push `main`.
+- Hướng dẫn chi tiết: [`docs/SETUP.md §6`](SETUP.md) + các file trong `nginx/`, `scripts/`, `.github/workflows/`.
 
 ## B8. Cấu hình · Secrets · Observability · Backup
 

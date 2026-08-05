@@ -1,4 +1,4 @@
-# Smart KCN Docs — Roadmap (cập nhật 27/07/2026)
+# Smart KCN Docs — Roadmap (cập nhật 04/08/2026)
 
 > Dựa trực tiếp trên **code thực tế** trong repo (commit hiện tại) + tài liệu `PLAN-THESIS.md`,
 > `ARCHITECTURE.md`, `API-CONTRACT.md`, `ERD.md`, `FRONTEND.md`.
@@ -20,7 +20,6 @@
 | **Backend — Xóa Tài Liệu (Delete API)** | `DocumentController` (`DELETE /api/documents/{id}`) + `DocumentService.deleteDocument` (MinIO PDF/page PNGs + Postgres DB + Audit log `DOCUMENT_DELETE` + AI vector purge) |
 | **Backend — DB schema** | V1 (users, audit_logs) + V2 (documents, versions, pages) + V3 (query_logs) + V4 (work_orders) |
 | **Backend — Entities** | `User`, `Document`, `DocumentVersion`, `DocumentPage`, `QueryLog`, `AuditLog` |
-| **Backend — AiPipelineClient** | `AiPipelineClient` và `RestAiPipelineClient` đã được triển khai, kết nối Backend với AI Service thông qua HTTP |
 | **Backend — WebSocket skeleton** | `WebSocketConfig` STOMP: endpoint `/ws` (SockJS), broker `/topic` + `/queue` — chưa có business broadcast |
 | **AI — FastAPI + endpoints** | `GET /ai/health`, `POST /ai/ingest` (202 async), `POST /ai/query`, `POST /ai/query/stream`, `GET /ai/status/{task_id}`, `DELETE /ai/documents/{document_id}` |
 | **AI — Codebase Restructuring (`src/`)** | Kiến trúc mô-đun hóa `src/ingestion`, `src/chunking`, `src/embeddings`, `src/vectordb`, `src/retrieval`, `src/prompts`, `src/llm`, `src/api`, `src/utils`, `config.yaml`, `main.py` |
@@ -46,20 +45,26 @@
 | **Flutter — Login** | `auth/login_screen.dart` noi API that |
 | **Flutter — Shell/Nav** | `shell/home_shell.dart` + routing role-guard |
 | **Flutter — Tai lieu & Xóa Tài Liệu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — nối API thật + nút Xóa (Thùng rác đỏ) + Dialog xác nhận cảnh báo |
-| **Flutter — Tra cuu (non-SSE)** | `search/search_screen.dart`: chat UI + reasoning mode toggle + doc filter, goi `POST /api/query` dong bo |
-| **Flutter — Layout & Density** | `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, responsive layout |
-| **Flutter — Snap & Ask** | `snap_ask_screen.dart` — Đã triển khai UI cơ bản cho luồng chụp ảnh và hỏi AI tại hiện trường |
-| **Flutter — Placeholder** | `admin_screen.dart`, `document_viewer_screen.dart` — placeholder |
-| **Infra Docker** | postgres, redis, minio, zookeeper, kafka, chroma, backend, ai, ai-ocr, **ai-worker**, **ai-flower** — tat ca Up/Started |
+| **Flutter — Tra cuu SSE Realtime** | `search/search_screen.dart` + `DocsRepository.askStream`: streaming token-by-token (typing effect), metadata guard & citation render ngay lap tuc |
+| **Flutter — Global Exception Handling & Error Boundaries** | `ApiClient` Dio onError (401 auto token-clear) + `main.dart` Global Flutter & Async Error Catchers |
+| **Flutter — Document BBox Viewer** | `document_viewer_screen.dart` + `bbox_painter.dart`: viewer anh MinIO có JWT headers + CustomPaint ve bounding box ky thuat |
+| **Flutter — Layout & Density** | `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, responsive layout cho ca Web & Mobile APK |
+| **Infra Docker** | postgres, redis, minio, zookeeper, kafka, chroma, backend, ai, ai-ocr, **ai-worker**, **ai-flower**, **ollama** — tất cả Up/Started |
+| **BE — `POST /api/internal/ingest-status`** | Nhận per-step push từ AI, broadcast STOMP `/topic/ingest/{versionId}` — `SimpMessagingTemplate` |
+| **BE — `GET /api/query/stream`** | SSE proxy từ AI `/ai/query/stream` về Flutter — `SseEmitter`, `CompletableFuture.runAsync`, `@EnableAsync` |
+| **BE — `GET /api/files/{versionId}/{pageNo}/{bboxKey}`** | Proxy ảnh trang từ MinIO, JWT-protected, `Cache-Control: max-age=3600` |
+| **BE — MinioService exceptions** | Thay `UnsupportedOperationException` bằng `IllegalStateException` proper |
+| **Infra — Production deploy** | `docker-compose.prod.yml` (port isolation, memory limits), `nginx/dcid.conf` (SSE no-buffer, WS, HTTPS), `.env.example`, `scripts/deploy.sh`, `scripts/backup.sh` |
+| **Infra — CI/CD** | `.github/workflows/deploy.yml` — GitHub Actions: build-backend → build-flutter-web → SCP+SSH deploy |
 
 
 ### 🔴 CHUA CO — can lam trong T3–T6
 
 | Hạng mục | Blocking gì |
 |---|---|
-| **BE — `POST /api/internal/ingest-status`** (nhan per-step push tu AI, update DB + broadcast STOMP WS) | Flutter progress bar realtime |
-| **BE — `GET /api/query/stream`** (proxy SSE tu AI `/query/stream` ve Flutter) | Flutter SSE Chat UI |
-| **BE — `GET /api/files/**` proxy** (serve anh/crop tu MinIO) | Citation viewer Flutter |
+| **BE — `POST /api/internal/ingest-status`** | ✅ **Hoàn thành 04/08/2026** — xem mục ✅ ĐÃ XONG |
+| **BE — `GET /api/query/stream`** | ✅ **Hoàn thành 04/08/2026** — xem mục ✅ ĐÃ XONG |
+| **BE — `GET /api/files/**` proxy** | ✅ **Hoàn thành 04/08/2026** — xem mục ✅ ĐÃ XONG |
 | **Dataset** (15–25 tai lieu VI/EN + degradation set) | Moi thi nghiem |
 | **Eval set** (80–120 cau hoi + ground truth) | So lieu chuong 4 |
 | **Eval harness tu dong** | Chay E1–E5, in bang metric |
@@ -69,7 +74,7 @@
 | **Flutter — SSE Chat UI** (typing effect tung token, citations, guard banner) | Demo trai nghiem ChatGPT-like |
 | **Flutter — Upload progress UI** (OCR -> Embed -> Da san sang realtime) | Demo upload flow |
 | **Flutter — Citation viewer** (bbox + banner guardrail) | Demo UI day du |
-| **Flutter — Admin console** (version management, audit) | M3 |
+| **Flutter & BE — Admin Console** (user management CRUD, version management, audit) | M3 |
 | **Outline + quyen luan van** (chuong 1–2) | Bao ve |
 
 ---
@@ -87,9 +92,10 @@
 | **M2** | Experiments E1–E2 (do dac chi tiet guardrail/chunking) | ⏳ **T3–T4** | bang so lieu hallucination rate, Recall@k |
 | **M2b** | OCR Pre-processing + DSPy optimization | ⏳ **T4–T5** | CER VI < 5%, cau tra loi lap dat chinh xac hon |
 | **M2c** | Unsloth + LoRA SFT — fine-tune Qwen 1.5B | ⏳ **T5–T6** | Dataset JSONL >= 100 mau, model GGUF load duoc LM Studio, do order_accuracy |
-| **M3** | Flutter SSE Chat + BE stream proxy + Citation viewer + Upload progress | ⏳ **T3–T4** | chu hien dan dan, citation bbox, banner guardrail, progress bar realtime khi upload |
+| **M3** | Flutter SSE Chat + BE stream proxy + Citation viewer + Upload progress + Admin User Management | ⏳ **T3–T4** | chu hien dan dan, citation bbox, banner guardrail, progress bar realtime khi upload, Admin tao/quan ly user |
 | **M4** | Luan van + eval set hoan chinh | ⏳ **T6–T7** | bang metric E1–E2, code freeze |
 | **M5** | Demo + bao ve | ⏳ **T8** | video demo du phong, slide, Q&A thu |
+
 
 ---
 
@@ -238,7 +244,7 @@ data/eval/questions.csv
 | 1 | **OCR: PaddleOCR 3.7 + PyMuPDF** | Khong can system deps (poppler), cai thuan pip, CER 0% EN |
 | 2 | **Rasterize: RENDER_DPI=200 -> 300 (T4)** | A4 du net; nang len 300 DPI cho ban ve A3/A2/A1 co ky hieu nho |
 | 3 | **enable_mkldnn=False** | paddlepaddle 3.3.0 loi oneDNN/PIR runtime khi mkldnn=True |
-| 4 | **LLM & Vision VLM: LM Studio (REST API) + Qwen2-VL-2B-Instruct GGUF Q4_K_M** | Tach inference sang LM Studio local, ho tro ca Text RAG lan Multimodal Vision phân tích trực tiếp hình ảnh bản vẽ, nhẹ (~2.78GB) chạy tốt trên CPU máy yếu |
+| 4 | **LLM & Vision VLM: Ollama (production) / LM Studio (dev) + Qwen2-VL-2B-Instruct GGUF Q4_K_M** | Ollama chạy headless trong Docker (server/VPS), LM Studio cho dev local. Qwen2-VL hỗ trợ cả Text RAG lẫn Multimodal Vision phân tích trực tiếp hình ảnh bản vẽ, RAM ~1.3GB Q4 vừa đủ VPS 8GB |
 | 5 | **Embed: multilingual-e5-small ONNX** | <400MB, multilingual, chay CPU |
 | 6 | **Vector DB: ChromaDB** | Persistent tren edge, de dong goi offline |
 | 7 | **Frontend: Flutter Web + Android** | 1 codebase, target chinh: Web kiosk + Android mobile |
