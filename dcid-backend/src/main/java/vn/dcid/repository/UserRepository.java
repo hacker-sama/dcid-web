@@ -21,7 +21,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
 
-    @Query("SELECT u FROM User u WHERE (:role IS NULL OR u.role = :role) AND (:search IS NULL OR :search = '' OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    @Query("SELECT u FROM User u WHERE " +
+           "(cast(:role as string) IS NULL OR u.role = :role) AND " +
+           "(cast(:search as string) IS NULL OR cast(:search as string) = '' OR " +
+           " LOWER(u.username) LIKE LOWER(CONCAT('%', cast(:search as string), '%')) OR " +
+           " (u.fullName IS NOT NULL AND LOWER(u.fullName) LIKE LOWER(CONCAT('%', cast(:search as string), '%'))) OR " +
+           " (u.email IS NOT NULL AND LOWER(u.email) LIKE LOWER(CONCAT('%', cast(:search as string), '%'))))")
     Page<User> searchUsers(@Param("role") UserRole role, @Param("search") String search, Pageable pageable);
 }
 
