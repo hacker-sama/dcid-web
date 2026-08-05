@@ -93,7 +93,7 @@ services:
       # Redis — Celery broker/backend (service `redis`, port nội bộ 6379)
       REDIS_URL: redis://redis:6379/0
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
-      LM_STUDIO_MODEL: deepseek-r1:1.5b
+      LM_STUDIO_MODEL: qwen2-vl-2b-instruct
     depends_on:
       - minio
       - chroma
@@ -125,7 +125,7 @@ services:
       CHROMA_PORT: 8000
       REDIS_URL: redis://redis:6379/0
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
-      LM_STUDIO_MODEL: deepseek-r1:1.5b
+      LM_STUDIO_MODEL: qwen2-vl-2b-instruct
     depends_on:
       - redis
       - minio

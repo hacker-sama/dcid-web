@@ -29,7 +29,7 @@ services:
     ports: []
     environment:
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
-      LM_STUDIO_MODEL: ${LLM_MODEL:-deepseek-r1:1.5b}
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2-vl-2b-instruct}
     deploy:
       resources:
         limits:
@@ -38,7 +38,7 @@ services:
   ai-worker:
     environment:
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
-      LM_STUDIO_MODEL: ${LLM_MODEL:-deepseek-r1:1.5b}
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2-vl-2b-instruct}
     deploy:
       resources:
         limits:
