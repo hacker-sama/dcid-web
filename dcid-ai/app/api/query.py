@@ -14,7 +14,7 @@ app/pipeline/ (embed.py, index.py, guardrails.py, prompts.py).
 SSE Event Format (cho /query/stream):
     data: {"event": "meta", "citations": [...], "confidence": 0.9, "guard": {...}}
     data: {"event": "delta", "text": "Đây là câu trả lời"}
-    data: {"event": "done", "latencyMs": 1234, "model": "deepseek-r1..."}
+    data: {"event": "done", "latencyMs": 1234, "model": "qwen2-vl-2b-instruct"}
     data: {"event": "error", "message": "Lỗi..."}
 """
 
