@@ -118,7 +118,7 @@ class ChatBubble extends StatelessWidget {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        'Phân tích ngoại tuyến — Backend không phản hồi',
+                        'Offline analysis — Backend not responding',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.amber.shade800,

@@ -24,9 +24,9 @@ void main() {
         ),
       );
 
-      // Verify header button and empty state texts exist
-      expect(find.text('Chưa có ảnh thiết bị nào'), findsOneWidget);
-      expect(find.text('Thêm ảnh đầu tiên'), findsOneWidget);
+      // Verify empty state texts exist (English after i18n refactor)
+      expect(find.text('No device photos yet'), findsOneWidget);
+      expect(find.textContaining('Tap the + button below'), findsOneWidget);
       expect(find.byIcon(Icons.camera_roll_outlined), findsOneWidget);
     });
   });

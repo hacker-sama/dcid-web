@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-/// Modal bottom sheet for choosing image source (Camera vs Gallery/FilePicker).
+/// Modal bottom sheet for choosing image source (Camera vs Gallery/FilePicker vs QR Scan).
 void showImageSourcePickerSheet({
   required BuildContext context,
   required VoidCallback onTakePhoto,
   required VoidCallback onPickImage,
+  VoidCallback? onScanQR,
 }) {
   showModalBottomSheet(
     context: context,
@@ -30,7 +31,7 @@ void showImageSourcePickerSheet({
               ),
               const SizedBox(height: 16),
               Text(
-                'Thêm ảnh thiết bị',
+                'Add Device Image',
                 style: Theme.of(ctx)
                     .textTheme
                     .titleMedium
@@ -47,8 +48,8 @@ void showImageSourcePickerSheet({
                     backgroundColor: scheme.primaryContainer,
                     child: Icon(Icons.camera_alt, color: scheme.primary),
                   ),
-                  title: const Text('Chụp ảnh'),
-                  subtitle: const Text('Mở camera để chụp thiết bị'),
+                  title: const Text('Take Photo'),
+                  subtitle: const Text('Open camera to photograph the device'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -66,16 +67,34 @@ void showImageSourcePickerSheet({
                   backgroundColor: scheme.secondaryContainer,
                   child: Icon(Icons.photo_library, color: scheme.secondary),
                 ),
-                title: Text(kIsWeb ? 'Chọn ảnh từ máy tính' : 'Chọn từ thư viện'),
+                title: Text(kIsWeb ? 'Upload Photo' : 'Upload Photo'),
                 subtitle: Text(
                   kIsWeb
-                      ? 'Tải lên tệp ảnh từ máy tính'
-                      : 'Chọn ảnh có sẵn trên thiết bị',
+                      ? 'Select an image file from your computer'
+                      : 'Choose an existing photo from your gallery',
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                 onTap: () {
                   Navigator.pop(ctx);
                   onPickImage();
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                tileColor: scheme.tertiaryContainer.withValues(alpha: 0.3),
+                leading: CircleAvatar(
+                  backgroundColor: scheme.tertiaryContainer,
+                  child: Icon(Icons.qr_code_scanner, color: scheme.tertiary),
+                ),
+                title: const Text('Scan Machine QR'),
+                subtitle: const Text('Scan a QR code to identify the machine'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  onScanQR?.call();
                 },
               ),
               const SizedBox(height: 4),
@@ -86,3 +105,4 @@ void showImageSourcePickerSheet({
     },
   );
 }
+

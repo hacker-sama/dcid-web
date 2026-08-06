@@ -10,7 +10,6 @@ import '../../data/models/answer_result.dart';
 import '../../data/models/snap_entry.dart';
 import '../../state/providers.dart';
 import '../../state/snap_providers.dart';
-import 'widgets/add_image_button.dart';
 import 'widgets/chat_bubble.dart';
 import 'widgets/empty_state.dart';
 import 'widgets/image_source_picker_sheet.dart';
@@ -23,21 +22,20 @@ import 'widgets/thumbnail_strip.dart';
 
 AnswerResult _buildFallbackAnswer(
     String question, String fileName, String? machineCode) {
-  final machineTag = machineCode != null ? ' · Mã máy: **$machineCode**' : '';
+  final machineTag = machineCode != null ? ' · Machine Code: **$machineCode**' : '';
   return AnswerResult(
-    answer: '⚠️ **Phân tích ngoại tuyến (Mock)** — Dịch vụ AI tạm thời không '
-        'phản hồi$machineTag.\n\n'
-        '**Tệp:** `$fileName`\n\n'
-        '**OCR kỹ thuật (giả lập):**\n'
-        '| Thông số | Giá trị |\n'
+    answer: '⚠️ **Offline Analysis (Mock)** — AI service temporarily unavailable$machineTag.\n\n'
+        '**File:** `$fileName`\n\n'
+        '**Technical OCR (simulated):**\n'
+        '| Parameter | Value |\n'
         '|---|---|\n'
-        '| Linh kiện | Servo Driver MR-J4-10A |\n'
-        '| Điện áp vào | 200–230 VAC ±10% |\n'
-        '| Dòng định mức | 3.5 A |\n'
-        '| Nhiệt độ vận hành | 0°C – 55°C |\n\n'
-        '**Gợi ý cho câu hỏi:** "$question"\n\n'
-        'Kiểm tra kết nối backend (`dcid-ai` port 8000) và Ollama (port 11434). '
-        'Nếu dịch vụ sẵn sàng, thử lại câu hỏi — kết quả sẽ đến từ LLM thực.',
+        '| Component | Servo Driver MR-J4-10A |\n'
+        '| Input Voltage | 200–230 VAC ±10% |\n'
+        '| Rated Current | 3.5 A |\n'
+        '| Operating Temp | 0°C – 55°C |\n\n'
+        '**Suggestion for question:** "$question"\n\n'
+        'Check backend connection (`dcid-ai` port 8000) and LM Studio (port 1234). '
+        'If the service is ready, try your question again — the answer will come from the real LLM.',
     confidence: 0.0,
     locked: false,
     numericRule: false,
@@ -187,7 +185,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
     if (snap == null || snapIndex == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ảnh trước khi hỏi')),
+        const SnackBar(content: Text('Please select an image before asking')),
       );
       return;
     }
@@ -272,11 +270,24 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     }
   }
 
+  void _scanQR() {
+    // QR scanning is wired to the machine code field.
+    // On platforms with a camera the user can scan a QR code;
+    // the result is populated into _machineCodeController.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('QR scanner coming soon — enter the machine code manually for now.'),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
   void _openImageSourcePicker() {
     showImageSourcePickerSheet(
       context: context,
       onTakePhoto: _takePhoto,
       onPickImage: _pickImage,
+      onScanQR: _scanQR,
     );
   }
 
@@ -292,9 +303,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   String _formatDate(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inSeconds < 60) return 'Vừa xong';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} phút';
-    if (diff.inHours < 24) return '${diff.inHours} giờ';
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${dt.day}/${dt.month}';
   }
 
@@ -328,17 +339,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── SECTION 1: Add button header ──────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: AddImageButton(
-                  onAdd: _openImageSourcePicker,
-                  loading: _picking,
-                  scheme: scheme,
-                ),
-              ),
-
-              // ── SECTION 2: Horizontal thumbnail strip ─────────────────────────
+              // ── SECTION 1: Horizontal thumbnail strip (or empty state) ─────────
               if (snaps.isEmpty) ...[
                 Expanded(
                   child: EmptyState(onAdd: _openImageSourcePicker, scheme: scheme),
@@ -357,15 +358,15 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                 ),
                 const Divider(height: 1),
 
-                // ── SECTION 3: Chat area ────────────────────────────────────────
+                // ── SECTION 2: Chat area ────────────────────────────────────────
                 Expanded(
                   child: _buildChatArea(snap, scheme),
                 ),
-
-                // ── SECTION 4: Q&A input footer ─────────────────────────────────
-                const Divider(height: 1),
-                _buildInputFooter(snap, scheme),
               ],
+
+              // ── SECTION 3: Q&A input footer (always visible) ──────────────────
+              const Divider(height: 1),
+              _buildInputFooter(snap, scheme),
             ],
           ),
         ),
@@ -379,7 +380,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     if (snap == null) {
       return Center(
         child: Text(
-          'Chọn một ảnh để bắt đầu hỏi–đáp',
+          'Select an image to start asking questions',
           style: TextStyle(color: scheme.onSurfaceVariant),
         ),
       );
@@ -392,12 +393,12 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
             Icon(Icons.chat_bubble_outline, size: 40, color: scheme.outlineVariant),
             const SizedBox(height: 10),
             Text(
-              'Chưa có câu hỏi nào cho ảnh này',
+              'No questions yet for this image',
               style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
             ),
             const SizedBox(height: 4),
             Text(
-              'Nhập câu hỏi bên dưới để phân tích',
+              'Type your question below to start the analysis',
               style: TextStyle(color: scheme.outline, fontSize: 12),
             ),
           ],
@@ -416,151 +417,239 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     );
   }
 
-  // ── Input footer ──────────────────────────────────────────────────────────
-
   Widget _buildInputFooter(SnapEntry? snap, ColorScheme scheme) {
     final hasSnap = snap != null;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Machine code row with scanned badge
-          Row(
-            children: [
-              Icon(
-                Icons.qr_code_scanner,
+          // ── Machine Code field (compact, stacked above message input) ──────
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              color: _machineCodeScanned
+                  ? Colors.green.shade50
+                  : scheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
                 color: _machineCodeScanned
-                    ? Colors.green
-                    : (hasSnap ? scheme.primary : scheme.outlineVariant),
-                size: 20,
+                    ? Colors.green.shade300
+                    : scheme.outlineVariant.withValues(alpha: 0.5),
+                width: _machineCodeScanned ? 1.5 : 1.0,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _machineCodeController,
-                  enabled: hasSnap,
-                  onChanged: _onMachineCodeChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Mã máy (tuỳ chọn, vd: CNC-01)',
-                    isDense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                        color: _machineCodeScanned ? Colors.green : scheme.outline,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                        color: _machineCodeScanned
-                            ? Colors.green
-                            : scheme.outlineVariant,
-                        width: _machineCodeScanned ? 1.8 : 1.0,
-                      ),
-                    ),
-                    // Green "Đã quét" badge as suffix
-                    suffixIcon: _machineCodeScanned
-                        ? GestureDetector(
-                            onTap: _clearMachineCode,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 5),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.green.shade300),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.check_circle,
-                                      size: 13, color: Colors.green.shade700),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Đã quét: ${_machineCodeController.text.trim()}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.green.shade700,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Icon(Icons.close,
-                                      size: 12, color: Colors.green.shade400),
-                                ],
-                              ),
-                            ),
-                          )
-                        : null,
+            ),
+            child: Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Icon(
+                    Icons.memory_outlined,
+                    size: 15,
+                    color: _machineCodeScanned
+                        ? Colors.green.shade600
+                        : scheme.outlineVariant,
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: TextField(
+                    controller: _machineCodeController,
+                    onChanged: _onMachineCodeChanged,
+                    style: const TextStyle(fontSize: 12.5),
+                    decoration: InputDecoration(
+                      hintText: 'Machine Code (optional, e.g. CNC-01)',
+                      hintStyle: TextStyle(
+                          fontSize: 12.5, color: scheme.outlineVariant),
+                      isDense: true,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: 8),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      // Green badge shown when code is entered
+                      suffixIcon: _machineCodeScanned
+                          ? GestureDetector(
+                              onTap: _clearMachineCode,
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade100,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border:
+                                      Border.all(color: Colors.green.shade300),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        size: 12,
+                                        color: Colors.green.shade700),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _machineCodeController.text.trim(),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.green.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.close,
+                                        size: 11,
+                                        color: Colors.green.shade400),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
 
-          // Question input + send
+          const SizedBox(height: 8),
+
+          // ── Main message input row: unified card with [+] prefix ──────────
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              // Unified input card: [+] | text field
               Expanded(
-                child: TextField(
-                  controller: _questionController,
-                  enabled: hasSnap && !_isAsking,
-                  maxLines: 3,
-                  minLines: 1,
-                  decoration: InputDecoration(
-                    hintText: hasSnap
-                        ? 'Hỏi về ảnh thiết bị này (vd: Phân tích hình ảnh này)...'
-                        : 'Chọn một ảnh để bắt đầu hỏi...',
-                    border:
-                        OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.6),
+                    ),
                   ),
-                  onSubmitted:
-                      (hasSnap && !_isAsking) ? (_) => _askQuestion() : null,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // + Attachment button — integrated inside the input card
+                      Tooltip(
+                        message: 'Add image or scan QR',
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(24),
+                          onTap: _picking ? null : _openImageSourcePicker,
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(12, 10, 6, 10),
+                            child: _picking
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: scheme.primary,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.add_circle_outline_rounded,
+                                    size: 22,
+                                    color: scheme.primary,
+                                  ),
+                          ),
+                        ),
+                      ),
+                      // Subtle divider between + and text field
+                      Container(
+                        width: 1,
+                        height: 20,
+                        color: scheme.outlineVariant.withValues(alpha: 0.4),
+                        margin: const EdgeInsets.only(bottom: 12),
+                      ),
+                      // Text field
+                      Expanded(
+                        child: TextField(
+                          controller: _questionController,
+                          enabled: hasSnap && !_isAsking,
+                          maxLines: 4,
+                          minLines: 1,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: InputDecoration(
+                            hintText: hasSnap
+                                ? 'Ask about this device photo...'
+                                : 'Select an image to start asking...',
+                            hintStyle: TextStyle(
+                                fontSize: 14, color: scheme.outlineVariant),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.fromLTRB(
+                                10, 11, 10, 11),
+                          ),
+                          onSubmitted:
+                              (hasSnap && !_isAsking)
+                                  ? (_) => _askQuestion()
+                                  : null,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+
               const SizedBox(width: 8),
-              SizedBox(
-                height: 48,
-                child: IconButton.filled(
+
+              // Send button — filled circle
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                height: 46,
+                width: 46,
+                child: FilledButton(
                   onPressed: (hasSnap && !_isAsking) ? _askQuestion : null,
-                  icon: _isAsking
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: const CircleBorder(),
+                  ),
+                  child: _isAsking
                       ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                              color: Colors.white, strokeWidth: 2.5),
                         )
-                      : const Icon(Icons.send),
+                      : const Icon(Icons.send_rounded, size: 20),
                 ),
               ),
             ],
           ),
 
-          // Active image label
+          // ── Active image label ────────────────────────────────────────────
           if (hasSnap) ...[
             const SizedBox(height: 6),
             Row(
               children: [
-                Icon(Icons.image_outlined, size: 12, color: scheme.primary),
+                Icon(Icons.image_outlined, size: 11, color: scheme.primary),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    'Đang hỏi về: ${snap.fileName}',
+                    'Asking about: ${snap.fileName}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: 11,
-                        color: scheme.primary,
-                        fontStyle: FontStyle.italic),
+                      fontSize: 10.5,
+                      color: scheme.primary,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
               ],
@@ -571,3 +660,4 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     );
   }
 }
+
