@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'models/answer_result.dart';
 import 'models/document_detail.dart';
 import 'models/document_summary.dart';
+import 'models/sse_event.dart';
 
 /// Contract for document operations (query, list, detail, upload).
 ///
@@ -12,6 +13,14 @@ import 'models/document_summary.dart';
 abstract class IDocsRepository {
   /// `POST /api/query` — RAG search.
   Future<AnswerResult> ask(
+    String question, {
+    bool reasoningMode = false,
+    List<String>? selectedVersionIds,
+    List<Map<String, String>>? history,
+  });
+
+  /// `GET /api/query/stream` — SSE RAG search stream.
+  Stream<SseEvent> askStream(
     String question, {
     bool reasoningMode = false,
     List<String>? selectedVersionIds,

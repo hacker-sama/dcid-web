@@ -180,7 +180,7 @@ dcid-app/  (Flutter)
 | **M1** (thin) | khởi tạo `dcid-app`: **login (self-JWT) + Search/Ask + Upload** — ✅ đã xong, verify được trên cả Android build lẫn `flutter build web` |
 | **M1+** | **Snap & Ask SafeArea** (notch/punch-hole fix) — ✅ xong · **Documents: sort bar + timestamp trên card + SafeArea** — ✅ xong |
 | **M2–M3** | versioning, admin/QA console (màn lớn — web), audit viewer |
-| **M4** (đầy đủ) | **Snap & Ask** (camera, mobile), side-by-side + bbox, **kiosk web fullscreen** (trình duyệt), offline (mobile) |
+| **M4** (đầy đủ) | **Snap & Ask** (camera, mobile), side-by-side + bbox, **kiosk web fullscreen** (trình duyệt) — ✅ **đã triển khai** (có `snap_ask_screen.dart`, `document_detail_screen.dart`) |
 
 > Vì chỉ 1 codebase, không còn tách "web trước / mobile sau" theo nghĩa 2 dự án — làm thẳng trên
 > `dcid-app`, chạy song song 2 target (`flutter run -d chrome` / `-d <android-device>`).
@@ -206,5 +206,4 @@ dcid-app/  (Flutter)
 - Cập nhật `README.md` (bỏ dòng frontend Next.js), thêm `dcid-app` (Flutter).
 - **Không "format"** app Next.js nữa (kế hoạch format trước đây đã hủy do đổi hướng).
 
-> Trạng thái: **plan, chưa thực thi**. Khi bạn duyệt, mình có thể (a) gỡ `dcid-frontend`, và/hoặc
-> (b) tạo khung `dcid-app` Flutter (login + Search/Ask + Upload) cho M1.
+> Trạng thái: **đã thực thi**. Kế hoạch chuyển đổi sang Flutter (`dcid-app`) đã hoàn tất và Next.js cũ đã được gỡ bỏ hoàn toàn khỏi kiến trúc dự án.

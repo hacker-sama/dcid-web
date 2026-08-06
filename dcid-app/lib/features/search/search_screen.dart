@@ -5,12 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../core/constrained_content.dart';
 import '../../data/models/answer_result.dart';
 import '../../data/models/document_summary.dart';
+import '../../data/models/sse_event.dart';
 import '../../state/providers.dart';
 
 class _ChatEntry {
   final String role; // 'user' or 'assistant'
-  final String content;
-  final AnswerResult? result;
+  String content;
+  AnswerResult? result;
 
   _ChatEntry({required this.role, required this.content, this.result});
 }
@@ -75,39 +76,79 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (question.isEmpty || _loading) return;
 
     _controller.clear();
+    final assistantEntry = _ChatEntry(role: 'assistant', content: '');
+
     setState(() {
       _loading = true;
       _error = null;
       _chatMessages.add(_ChatEntry(role: 'user', content: question));
+      _chatMessages.add(assistantEntry);
     });
     _scrollToBottom();
 
     try {
       final history = _chatMessages
-          .take(_chatMessages.length - 1)
+          .take(_chatMessages.length - 2)
           .map((m) => {'role': m.role, 'content': m.content})
           .toList();
 
-      final result = await ref.read(docsRepositoryProvider).ask(
+      final stream = ref.read(docsRepositoryProvider).askStream(
             question,
             reasoningMode: _reasoningMode,
-            selectedVersionIds: _selectedDocIds.isEmpty ? null : _selectedDocIds.toList(),
+            selectedVersionIds:
+                _selectedDocIds.isEmpty ? null : _selectedDocIds.toList(),
             history: history,
           );
 
-      if (mounted) {
-        setState(() {
-          _chatMessages.add(_ChatEntry(
-            role: 'assistant',
-            content: result.answer,
-            result: result,
-          ));
-        });
-        _scrollToBottom();
+      List<Citation> currentCitations = [];
+      bool isLocked = false;
+      bool isNumeric = false;
+      bool isReasoning = _reasoningMode;
+      double confidenceVal = 0.0;
+
+      await for (final event in stream) {
+        if (!mounted) break;
+        if (event.type == SseEventType.meta) {
+          currentCitations = event.citations;
+          isLocked = event.locked;
+          isNumeric = event.numericRule;
+          isReasoning = event.reasoningMode;
+          confidenceVal = event.confidence;
+          setState(() {
+            assistantEntry.result = AnswerResult(
+              answer: assistantEntry.content,
+              confidence: confidenceVal,
+              locked: isLocked,
+              numericRule: isNumeric,
+              reasoningMode: isReasoning,
+              citations: currentCitations,
+            );
+          });
+        } else if (event.type == SseEventType.delta) {
+          if (event.textDelta != null) {
+            setState(() {
+              assistantEntry.content += event.textDelta!;
+              assistantEntry.result = AnswerResult(
+                answer: assistantEntry.content,
+                confidence: confidenceVal,
+                locked: isLocked,
+                numericRule: isNumeric,
+                reasoningMode: isReasoning,
+                citations: currentCitations,
+              );
+            });
+            _scrollToBottom();
+          }
+        } else if (event.type == SseEventType.error) {
+          setState(() {
+            _error = event.errorMessage ?? 'Không truy vấn được.';
+          });
+        }
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Không truy vấn được. Kiểm tra kết nối backend/AI.');
+        setState(() =>
+            _error = 'Không truy vấn được. Kiểm tra kết nối backend/AI.');
       }
     } finally {
       if (mounted) setState(() => _loading = false);

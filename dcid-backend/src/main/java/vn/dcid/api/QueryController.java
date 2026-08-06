@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import vn.dcid.common.ApiResponse;
 import vn.dcid.domain.enums.UserRole;
 import vn.dcid.dto.request.QueryRequest;
@@ -56,5 +57,17 @@ public class QueryController {
                 UUID.fromString(principal.userId()),
                 UserRole.valueOf(principal.role()));
         return ResponseEntity.ok(ApiResponse.of(answer));
+    }
+
+    @PostMapping(value = "/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter askStreaming(@Valid @RequestBody QueryRequest request) {
+        UserPrincipal principal = SecurityContextHelper.getCurrentUser();
+        if (principal == null) {
+            throw new ForbiddenException("Chưa xác thực.");
+        }
+        return queryService.askStreaming(
+                request,
+                UUID.fromString(principal.userId()),
+                UserRole.valueOf(principal.role()));
     }
 }

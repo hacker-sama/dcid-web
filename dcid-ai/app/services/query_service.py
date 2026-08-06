@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import time
+import unicodedata
 from uuid import UUID
 
 from app.clients import llm_client
@@ -34,6 +35,29 @@ LOCKED_ANSWER = (
     "Không đủ dữ liệu chắc chắn. Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm."
 )
 LOCKED_CONFIDENCE = 0.30
+
+
+def _needs_visual_context(question: str) -> bool:
+    """Use the expensive Vision path only when the question refers to visuals."""
+    normalized = unicodedata.normalize("NFKD", question.lower().replace("đ", "d"))
+    normalized = normalized.encode("ascii", "ignore").decode("ascii")
+    visual_terms = (
+        "ban ve",
+        "so do",
+        "hinh anh",
+        "hinh ve",
+        "anh chup",
+        "ky hieu",
+        "nhin vao",
+        "vi tri tren hinh",
+        "kich thuoc tren ban ve",
+        "doc nhan",
+        "nhan thiet bi",
+        "image",
+        "diagram",
+        "drawing",
+    )
+    return any(term in normalized for term in visual_terms)
 
 
 def run_query(req: QueryRequest) -> QueryResponse:
@@ -126,7 +150,7 @@ def run_query(req: QueryRequest) -> QueryResponse:
         )
 
     # Nếu chưa có image_base64 từ SnapAsk, tự động bốc/dựng ảnh trang PDF của kết quả top 1 từ MinIO
-    if not image_base64 and hits:
+    if not image_base64 and hits and _needs_visual_context(req.question):
         top_hit = hits[0]
         top_v_id = top_hit.get("version_id")
         top_doc_id = top_hit.get("document_id")
@@ -160,11 +184,11 @@ def run_query(req: QueryRequest) -> QueryResponse:
             system_prompt, user_prompt, history=req.history, image_base64=image_base64
         )
     except LLMConnectionError as exc:
-        logger.error("LLM kết nối thất bại (LM Studio không chạy?): %s", exc)
+        logger.error("LLM kết nối thất bại (Ollama không chạy?): %s", exc)
         # Khi LM Studio chết → vẫn trả response nhưng là locked để BE không bị 503
         return QueryResponse(
             answer=(
-                "Dịch vụ AI tạm thời không khả dụng (LM Studio chưa chạy). "
+                "Dịch vụ AI tạm thời không khả dụng (Ollama chưa sẵn sàng). "
                 "Vui lòng liên hệ quản trị viên hệ thống."
             ),
             confidence=0.0,
@@ -387,7 +411,7 @@ def run_query_stream(req: QueryRequest):
         return
 
     # Nếu chưa có image_base64 từ SnapAsk, tự động bốc/dựng ảnh trang PDF của kết quả top 1 từ MinIO (nếu có)
-    if not image_base64 and hits:
+    if not image_base64 and hits and _needs_visual_context(req.question):
         top_hit = hits[0]
         top_v_id = top_hit.get("version_id")
         top_doc_id = top_hit.get("document_id")
@@ -425,7 +449,7 @@ def run_query_stream(req: QueryRequest):
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model=model_name)
 
     except llm_client.LLMConnectionError:
-        yield _sse("error", message="LM Studio chưa chạy. Vui lòng liên hệ quản trị viên.")
+        yield _sse("error", message="Ollama chưa sẵn sàng. Vui lòng liên hệ quản trị viên.")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-connection")
     except llm_client.LLMInferenceError as exc:
         yield _sse("error", message=f"Lỗi LLM inference: {exc}")

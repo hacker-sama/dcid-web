@@ -29,21 +29,23 @@ class Settings(BaseSettings):
     chroma_host: str = "localhost"
     chroma_port: int = 8000
 
-    # ── LM Studio (OpenAI-compatible local server) ────────────────────────────
-    # Khi chạy trong Docker: host.docker.internal trỏ về Host OS.
-    # Khi dev local (không Docker): http://localhost:1234/v1
-    lm_studio_base_url: str = "http://host.docker.internal:1234/v1"
-    # LM Studio không cần API key thật — bất kỳ string nào cũng được chấp nhận.
-    lm_studio_api_key: str = "lm-studio"
-    # Tên model phải khớp chính xác identifier hiển thị trong LM Studio UI (vd: qwen2-vl-2b-instruct / Qwen-2.5-7B-Instruct)
-    lm_studio_model: str = "qwen2-vl-2b-instruct"
+    # ── Local LLM (Ollama OpenAI-compatible API) ──────────────────────────────
+    # Giữ tên biến LM_STUDIO_* để tương thích ngược với các file .env cũ.
+    # Docker Compose ghi đè URL thành http://ollama:11434/v1.
+    lm_studio_base_url: str = "http://localhost:11434/v1"
+    lm_studio_api_key: str = "ollama"
+    lm_studio_model: str = "qwen2.5vl:3b"
     llm_temperature: float = 0.2          # Cấu hình suy luận tối ưu theo sơ đồ (Low Temperature: 0.2)
     llm_top_p: float = 0.9               # Cấu hình suy luận tối ưu theo sơ đồ (Top-P: 0.9)
     llm_repetition_penalty: float = 1.2  # Cấu hình suy luận tối ưu theo sơ đồ (High Repetition Penalty: 1.2)
     llm_frequency_penalty: float = 0.0
     llm_presence_penalty: float = 0.0
     llm_max_tokens: int = 2048
-    llm_timeout: float = 120.0
+    # Giới hạn context phía ứng dụng để kiểm soát RAM và độ trễ của Ollama.
+    llm_context_window: int = 4096
+    llm_context_safety_tokens: int = 256
+    # CPU cold-start for a 3B vision model can exceed two minutes.
+    llm_timeout: float = 300.0
 
     # ── Redis / Celery (async task queue) ─────────────────────────────────────
     # service `redis` trong docker-compose.yml (port nội bộ 6379)
