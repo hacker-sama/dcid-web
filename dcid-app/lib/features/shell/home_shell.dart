@@ -110,6 +110,29 @@ class HomeShell extends ConsumerWidget {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Smart KCN Docs',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        actions: [
+          if (role != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Center(
+                child: Chip(
+                  label: Text(role.label, style: const TextStyle(fontSize: 11)),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ),
+          IconButton(
+            tooltip: 'Logout',
+            icon: const Icon(Icons.logout),
+            onPressed: logout,
+          ),
+        ],
+      ),
       body: navigationShell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: navIndex,
@@ -122,3 +145,4 @@ class HomeShell extends ConsumerWidget {
     );
   }
 }
+

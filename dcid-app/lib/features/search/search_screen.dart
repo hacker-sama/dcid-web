@@ -187,22 +187,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       children: [
                         Icon(Icons.library_books_outlined, size: 18, color: colorScheme.primary),
                         const SizedBox(width: 8),
-                        Text(
-                          _selectedDocIds.isEmpty
-                              ? '🌐 Phạm vi: Tất cả tài liệu (Global RAG)'
-                              : '📌 Phạm vi: Đã chỉ định ${_selectedDocIds.length} tài liệu nguồn',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: colorScheme.onSurface,
+                        Expanded(
+                          child: Text(
+                            _selectedDocIds.isEmpty
+                                ? '🌐 Scope: All documents (Global RAG)'
+                                : '📌 Scope: Specified ${_selectedDocIds.length} source documents',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: colorScheme.onSurface,
+                            ),
                           ),
                         ),
-                        const Spacer(),
                         if (_selectedDocIds.isNotEmpty)
                           TextButton.icon(
                             onPressed: () => setState(() => _selectedDocIds.clear()),
                             icon: const Icon(Icons.clear_all, size: 16),
-                            label: const Text('Bỏ chọn tất cả', style: TextStyle(fontSize: 12)),
+                            label: const Text('Clear All', style: TextStyle(fontSize: 12)),
                             style: TextButton.styleFrom(
                               visualDensity: VisualDensity.compact,
                               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -231,7 +234,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               selected: isSelected,
                               onSelected: (val) {
                                 setState(() {
-                                  if (val) {
+                                  if (val == true) {
                                     _selectedDocIds.add(doc.id);
                                   } else {
                                     _selectedDocIds.remove(doc.id);
@@ -252,30 +255,48 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             const SizedBox(height: 8),
 
             // ── Tùy chọn Suy luận & Nút làm mới hội thoại ──
-            Row(
-              children: [
-                Expanded(
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Chế độ Tư vấn / Suy luận quy trình lắp đặt',
-                      style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                    ),
-                    subtitle: const Text(
-                      'AI suy luận chi tiết các bước thao tác, tháo lắp từ phân tích cấu tạo bản vẽ',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    value: _reasoningMode,
-                    onChanged: _loading ? null : (val) => setState(() => _reasoningMode = val),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 500;
+                final switchTile = SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Installation Reasoning Mode',
+                    style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
                   ),
-                ),
-                if (_chatMessages.isNotEmpty)
-                  OutlinedButton.icon(
-                    onPressed: _loading ? null : _clearChat,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('Xóa hội thoại'),
+                  subtitle: const Text(
+                    'AI analyzes drawing structures to reason detailed assembly procedures',
+                    style: TextStyle(fontSize: 12),
                   ),
-              ],
+                  value: _reasoningMode,
+                  onChanged: _loading ? null : (val) => setState(() => _reasoningMode = val ?? false),
+                );
+
+                final clearBtn = _chatMessages.isNotEmpty
+                    ? OutlinedButton.icon(
+                        onPressed: _loading ? null : _clearChat,
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Clear Chat'),
+                      )
+                    : null;
+
+                if (isNarrow && clearBtn != null) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      switchTile,
+                      Align(alignment: Alignment.centerRight, child: clearBtn),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: switchTile),
+                    if (clearBtn != null) clearBtn,
+                  ],
+                );
+              },
             ),
             const Divider(height: 16),
 
