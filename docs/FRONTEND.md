@@ -94,6 +94,7 @@ dcid-app/  (Flutter)
 │   │   ├── snap_ask/             # camera → ảnh + câu hỏi (mobile)
 │   │   ├── answer/                # câu trả lời + citation + guardrail banner
 │   │   ├── documents/             # danh sách/chi tiết/upload tài liệu (web-first)
+│   │   │                          # SafeArea, sort bar, timestamp trên card — ✅ xong
 │   │   ├── viewer/                # ảnh trang + CustomPaint vẽ bbox; PDF
 │   │   └── admin/                 # users, audit (màn lớn — web)
 │   └── l10n/                     # vi, en (mở zh/ja)
@@ -177,6 +178,7 @@ dcid-app/  (Flutter)
 |---|---|
 | *Trước M1* | **Gỡ `dcid-frontend` (Next.js)** — đã xong |
 | **M1** (thin) | khởi tạo `dcid-app`: **login (self-JWT) + Search/Ask + Upload** — ✅ đã xong, verify được trên cả Android build lẫn `flutter build web` |
+| **M1+** | **Snap & Ask SafeArea** (notch/punch-hole fix) — ✅ xong · **Documents: sort bar + timestamp trên card + SafeArea** — ✅ xong |
 | **M2–M3** | versioning, admin/QA console (màn lớn — web), audit viewer |
 | **M4** (đầy đủ) | **Snap & Ask** (camera, mobile), side-by-side + bbox, **kiosk web fullscreen** (trình duyệt), offline (mobile) |
 

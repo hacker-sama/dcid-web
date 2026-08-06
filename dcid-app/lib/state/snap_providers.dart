@@ -255,12 +255,15 @@ class SnapNotifier extends Notifier<SnapState> {
       );
     }).toList();
     return ChatMessage(
-      question: map['question'] as String,
+      question: map['question'] as String? ?? '',
       machineCode: map['machineCode'] as String?,
-      askedAt: DateTime.parse(map['askedAt'] as String),
-      isError: map['isError'] as bool? ?? false,
+      askedAt: map['askedAt'] != null
+          ? DateTime.parse(map['askedAt'] as String)
+          : DateTime.now(),
+      isError: map['isError'] == true,
       boundingBoxes: boxes,
-      answer: AnswerResult.fromJson(map['answer'] as Map<String, dynamic>),
+      answer: AnswerResult.fromJson(
+          (map['answer'] as Map<String, dynamic>?) ?? const {}),
     );
   }
 }

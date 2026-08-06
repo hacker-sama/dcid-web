@@ -321,50 +321,54 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
         ? snap.messages.last.boundingBoxes
         : <Rect>[];
 
-    return ConstrainedContent(
-      maxWidth: 840,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── SECTION 1: Add button header ──────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: AddImageButton(
-              onAdd: _openImageSourcePicker,
-              loading: _picking,
-              scheme: scheme,
-            ),
+    return Scaffold(
+      body: SafeArea(
+        child: ConstrainedContent(
+          maxWidth: 840,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── SECTION 1: Add button header ──────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: AddImageButton(
+                  onAdd: _openImageSourcePicker,
+                  loading: _picking,
+                  scheme: scheme,
+                ),
+              ),
+
+              // ── SECTION 2: Horizontal thumbnail strip ─────────────────────────
+              if (snaps.isEmpty) ...[
+                Expanded(
+                  child: EmptyState(onAdd: _openImageSourcePicker, scheme: scheme),
+                ),
+              ] else ...[
+                const SizedBox(height: 10),
+                ThumbnailStrip(
+                  snaps: snaps,
+                  selectedIndex: selectedIndex,
+                  scrollController: _thumbnailScrollController,
+                  formatDate: _formatDate,
+                  onSelect: _selectSnap,
+                  onDelete: _deleteSnap,
+                  onPreview: (i) => _openPreview(snaps[i], latestBoxes),
+                  scheme: scheme,
+                ),
+                const Divider(height: 1),
+
+                // ── SECTION 3: Chat area ────────────────────────────────────────
+                Expanded(
+                  child: _buildChatArea(snap, scheme),
+                ),
+
+                // ── SECTION 4: Q&A input footer ─────────────────────────────────
+                const Divider(height: 1),
+                _buildInputFooter(snap, scheme),
+              ],
+            ],
           ),
-
-          // ── SECTION 2: Horizontal thumbnail strip ─────────────────────────
-          if (snaps.isEmpty) ...[
-            Expanded(
-              child: EmptyState(onAdd: _openImageSourcePicker, scheme: scheme),
-            ),
-          ] else ...[
-            const SizedBox(height: 10),
-            ThumbnailStrip(
-              snaps: snaps,
-              selectedIndex: selectedIndex,
-              scrollController: _thumbnailScrollController,
-              formatDate: _formatDate,
-              onSelect: _selectSnap,
-              onDelete: _deleteSnap,
-              onPreview: (i) => _openPreview(snaps[i], latestBoxes),
-              scheme: scheme,
-            ),
-            const Divider(height: 1),
-
-            // ── SECTION 3: Chat area ────────────────────────────────────────
-            Expanded(
-              child: _buildChatArea(snap, scheme),
-            ),
-
-            // ── SECTION 4: Q&A input footer ─────────────────────────────────
-            const Divider(height: 1),
-            _buildInputFooter(snap, scheme),
-          ],
-        ],
+        ),
       ),
     );
   }
