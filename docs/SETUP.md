@@ -164,23 +164,23 @@ Cố định port **3000** để khớp CORS mặc định của backend (`CORS_
 flutter run --dart-define=API_BASE_URL=http://localhost:8080
 ```
 
-### 3.5. Local LLM Service — Ollama (production) hoặc LM Studio (dev local)
+### 3.5. Local LLM Service — Ollama
 
 #### Option A — Ollama trong Docker (khuyến nghị cho production/server)
 
 ```bash
 # Ollama đã được thêm vào docker-compose.yml — chỉ cần pull model
 docker-compose up -d ollama
-docker exec dcid-ollama ollama pull qwen2-vl:2b-instruct-q4_k_m
+docker exec dcid-ollama ollama pull qwen2.5vl:3b
 
 # Verify
 curl http://localhost:11434/v1/models
-# Trả về danh sách model đang load
+# Trả về danh sách model đã được cài trong volume ollama_data
 ```
 
 `dcid-ai` đã cấu hình mặc định trỏ về Ollama (`LM_STUDIO_BASE_URL=http://ollama:11434/v1`), không cần đổi gì nếu dùng docker-compose.
 
-#### Option B — LM Studio (dev local — GUI, dễ test)
+#### Tùy chọn cũ — LM Studio (không cần khi chạy dự án bằng Docker)
 
 1. Tải và cài **[LM Studio](https://lmstudio.ai/)**.
 2. Tìm và tải model: `Qwen2-VL-2B-Instruct-GGUF` — chọn bản **Q4_K_M** (~2.78GB).
@@ -247,7 +247,7 @@ python chroma-tools/clear_collection.py                  # Dọn dẹp collectio
 
 Chi tiết lộ trình: [`PLAN-THESIS.md`](PLAN-THESIS.md) §5 (bảng cột mốc 8 tuần).
 
----
+-
 
 ## 6. Production Deploy (VPS / Server)
 

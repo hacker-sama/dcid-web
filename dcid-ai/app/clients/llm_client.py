@@ -1,8 +1,7 @@
-"""Client kết nối LM Studio qua OpenAI-compatible REST API.
+"""Client kết nối local LLM qua OpenAI-compatible REST API.
 
-LM Studio expose endpoint `/v1/chat/completions` tương thích 100% OpenAI SDK.
-Khi chạy trong Docker container: host.docker.internal:1234 trỏ về Host OS (Windows/Linux).
-Khi dev local không Docker: sửa LM_STUDIO_BASE_URL=http://localhost:1234/v1 trong .env.
+Mặc định ứng dụng dùng Ollama tại `/v1/chat/completions`. Các tên cấu hình
+`LM_STUDIO_*` được giữ lại để không làm hỏng file `.env` cũ.
 
 Thiết kế:
 - Client singleton per process (lazy init, thread-safe với lru_cache).
@@ -21,6 +20,19 @@ from typing import Any
 from app.config import get_settings
 
 logger = logging.getLogger("dcid-ai.llm_client")
+
+
+def _supports_extra_repeat_penalty(settings: Any) -> bool:
+    """Chỉ gửi extension penalty cho server/model đã biết là tương thích.
+
+    Ollama có native options riêng và Qwen vision không nhận ổn định hai field
+    extension này qua OpenAI endpoint, nên bỏ chúng để tránh HTTP 400/500.
+    """
+    base_url = str(getattr(settings, "lm_studio_base_url", "")).lower()
+    model = re.sub(r"[^a-z0-9]", "", str(getattr(settings, "lm_studio_model", "")).lower())
+    is_ollama = "ollama" in base_url or ":11434" in base_url
+    is_qwen_vision = "qwen2vl" in model or "qwen25vl" in model
+    return not is_ollama and not is_qwen_vision
 
 
 def _estimated_tokens(value: Any) -> int:
@@ -165,7 +177,7 @@ def _get_client():
 # ────────────────────────────────────────────────────────────────────────────
 
 def generate_answer(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None) -> tuple[str, str]:
-    """Gọi LM Studio để sinh câu trả lời (hỗ trợ cả Text LLM lẫn Vision VLM).
+    """Gọi local LLM để sinh câu trả lời (hỗ trợ cả Text LLM lẫn Vision VLM).
 
     Args:
         system_prompt: Hướng dẫn hành vi + context chunks đã được inject.
@@ -177,7 +189,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         (answer_text, model_name) — cả 2 luôn là str không None.
 
     Raises:
-        LLMConnectionError: LM Studio chưa chạy hoặc không thể kết nối.
+        LLMConnectionError: Ollama chưa chạy hoặc không thể kết nối.
         LLMInferenceError:  Model đã nạp nhưng gặp lỗi inference.
     """
     try:
@@ -241,7 +253,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     if top_p and 0.0 < top_p < 1.0:
         call_kwargs["top_p"] = top_p
     # frequency/presence penalty — CHỈ thêm khi khác 0;
-    # LM Studio có thể trả Channel Error khi nhận các field này cho một số model
+    # Một số OpenAI-compatible server có thể lỗi khi nhận các field này.
     freq_p = getattr(s, "llm_frequency_penalty", 0.0)
     pres_p = getattr(s, "llm_presence_penalty", 0.0)
     if freq_p:
@@ -250,7 +262,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         call_kwargs["presence_penalty"] = pres_p
 
     rep_penalty = getattr(s, "llm_repetition_penalty", 0.0)
-    if rep_penalty and rep_penalty > 1.0 and "qwen2-vl" not in s.lm_studio_model.lower():
+    if rep_penalty and rep_penalty > 1.0 and _supports_extra_repeat_penalty(s):
         call_kwargs["extra_body"] = {
             "repeat_penalty": rep_penalty,
             "repetition_penalty": rep_penalty
@@ -260,26 +272,26 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         response = client.chat.completions.create(**call_kwargs)
     except APIConnectionError as exc:
         logger.error(
-            "LM Studio không thể kết nối tại %s — Kiểm tra LM Studio đang chạy trên Host (port 1234). Error: %s",
+            "Ollama không thể kết nối tại %s — kiểm tra container dcid-ollama. Error: %s",
             s.lm_studio_base_url, exc,
         )
         raise LLMConnectionError(
-            f"LM Studio không phản hồi tại {s.lm_studio_base_url}. "
-            "Hãy mở LM Studio trên máy Host → nạp model → Start Server (port 1234)."
+            f"Ollama không phản hồi tại {s.lm_studio_base_url}. "
+            "Hãy kiểm tra container dcid-ollama và model qwen2.5vl:3b."
         ) from exc
     except APITimeoutError as exc:
         logger.error(
-            "LM Studio timeout sau %.1fs — model=%s. Thử tăng LLM_TIMEOUT hoặc dùng model nhỏ hơn.",
+            "Ollama timeout sau %.1fs — model=%s. Thử tăng LLM_TIMEOUT hoặc kiểm tra RAM.",
             s.llm_timeout, s.lm_studio_model,
         )
         raise LLMInferenceError(
-            f"LM Studio timeout sau {s.llm_timeout}s. "
-            "Kiểm tra: model còn xử lý? RAM/VRAM đủ? Thử model nhỏ hơn (1.5B)."
+            f"Ollama timeout sau {s.llm_timeout}s. "
+            "Kiểm tra container, model và dung lượng RAM/VRAM."
         ) from exc
     except APIStatusError as exc:
-        # Channel Error — LM Studio trả HTTP error (400/500) do params không hợp lệ
+        # OpenAI-compatible endpoint trả HTTP error (400/500) do params không hợp lệ.
         logger.error(
-            "LM Studio Channel Error (status %s): %s — thử lại với params tối thiểu.",
+            "Ollama API error (status %s): %s — thử lại với params tối thiểu.",
             exc.status_code, exc.message,
         )
         # Retry với params tối thiểu (chỉ messages + temperature + max_tokens)
@@ -293,8 +305,8 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         except Exception as retry_exc:  # noqa: BLE001
             logger.error("Retry thất bại: %s", retry_exc)
             raise LLMInferenceError(
-                f"LM Studio Channel Error (status {exc.status_code}). "
-                "Kiểm tra: model đã nạp chưa? LM Studio Server đang chạy?"
+                f"Ollama API error (status {exc.status_code}). "
+                "Kiểm tra model qwen2.5vl:3b đã được pull và container đang chạy."
             ) from exc
     except Exception as exc:  # noqa: BLE001
         logger.error("LLM inference lỗi không xác định: %s", exc)
@@ -364,7 +376,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
 
 
 def generate_answer_stream(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None):
-    """Generator: Stream từng token text từ LM Studio về client qua SSE (hỗ trợ cả Vision VLM).
+    """Generator: stream token từ local LLM về client qua SSE (hỗ trợ Vision VLM).
 
     Sử dụng OpenAI SDK streaming mode (stream=True). Mỗi lần yield là một
     đoạn text (delta) nhỏ từ model — phù hợp để pipe thẳng vào SSE response.
@@ -441,7 +453,7 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
         stream_kwargs["top_p"] = top_p
 
     rep_penalty = getattr(s, "llm_repetition_penalty", 0.0)
-    if rep_penalty and rep_penalty > 1.0 and "qwen2-vl" not in s.lm_studio_model.lower():
+    if rep_penalty and rep_penalty > 1.0 and _supports_extra_repeat_penalty(s):
         stream_kwargs["extra_body"] = {
             "repeat_penalty": rep_penalty,
             "repetition_penalty": rep_penalty
@@ -515,22 +527,22 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
 
     except APIConnectionError as exc:
         if image_base64:
-            logger.warning("LM Studio Vision stream kết nối lỗi (%s) → Thử lại chế độ Text RAG thuần...", exc)
+            logger.warning("Ollama Vision stream kết nối lỗi (%s) → thử lại chế độ Text RAG thuần...", exc)
             yield from generate_answer_stream(system_prompt, user_prompt, history=history, image_base64=None)
             return
         logger.error("LLM stream kết nối thất bại: %s", exc)
         raise LLMConnectionError(
-            f"LM Studio không phản hồi tại {s.lm_studio_base_url}. "
-            "Hãy mở LM Studio trên máy Host → nạp model → Start Server (port 1234)."
+            f"Ollama không phản hồi tại {s.lm_studio_base_url}. "
+            "Hãy kiểm tra container dcid-ollama và model qwen2.5vl:3b."
         ) from exc
     except APITimeoutError as exc:
         if image_base64:
-            logger.warning("LM Studio Vision stream timeout (%s) → Thử lại chế độ Text RAG thuần...", exc)
+            logger.warning("Ollama Vision stream timeout (%s) → thử lại chế độ Text RAG thuần...", exc)
             yield from generate_answer_stream(system_prompt, user_prompt, history=history, image_base64=None)
             return
         logger.error("LLM stream timeout sau %.1fs", s.llm_timeout)
         raise LLMInferenceError(
-            f"LM Studio timeout sau {s.llm_timeout}s khi streaming."
+            f"Ollama timeout sau {s.llm_timeout}s khi streaming."
         ) from exc
     except APIStatusError as exc:
         if image_base64:

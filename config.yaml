@@ -15,18 +15,19 @@ paths:
 
 models:
   # Vision Language Model cho Visual Captioner khâu Ingestion
-  vision_model: "Qwen2-VL-2B-Instruct"
+  vision_model: "qwen2.5vl:3b"
   
   # Text LLM cho khâu Suy luận RAG
-  main_llm_model: "Qwen2.5-7B-Instruct"
+  main_llm_model: "qwen2.5vl:3b"
   
   # Embedding Model local
   embedding_model: "intfloat/multilingual-e5-small"
   embedding_dim: 384
 
 lm_studio:
-  base_url: "http://localhost:1234/v1"
-  api_key: "lm-studio"
+  # Tên section được giữ để tương thích code cũ; provider thực tế là Ollama.
+  base_url: "http://localhost:11434/v1"
+  api_key: "ollama"
   timeout: 60.0
   temperature: 0.2
   max_tokens: 2048

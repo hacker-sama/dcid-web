@@ -160,11 +160,11 @@ def run_query(req: QueryRequest) -> QueryResponse:
             system_prompt, user_prompt, history=req.history, image_base64=image_base64
         )
     except LLMConnectionError as exc:
-        logger.error("LLM kết nối thất bại (LM Studio không chạy?): %s", exc)
+        logger.error("LLM kết nối thất bại (Ollama không chạy?): %s", exc)
         # Khi LM Studio chết → vẫn trả response nhưng là locked để BE không bị 503
         return QueryResponse(
             answer=(
-                "Dịch vụ AI tạm thời không khả dụng (LM Studio chưa chạy). "
+                "Dịch vụ AI tạm thời không khả dụng (Ollama chưa sẵn sàng). "
                 "Vui lòng liên hệ quản trị viên hệ thống."
             ),
             confidence=0.0,
@@ -425,7 +425,7 @@ def run_query_stream(req: QueryRequest):
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model=model_name)
 
     except llm_client.LLMConnectionError:
-        yield _sse("error", message="LM Studio chưa chạy. Vui lòng liên hệ quản trị viên.")
+        yield _sse("error", message="Ollama chưa sẵn sàng. Vui lòng liên hệ quản trị viên.")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-connection")
     except llm_client.LLMInferenceError as exc:
         yield _sse("error", message=f"Lỗi LLM inference: {exc}")
