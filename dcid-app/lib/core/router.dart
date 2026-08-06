@@ -70,7 +70,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _, navigationShell) =>
             HomeShell(navigationShell: navigationShell),
         branches: [
-          // Branch 0 — Tra cứu
+          // Branch 0 — Lookup
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -90,7 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // Branch 2 — Tài liệu (with nested detail route)
+          // Branch 2 — Documents (with nested detail route)
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -108,7 +108,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // Branch 3 — Quản trị (admin only; router redirect blocks access)
+          // Branch 3 — Admin (admin only; router redirect blocks access)
           StatefulShellBranch(
             routes: [
               GoRoute(

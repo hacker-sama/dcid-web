@@ -15,10 +15,10 @@ class _Dest {
 /// Branch ordering must stay in sync with [routerProvider] in router.dart:
 ///   index 0 = /search, 1 = /snap, 2 = /documents, 3 = /admin
 const _allDestinations = <_Dest>[
-  _Dest(Icons.search, 'Tra cứu'),
+  _Dest(Icons.search, 'Lookup'),
   _Dest(Icons.camera_alt, 'Snap & Ask'),
-  _Dest(Icons.folder, 'Tài liệu'),
-  _Dest(Icons.admin_panel_settings, 'Quản trị', adminOnly: true),
+  _Dest(Icons.folder, 'Documents'),
+  _Dest(Icons.admin_panel_settings, 'Admin', adminOnly: true),
 ];
 
 /// Adaptive shell: NavigationRail on wide (kiosk/desktop), NavigationBar on
@@ -91,7 +91,7 @@ class HomeShell extends ConsumerWidget {
                             ),
                           ),
                         IconButton(
-                          tooltip: 'Đăng xuất',
+                          tooltip: 'Logout',
                           icon: const Icon(Icons.logout),
                           onPressed: logout,
                         ),
