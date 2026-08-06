@@ -28,7 +28,11 @@ def run_ingest(req: IngestRequest) -> None:
     """Chạy trong BackgroundTasks. Mọi lỗi → callback FAILED; callback lỗi → log, không crash."""
     try:
         # ── 1. OCR qua ai-ocr service (ai-ocr tự tải PDF từ MinIO) ─────────
-        page_results = ocr_client.extract_pages(req.storageKey, req.langs)
+        page_results = ocr_client.extract_pages(
+            req.storageKey,
+            req.langs,
+            image_key_prefix=f"pages/{req.versionId}",
+        )
         logger.info(
             "OCR OK: versionId=%s storageKey=%s pages=%d",
             req.versionId, req.storageKey, len(page_results),
@@ -62,8 +66,9 @@ def run_ingest(req: IngestRequest) -> None:
         # ── 6. Lưu ảnh trang lên MinIO & Callback READY ─────────
         pages_list = []
         for p in page_results:
-            img_key = f"pages/{req.versionId}/{p.page_no}.png"
-            if p.image_bytes:
+            img_key = p.image_key
+            if not img_key and p.image_bytes:
+                img_key = f"pages/{req.versionId}/{p.page_no}.png"
                 try:
                     minio_client.put_object(img_key, p.image_bytes, content_type="image/png")
                 except Exception as exc:
