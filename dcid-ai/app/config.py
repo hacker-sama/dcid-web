@@ -44,7 +44,8 @@ class Settings(BaseSettings):
     # Giới hạn context phía ứng dụng để kiểm soát RAM và độ trễ của Ollama.
     llm_context_window: int = 4096
     llm_context_safety_tokens: int = 256
-    llm_timeout: float = 120.0
+    # CPU cold-start for a 3B vision model can exceed two minutes.
+    llm_timeout: float = 300.0
 
     # ── Redis / Celery (async task queue) ─────────────────────────────────────
     # service `redis` trong docker-compose.yml (port nội bộ 6379)
