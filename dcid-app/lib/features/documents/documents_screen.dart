@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:data_table_2/data_table_2.dart';
@@ -27,15 +27,15 @@ extension _SortOptionLabel on _SortOption {
   String get label {
     switch (this) {
       case _SortOption.updatedNewest:
-        return 'Mới nhất';
+        return 'Newest first';
       case _SortOption.updatedOldest:
-        return 'Cũ nhất';
+        return 'Oldest first';
       case _SortOption.titleAZ:
-        return 'Tiêu đề A→Z';
+        return 'Title A→Z';
       case _SortOption.titleZA:
-        return 'Tiêu đề Z→A';
+        return 'Title Z→A';
       case _SortOption.category:
-        return 'Loại / Mã máy';
+        return 'Category / Code';
     }
   }
 
@@ -129,7 +129,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     if (uploaded != null && (uploaded == true || uploaded is String)) {
       ref.invalidate(documentsProvider);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Đã tải lên — đang xử lý OCR...')),
+        const SnackBar(content: Text('Uploaded — OCR processing started...')),
       );
       if (uploaded is String && context.mounted) {
         context.push('/documents/$uploaded');
@@ -142,19 +142,19 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận xóa tài liệu'),
+        title: const Text('Confirm Delete'),
         content: Text(
-            'Bạn có chắc chắn muốn xóa "$title"? Hành động này sẽ xóa toàn bộ phiên bản và dữ liệu tra cứu liên quan.'),
+            'Are you sure you want to delete "$title"? This will permanently remove all versions and related search data.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(ctx).colorScheme.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Xóa'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -167,19 +167,87 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         await repo.deleteDocument(docId);
         ref.invalidate(documentsProvider);
         messenger.showSnackBar(
-          const SnackBar(content: Text('Đã xóa tài liệu thành công.')),
+          const SnackBar(content: Text('Document deleted successfully.')),
         );
       } catch (e) {
         messenger.showSnackBar(
-          SnackBar(content: Text('Không thể xóa tài liệu: $e')),
+          SnackBar(content: Text('Could not delete document: $e')),
         );
       }
     }
   }
 
-  // ── Sort bar (mobile/tablet) ──────────────────────────────────────────────
+  // ── Sort bar (mobile: compact dropdown / tablet: filter chips) ───────────
 
-  Widget _buildSortBar(ColorScheme scheme) {
+  Widget _buildSortBar(ColorScheme scheme, {required bool isMobile}) {
+    if (isMobile) {
+      // ── Compact dropdown for narrow phone screens ─────────────────────────
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+        child: Row(
+          children: [
+            Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text(
+              'Sort:',
+              style: TextStyle(
+                fontSize: 13,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            // Pill-shaped dropdown button
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: scheme.primaryContainer,
+                  width: 1,
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<_SortOption>(
+                  value: _sort,
+                  isDense: true,
+                  icon: Icon(Icons.expand_more,
+                      size: 18, color: scheme.primary),
+                  borderRadius: BorderRadius.circular(12),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  items: _SortOption.values
+                      .map((opt) => DropdownMenuItem(
+                            value: opt,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(opt.icon,
+                                    size: 15,
+                                    color: scheme.onSurface),
+                                const SizedBox(width: 8),
+                                Text(opt.label),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _sort = v);
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Scrollable FilterChip row for tablet ─────────────────────────────────
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
       child: Row(
@@ -187,7 +255,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           Icon(Icons.sort, size: 18, color: scheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Text(
-            'Sắp xếp:',
+            'Sort:',
             style: TextStyle(
               fontSize: 13,
               color: scheme.onSurfaceVariant,
@@ -241,6 +309,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < Breakpoints.compact;
         final isDesktop = constraints.maxWidth >= Breakpoints.expanded;
         final isTablet = constraints.maxWidth >= Breakpoints.medium &&
             constraints.maxWidth < Breakpoints.expanded;
@@ -294,7 +363,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 final listBody = Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildSortBar(scheme),
+                    _buildSortBar(scheme, isMobile: isMobile),
                     Expanded(
                       child: ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -311,10 +380,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               doc.category!,
                             if (doc.machineCode != null &&
                                 doc.machineCode!.isNotEmpty)
-                              'Mã: ${doc.machineCode}',
+                              'Code: ${doc.machineCode}',
                             if (doc.updatedAt != null &&
                                 doc.updatedAt!.isNotEmpty)
-                              'Cập nhật: ${_formatRelative(doc.updatedAt)}',
+                              'Updated: ${_formatRelative(doc.updatedAt)}',
                           ];
                           return Card(
                             margin: EdgeInsets.zero,
@@ -339,7 +408,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                       icon: const Icon(
                                           Icons.delete_outline,
                                           color: Colors.red),
-                                      tooltip: 'Xóa',
+                                      tooltip: 'Delete',
                                       onPressed: () =>
                                           _confirmAndDeleteDocument(
                                               context,
@@ -379,7 +448,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               ? FloatingActionButton.extended(
                   onPressed: () => _openUploadSheet(context),
                   icon: const Icon(Icons.upload_file),
-                  label: const Text('Tải tài liệu'),
+                  label: const Text('Upload Document'),
                 )
               : null,
         );
@@ -432,7 +501,7 @@ class _DesktopView extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Danh sách tài liệu',
+                        'Documents',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       Row(
@@ -466,7 +535,7 @@ class _DesktopView extends StatelessWidget {
                             FilledButton.icon(
                               onPressed: onUpload,
                               icon: const Icon(Icons.upload_file),
-                              label: const Text('Tải tài liệu'),
+                              label: const Text('Upload Document'),
                             ),
                           ],
                         ],
@@ -482,19 +551,19 @@ class _DesktopView extends StatelessWidget {
                       minWidth: 800,
                       columns: const [
                         DataColumn2(
-                          label: Text('Tên tài liệu'),
+                          label: Text('Document Name'),
                           size: ColumnSize.L,
                         ),
                         DataColumn2(
-                          label: Text('Loại'),
+                          label: Text('Category'),
                           size: ColumnSize.M,
                         ),
                         DataColumn2(
-                          label: Text('Mã máy'),
+                          label: Text('Machine Code'),
                           size: ColumnSize.M,
                         ),
                         DataColumn2(
-                          label: Text('Cập nhật'),
+                          label: Text('Updated'),
                           size: ColumnSize.M,
                         ),
                         DataColumn2(
@@ -524,7 +593,7 @@ class _DesktopView extends StatelessWidget {
                                       icon: const Icon(
                                           Icons.delete_outline,
                                           color: Colors.red),
-                                      tooltip: 'Xóa tài liệu',
+                                      tooltip: 'Delete document',
                                       onPressed: () =>
                                           onDelete(doc.id, doc.title),
                                     ),
@@ -563,7 +632,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ListView để pull-to-refresh hoạt động cả khi rỗng.
+    // ListView allows pull-to-refresh even when empty.
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
@@ -572,14 +641,14 @@ class _EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Danh sách tài liệu',
+              'Documents',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             if (isAdminLevel && onUploadPressed != null)
               FilledButton.icon(
                 onPressed: onUploadPressed,
                 icon: const Icon(Icons.upload_file),
-                label: const Text('Tải tài liệu'),
+                label: const Text('Upload Document'),
               ),
           ],
         ),
@@ -587,7 +656,7 @@ class _EmptyState extends StatelessWidget {
         Icon(Icons.folder_open,
             size: 56, color: Theme.of(context).colorScheme.outline),
         const SizedBox(height: 12),
-        const Center(child: Text('Chưa có tài liệu')),
+        const Center(child: Text('No documents found')),
       ],
     );
   }
@@ -605,7 +674,7 @@ class _ErrorState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Không tải được danh sách tài liệu.\nKiểm tra kết nối backend.',
+            'Could not load documents.\nCheck backend connection.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
@@ -613,7 +682,7 @@ class _ErrorState extends StatelessWidget {
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: const Text('Thử lại'),
+            label: const Text('Retry'),
           ),
         ],
       ),
@@ -636,16 +705,16 @@ String? _formatInstant(String? iso) {
       '${two(local.hour)}:${two(local.minute)}';
 }
 
-/// Returns a human-friendly relative time, e.g. "2 giờ trước".
+/// Returns a human-friendly relative time, e.g. "2 hours ago".
 /// Falls back to the absolute formatted date for older items.
 String _formatRelative(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
   final parsed = DateTime.tryParse(iso);
   if (parsed == null) return iso;
   final diff = DateTime.now().difference(parsed.toLocal());
-  if (diff.inSeconds < 60) return 'Vừa xong';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-  if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-  if (diff.inDays < 7) return '${diff.inDays} ngày trước';
+  if (diff.inSeconds < 60) return 'Just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  if (diff.inDays < 7) return '${diff.inDays}d ago';
   return _formatInstant(iso) ?? '—';
 }
