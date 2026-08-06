@@ -116,7 +116,11 @@ def run_ingest_task(
         )
         _push_status(version_id, "PROCESSING_OCR", "OCR")
 
-        page_results = ocr_client.extract_pages(storage_key, langs)
+        page_results = ocr_client.extract_pages(
+            storage_key,
+            langs,
+            image_key_prefix=f"pages/{version_id}",
+        )
         page_count = len(page_results)
 
         logger.info(
@@ -169,8 +173,9 @@ def run_ingest_task(
         # ── Bước 5: Lưu ảnh trang lên MinIO & Callback READY ─────────
         pages_list = []
         for p in page_results:
-            img_key = f"pages/{version_id}/{p.page_no}.png"
-            if p.image_bytes:
+            img_key = p.image_key
+            if not img_key and p.image_bytes:
+                img_key = f"pages/{version_id}/{p.page_no}.png"
                 try:
                     minio_client.put_object(img_key, p.image_bytes, content_type="image/png")
                 except Exception as exc:
