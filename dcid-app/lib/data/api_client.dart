@@ -21,7 +21,9 @@ class ApiClient {
         handler.next(options);
       },
       onError: (DioException err, handler) async {
-        if (err.response?.statusCode == 401) {
+        final status = err.response?.statusCode;
+        final isSessionProbe = err.requestOptions.path == '/api/auth/me';
+        if (status == 401 || (status == 403 && isSessionProbe)) {
           await _storage.delete(key: tokenKey);
         }
         handler.next(err);

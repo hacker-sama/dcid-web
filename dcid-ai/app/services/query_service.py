@@ -78,7 +78,6 @@ def _needs_visual_context(question: str) -> bool:
         return False
     normalized = _normalize_question(question)
     visual_terms = (
-        "ban ve",
         "so do",
         "hinh anh",
         "hinh ve",
@@ -91,7 +90,6 @@ def _needs_visual_context(question: str) -> bool:
         "nhan thiet bi",
         "image",
         "diagram",
-        "drawing",
         "vi tri",
         "o dau",
         "hinh dang",
