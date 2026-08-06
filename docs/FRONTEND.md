@@ -94,6 +94,7 @@ dcid-app/  (Flutter)
 │   │   ├── snap_ask/             # camera → ảnh + câu hỏi (mobile)
 │   │   ├── answer/                # câu trả lời + citation + guardrail banner
 │   │   ├── documents/             # danh sách/chi tiết/upload tài liệu (web-first)
+│   │   │                          # SafeArea, sort bar, timestamp trên card — ✅ xong
 │   │   ├── viewer/                # ảnh trang + CustomPaint vẽ bbox; PDF
 │   │   └── admin/                 # users, audit (màn lớn — web)
 │   └── l10n/                     # vi, en (mở zh/ja)
@@ -112,7 +113,7 @@ dcid-app/  (Flutter)
 | **OPERATOR** | tra cứu **SOP & cảnh báo an toàn**; Search + Ask; **Snap & Ask** | mobile |
 | **ENGINEER** | + **bản vẽ / sơ đồ mạch / nhật ký bảo trì**; **side-by-side viewer** | mobile + kiosk |
 | **QA_ADMIN** | **upload** tài liệu; **quản lý version** (ACTIVE/SUPERSEDED/OBSOLETE) | web (màn lớn) |
-| **ADMIN** | quản lý user/role; **audit log viewer** | web (màn lớn) |
+| **ADMIN** | quản lý user/role (`admin_screen.dart`: Bảng danh sách, Dialog tạo user mới, Đổi mật khẩu/role, Khóa/Mở tài khoản); **audit log viewer** | web (màn lớn) |
 
 > Chốt chặn quyền thật ở backend `@PreAuthorize`; UI chỉ ẩn/hiện cho gọn.
 
@@ -120,8 +121,10 @@ dcid-app/  (Flutter)
 
 ## 4. Luồng UX đặc thù hiện trường
 
-- **Snap & Ask** (mobile): `camera`/`image_picker` chụp → upload multipart tới `POST /api/query` (kèm ảnh)
-  → backend forward `dcid-ai` → answer + citation.
+- **Snap & Ask** (mobile + web): `image_picker` (chụp/gallery) & `file_picker` hỗ trợ **chọn cùng lúc nhiều ảnh thiết bị (`pickMultiImage` / `allowMultiple: true`)**. Quản lý toàn bộ danh sách ảnh + lịch sử Q&A theo từng ảnh thông qua global `SnapNotifier`.
+- **Lưu trữ & Giữ trạng thái Tabs (IndexedStack & SecureStorage):**
+  - Sử dụng `StatefulShellRoute.indexedStack` trong Router để duy trì toàn bộ trạng thái các tab (Tra cứu, Snap & Ask, Tài liệu, Quản trị) trong bộ nhớ, không bị hủy (destroy) khi chuyển tab.
+  - Tự động đồng bộ và lưu trữ danh sách ảnh (Base64) + lịch sử hội thoại vào `FlutterSecureStorage` (`localStorage` trên Web) để giữ nguyên dữ liệu ngay cả khi tải lại trang web.
 - **Side-by-side & Hộp thoại Trích dẫn Không Gian (`AlertDialog`):** Mỗi kết quả tra cứu hiển thị danh sách nhãn trích dẫn (`Trang X [Bbox]`). Khi click vào nhãn trích dẫn, hệ thống mở Hộp thoại hiển thị chính xác **Tọa độ Bbox (`p{pageNo}_[minX,minY,maxX,maxY]`)** kèm **đoạn văn bản gốc (`snippet` tối đa 300 ký tự)** được AI tham chiếu.
 - **Guardrail UI & Reasoning `<think>`:** `locked=true` (cosine < 0.60) → **banner đỏ** "Yêu cầu kỹ sư xác minh", ẩn câu trả lời tự sinh. Tự động lọc và hiển thị nội dung suy luận `<think>` trong thẻ gập (accordion/details) gọn gàng.
 - **Touch/glove:** target ≥ 48dp, chữ lớn, ít gõ phím, theme tối, haptic khi cảnh báo.
@@ -147,7 +150,10 @@ dcid-app/  (Flutter)
 `POST /api/auth/login` · `GET /api/auth/me` · `POST /api/query` *(multipart khi Snap & Ask)* ·
 `GET /api/documents` · `POST /api/documents` · `POST /api/documents/{id}/versions` ·
 `POST /api/documents/{versionId}/obsolete` · `GET /api/admin/audit-logs` ·
+`GET /api/admin/users` · `POST /api/admin/users` · `PUT /api/admin/users/{id}` ·
+`PUT /api/admin/users/{id}/password` · `PATCH /api/admin/users/{id}/status` ·
 `GET /api/files/...` (proxy ảnh/crop từ MinIO, có auth). Base URL qua build flavor (`API_BASE_URL`).
+
 
 ---
 
@@ -172,8 +178,9 @@ dcid-app/  (Flutter)
 |---|---|
 | *Trước M1* | **Gỡ `dcid-frontend` (Next.js)** — đã xong |
 | **M1** (thin) | khởi tạo `dcid-app`: **login (self-JWT) + Search/Ask + Upload** — ✅ đã xong, verify được trên cả Android build lẫn `flutter build web` |
+| **M1+** | **Snap & Ask SafeArea** (notch/punch-hole fix) — ✅ xong · **Documents: sort bar + timestamp trên card + SafeArea** — ✅ xong |
 | **M2–M3** | versioning, admin/QA console (màn lớn — web), audit viewer |
-| **M4** (đầy đủ) | **Snap & Ask** (camera, mobile), side-by-side + bbox, **kiosk web fullscreen** (trình duyệt), offline (mobile) |
+| **M4** (đầy đủ) | **Snap & Ask** (camera, mobile), side-by-side + bbox, **kiosk web fullscreen** (trình duyệt) — ✅ **đã triển khai** (có `snap_ask_screen.dart`, `document_detail_screen.dart`) |
 
 > Vì chỉ 1 codebase, không còn tách "web trước / mobile sau" theo nghĩa 2 dự án — làm thẳng trên
 > `dcid-app`, chạy song song 2 target (`flutter run -d chrome` / `-d <android-device>`).
@@ -199,5 +206,4 @@ dcid-app/  (Flutter)
 - Cập nhật `README.md` (bỏ dòng frontend Next.js), thêm `dcid-app` (Flutter).
 - **Không "format"** app Next.js nữa (kế hoạch format trước đây đã hủy do đổi hướng).
 
-> Trạng thái: **plan, chưa thực thi**. Khi bạn duyệt, mình có thể (a) gỡ `dcid-frontend`, và/hoặc
-> (b) tạo khung `dcid-app` Flutter (login + Search/Ask + Upload) cho M1.
+> Trạng thái: **đã thực thi**. Kế hoạch chuyển đổi sang Flutter (`dcid-app`) đã hoàn tất và Next.js cũ đã được gỡ bỏ hoàn toàn khỏi kiến trúc dự án.

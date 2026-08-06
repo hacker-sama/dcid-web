@@ -65,6 +65,33 @@ public class RestAiPipelineClient implements AiPipelineClient {
                     .warn("Lỗi khi thông báo AI service xóa vector documentId={}: {}", documentId, e.getMessage());
         }
     }
+
+    @Override
+    public void queryStream(AiQueryRequest request, java.util.function.Consumer<String> tokenConsumer, Runnable onComplete, java.util.function.Consumer<Throwable> onError) {
+        try {
+            restClient.post()
+                    .uri("/ai/query/stream")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .accept(MediaType.TEXT_EVENT_STREAM)
+                    .exchange((req, res) -> {
+                        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(res.getBody()))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                if (line.startsWith("data:")) {
+                                    tokenConsumer.accept(line.substring(5).trim());
+                                }
+                            }
+                            onComplete.run();
+                        } catch (Exception ex) {
+                            onError.accept(ex);
+                        }
+                        return null;
+                    });
+        } catch (Exception e) {
+            onError.accept(e);
+        }
+    }
 }
 
 

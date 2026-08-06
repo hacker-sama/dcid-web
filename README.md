@@ -49,6 +49,6 @@ celery -A app.celery_app.celery_app worker --loglevel=info -Q ingest,default
 
 # 4. Frontend — terminal riêng
 cd dcid-app && flutter pub get
-flutter run -d chrome --web-port=3000 --dart-define=API_BASE_URL=http://localhost:8080   # web (kiosk/admin)
-flutter run --dart-define=API_BASE_URL=http://localhost:8080                             # mobile (Android)
+flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080   # web (kiosk/admin)
+flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080                             # mobile (Android)
 ```

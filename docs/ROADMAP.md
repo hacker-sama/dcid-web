@@ -1,4 +1,4 @@
-# Smart KCN Docs — Roadmap (cập nhật 27/07/2026)
+# Smart KCN Docs — Roadmap (cập nhật 06/08/2026)
 
 > Dựa trực tiếp trên **code thực tế** trong repo (commit hiện tại) + tài liệu `PLAN-THESIS.md`,
 > `ARCHITECTURE.md`, `API-CONTRACT.md`, `ERD.md`, `FRONTEND.md`.
@@ -45,29 +45,34 @@
 | **Flutter — Login** | `auth/login_screen.dart` noi API that |
 | **Flutter — Shell/Nav** | `shell/home_shell.dart` + routing role-guard |
 | **Flutter — Tai lieu & Xóa Tài Liệu** | `documents_screen.dart` + `document_detail_screen.dart` + `upload_document_sheet.dart` — nối API thật + nút Xóa (Thùng rác đỏ) + Dialog xác nhận cảnh báo |
-| **Flutter — Tra cuu (non-SSE)** | `search/search_screen.dart`: chat UI + reasoning mode toggle + doc filter, goi `POST /api/query` dong bo |
-| **Flutter — Layout & Density** | `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, responsive layout |
-| **Flutter — Placeholder** | `admin_screen.dart`, `snap_ask_screen.dart`, `document_viewer_screen.dart` — placeholder |
-| **Infra Docker** | postgres, redis, minio, zookeeper, kafka, chroma, backend, ai, ai-ocr, **ai-worker**, **ai-flower** — tat ca Up/Started |
+| **Flutter — SSE Chat UI (ChatGPT-like)** | `search/search_screen.dart` + `DocsRepository.askStream`: streaming token-by-token từng `event: delta` (typing effect), `event: meta` cita citations+guard ngay lập tức, `event: done` latencyMs, `event: error` banner lỗi. Chat history multi-turn (`_chatMessages` list). Filter theo tài liệu. |
+| **Flutter — Global Exception Handling & Error Boundaries** | `ApiClient` Dio onError (401 auto token-clear) + `main.dart` Global Flutter & Async Error Catchers |
+| **Flutter — Document BBox Viewer** | `document_viewer_screen.dart` + `bbox_painter.dart`: viewer anh MinIO có JWT headers + CustomPaint ve bounding box ky thuat |
+| **Flutter — Layout & Density** | `VisualDensity.adaptivePlatformDensity`, `ConstrainedContent`, responsive layout cho ca Web & Mobile APK |
+| **Flutter — Snap & Ask (Vision multimodal)** | `snap_ask/snap_ask_screen.dart` (1100 dòng): chụp ảnh (camera) hoặc chọn file (file_picker), hỏi đáp đa lượt per-ảnh (`_SnapEntry` + `_ChatMessage`), gọi `POST /api/query/vision` multipart, render `AnswerResult` + guardrail, fallback offline graceful. |
+| **Flutter — Admin Console (Quản lý người dùng)** | `admin/admin_screen.dart`: danh sách user + filter role + tìm kiếm, dialog tạo tài khoản mới (form validation), reset mật khẩu, kích hoạt/khóa tài khoản (Switch). Nối API thật `GET/POST /api/admin/users`. |
+| **BE — Admin User Management CRUD** | `UserController` (`/api/admin/users`): `GET` danh sách (phân trang, filter role, tìm kiếm), `POST` tạo user, `PUT /{id}` cập nhật, `PUT /{id}/password` reset mật khẩu, `PATCH /{id}/status` kích hoạt/khóa. `@PreAuthorize("hasRole('ADMIN')")`. |
+| **BE — `POST /api/query/vision`** | `QueryController.askWithVision()`: nhận multipart (question + machineCode + file ảnh), forward sang AI `/ai/query/vision`, trả `AnswerDTO` kèm guardrail. |
+| **Infra Docker** | postgres, redis, minio, zookeeper, kafka, chroma, backend, ai, ai-ocr, **ai-worker**, **ai-flower**, **ollama** — tất cả Up/Started |
+| **BE — `POST /api/internal/ingest-status`** | Nhận per-step push từ AI, broadcast STOMP `/topic/ingest/{versionId}` — `SimpMessagingTemplate` |
+| **BE — `POST /api/query/stream`** | SSE proxy từ AI `/ai/query/stream` về Flutter — `SseEmitter`, `CompletableFuture.runAsync`, `@EnableAsync` |
+| **BE — `GET /api/files/{versionId}/{pageNo}/{bboxKey}`** | Proxy ảnh trang từ MinIO qua `FileProxyController`, JWT-protected, `Cache-Control: max-age=3600` |
+| **BE — MinioService exceptions** | Thay `UnsupportedOperationException` bằng `IllegalStateException` proper |
+| **Infra — Production deploy** | `docker-compose.prod.yml` (port isolation, memory limits), `nginx/dcid.conf` (SSE no-buffer, WS, HTTPS), `.env.example`, `scripts/deploy.sh`, `scripts/backup.sh` |
+| **Infra — CI/CD** | `.github/workflows/deploy.yml` — GitHub Actions: build-backend → build-flutter-web → SCP+SSH deploy |
 
 
-### 🔴 CHUA CO — can lam trong T3–T6
+### 🔴 CHUA CO — can lam trong T4–T6
 
 | Hạng mục | Blocking gì |
 |---|---|
-| **BE — `POST /api/internal/ingest-status`** (nhan per-step push tu AI, update DB + broadcast STOMP WS) | Flutter progress bar realtime |
-| **BE — `GET /api/query/stream`** (proxy SSE tu AI `/query/stream` ve Flutter) | Flutter SSE Chat UI |
-| **BE — `GET /api/files/**` proxy** (serve anh/crop tu MinIO) | Citation viewer Flutter |
 | **Dataset** (15–25 tai lieu VI/EN + degradation set) | Moi thi nghiem |
 | **Eval set** (80–120 cau hoi + ground truth) | So lieu chuong 4 |
 | **Eval harness tu dong** | Chay E1–E5, in bang metric |
 | **OCR Pre-processing** (denoising, deskew, sieu phan giai) | Giam CER VI xuong < 5% |
 | **DSPy optimization** (uu tien 1 — toi uu prompt lap dat, khong can GPU) | Cai thien do chinh xac cau tra loi lap dat |
 | **Unsloth + LoRA SFT** (uu tien 2 — fine-tune Qwen 1.5B tren Google Colab, xuat GGUF) | Model chuyen biet hieu SOP/BOM/ban ve lap dat |
-| **Flutter — SSE Chat UI** (typing effect tung token, citations, guard banner) | Demo trai nghiem ChatGPT-like |
-| **Flutter — Upload progress UI** (OCR -> Embed -> Da san sang realtime) | Demo upload flow |
-| **Flutter — Citation viewer** (bbox + banner guardrail) | Demo UI day du |
-| **Flutter — Admin console** (version management, audit) | M3 |
+| **Flutter — Upload progress UI** (subscribe STOMP `/topic/ingest/{versionId}` sau upload) | Demo upload flow realtime |
 | **Outline + quyen luan van** (chuong 1–2) | Bao ve |
 
 ---
@@ -82,12 +87,14 @@
 | **M1c** | chunk -> embed -> ChromaDB | ✅ **Xong** | ingest ghi vector vao Chroma, query retrieve duoc |
 | **M1d** | LLM that + RAG query (LM Studio DeepSeek R1) | ✅ **Xong** | `/api/query` tra cau tra loi that tu LLM + citation trang + guardrails |
 | **M1e** | Decoupled Async Architecture (Celery + Redis + SSE) | ✅ **Xong (25/07/2026)** | Celery Worker tach roi, callback push per-step, SSE streaming `/query/stream`, Flower monitoring |
-| **M2** | Experiments E1–E2 (do dac chi tiet guardrail/chunking) | ⏳ **T3–T4** | bang so lieu hallucination rate, Recall@k |
+| **M3** | Flutter SSE Chat + BE stream proxy + Citation viewer + Admin User Management + Snap & Ask | ✅ **Xong (06/08/2026)** | SSE chat typing effect, citation bbox, banner guardrail, Admin CRUD user, Vision multimodal Snap & Ask |
+| **M2** | Experiments E1–E2 (do dac chi tiet guardrail/chunking) | ⏳ **T4** | bang so lieu hallucination rate, Recall@k |
 | **M2b** | OCR Pre-processing + DSPy optimization | ⏳ **T4–T5** | CER VI < 5%, cau tra loi lap dat chinh xac hon |
 | **M2c** | Unsloth + LoRA SFT — fine-tune Qwen 1.5B | ⏳ **T5–T6** | Dataset JSONL >= 100 mau, model GGUF load duoc LM Studio, do order_accuracy |
-| **M3** | Flutter SSE Chat + BE stream proxy + Citation viewer + Upload progress | ⏳ **T3–T4** | chu hien dan dan, citation bbox, banner guardrail, progress bar realtime khi upload |
+| **M3b** | Flutter Upload progress realtime (STOMP) | ⏳ **T4** | progress bar per-step OCR → Embed → ACTIVE sau upload |
 | **M4** | Luan van + eval set hoan chinh | ⏳ **T6–T7** | bang metric E1–E2, code freeze |
 | **M5** | Demo + bao ve | ⏳ **T8** | video demo du phong, slide, Q&A thu |
+
 
 ---
 
@@ -99,80 +106,54 @@ Da hoan tat: kien truc Celery async, callback push per-step, SSE Query streaming
 
 ---
 
-### 🟢 T3 — Việc cần làm NGAY (tuan hien tai, bat dau 25/07/2026)
+### ✅ T3 — Hoàn thành (06/08/2026)
 
-**Duong gang T3:** khep kin luong SSE end-to-end tren Flutter (SSE Chat UI + Upload progress realtime) va bat dau thu thap eval set.
+**Hoàn tất toàn bộ M3:** SSE Chat UI ChatGPT-like (token streaming), BE SSE proxy, File proxy MinIO JWT-protected, STOMP broadcast ingest status, Admin Console (Flutter + BE CRUD), Snap & Ask Vision multimodal, `POST /api/query/vision` BE endpoint.
 
-#### Backend (Nguoi 2)
+#### Các việc đã xong trong T3:
 
-**1. Implement `POST /api/internal/ingest-status`** — Uu tien cao nhat, blocking Flutter progress bar
+| Hạng mục | Chi tiết |
+|---|---|
+| **BE — `POST /api/query/stream`** | `QueryController.askStreaming()` → `SseEmitter`, proxy SSE từ AI, ghi `query_logs` khi done |
+| **BE — `POST /api/internal/ingest-status`** | `InternalIngestController.ingestStatus()` → broadcast STOMP `/topic/ingest/{versionId}` qua `SimpMessagingTemplate` |
+| **BE — `GET /api/files/{versionId}/{pageNo}/{bboxKey}`** | `FileProxyController` → proxy ảnh trang từ MinIO, JWT-protected |
+| **BE — Admin User CRUD** | `UserController` `/api/admin/users`: GET (filter role/search), POST create, PUT update, PUT password, PATCH status |
+| **BE — `POST /api/query/vision`** | `QueryController.askWithVision()` multipart: question + machineCode + ảnh file → AI vision endpoint |
+| **Flutter — SSE Chat UI** | `search_screen.dart`: `askStream()` SSE, typing effect, multi-turn history, filter tài liệu, guard banner |
+| **Flutter — Snap & Ask** | `snap_ask_screen.dart` (1100 dòng): camera/file_picker, per-image chat thread, gọi `/api/query/vision`, fallback offline |
+| **Flutter — Admin Console** | `admin_screen.dart`: CRUD user, search/filter role, tạo tài khoản dialog, reset mật khẩu, kích hoạt/khóa Switch |
 
-- Nhan `IngestStatusPush` tu AI worker: `{versionId, status, step, pageCount, chunkCount, error}`
-- Cap nhat trang thai `document_version` trong DB: `PENDING -> OCR_PROCESSING -> EMBED_PROCESSING -> ACTIVE/FAILED`
-- Broadcast qua STOMP WebSocket (`/topic/ingest/{versionId}`) — `WebSocketConfig` da co skeleton, can inject `SimpMessagingTemplate`
-- Luu `pageCount` va `chunkCount` vao bang `document_versions` khi ACTIVE
+---
 
-**2. Implement `GET /api/query/stream`** — Uu tien cao, blocking Flutter SSE Chat
+### 🟢 T4 — Việc cần làm NGAY (tuần hiện tại)
 
-- Proxy SSE tu `POST /ai/query/stream` ve client Flutter
-- Nhan `QueryRequest` tu Flutter, forward toi AI voi `allowedVersionIds` tu RBAC
-- Tra `text/event-stream` ve Flutter — giu nguyen format SSE (meta/delta/done/error)
-- Ghi `query_logs` khi nhan duoc event `done` (co latencyMs)
-- Them header `X-Accel-Buffering: no` + `Cache-Control: no-cache` de Nginx khong buffer SSE
-
-**3. Implement `GET /api/files/**` (Proxy MinIO)** — blocking Flutter Citation Viewer
-
-- Tra ve binary image (jpeg/png) tu MinIO bucket
-- Bao mat: xac thuc JWT, check RBAC theo `allowed_version_ids`
-
-**4. Cap nhat `TaskId` trong ingest flow**
-
-- Khi BE nhan 202 tu `POST /ai/ingest`, luu `task_id` vao `document_versions.celery_task_id`
-- Dung de link ket qua tu `/ai/status/{task_id}` neu can debug
-
-#### Flutter (Nguoi 4)
-
-**1. SSE Chat UI (tich hop `/api/query/stream`)**
-
-- Dung `dart:async` + `http.Client` hoac package `sse_client` de nhan SSE events
-- Lang nghe `event: meta` -> hien thi citations/guard ngay lap tuc
-- Lang nghe `event: delta` -> `setState()` append tung token vao chat bubble (typing effect)
-- Lang nghe `event: done` -> hien thi latencyMs, tat spinner
-- Lang nghe `event: error` -> hien thi banner loi
-- **Luu y**: `search_screen.dart` hien dung `POST /api/query` dong bo — can nang cap len SSE hoac them tab moi
-
-**2. Upload progress UI (dung STOMP WebSocket)**
-
-- Sau khi upload thanh cong, subscribe `/topic/ingest/{versionId}` qua STOMP
-- Hien thi progress bar voi cac buoc: `OCR -> Embedding -> Da san sang`
-- Fallback: polling `GET /ai/status/{taskId}` neu WS chua ket noi duoc
-
-**3. Citation Viewer (sau khi BE co `GET /api/files/**`)**
-
-- Hien thi anh trang + overlay bbox crop
-- Banner do khi `guard.locked = true`, chip "So lieu truc tiep" khi `guard.numericRule = true`
+**Đường găng T4:** Thu thập eval set + OCR pre-processing + bắt đầu thực nghiệm E1–E2.
 
 #### AI Engineer (Nguoi 3)
 
-- Ho tro BE test `ingest-status` endpoint va luong STOMP broadcast
-- Ho tro Flutter test SSE `query/stream` end-to-end
-- Bat dau thu thap bo eval set nho (20–30 cau hoi + trang nguon) de san sang cho harness T4
-- Kiem tra `line_boxes` trong `Chunk` (chunk.py), dam bao bbox khong None trong ChromaDB metadata
+- Thu thap bo eval set v1 (20–30 cau hoi + trang nguon)
+- OCR pre-processing: tang DPI 300, denoising OpenCV, do CER lai
+- DSPy BootstrapFewShot de toi uu prompt lap dat
+- Dam bao bbox metadata khong NULL trong ChromaDB (chunk.py / index.py)
+
+#### Flutter (Nguoi 4)
+
+**Upload progress UI (STOMP WebSocket)** — con lai trong M3b
+- Sau khi upload thanh cong, subscribe `/topic/ingest/{versionId}` qua STOMP
+- Hien thi progress bar: `OCR → Embedding → Đã sẵn sàng`
+- Fallback polling `GET /ai/status/{taskId}` neu WS unstable
 
 #### PM (Nguoi 1)
 
-**Viet Chuong 2 (Co so ly thuyet)**
-- RAG (Retrieval-Augmented Generation) — pipeline kien truc moi (Async Worker)
-- SLM (Small Language Models) va Quantization
-- Ky thuat kiem soat ao giac (Hallucination control)
-- **Cap nhat `docs/API-CONTRACT.md`** bo sung: `/api/query/stream`, `/api/internal/ingest-status`, `/api/files/**`
+- Viet Chuong 2 luan van (Co so ly thuyet: RAG, SLM, Hallucination control)
+- Cap nhat `docs/API-CONTRACT.md` voi cac endpoint T3 moi: `/api/query/stream`, `/api/query/vision`, `/api/admin/users/**`, `/api/internal/ingest-status`, `/api/files/**`
 
 #### Data/Eval (Nguoi 5)
 
 **Eval set v1 + Harness v1**
 - Tao file `data/eval/questions.csv` (80–120 cau hoi co dap an chuan)
 - Phan nhom: Factual/so lieu (40%), Quy trinh (40%), Ngoai pham vi (20%)
-- Bat dau nhap script Python (`harness.py`) de doc CSV va tu dong goi API `/ai/query`
+- Viet script Python `harness.py` de doc CSV va tu dong goi API `/ai/query`
 
 ---
 
@@ -236,7 +217,7 @@ data/eval/questions.csv
 | 1 | **OCR: PaddleOCR 3.7 + PyMuPDF** | Khong can system deps (poppler), cai thuan pip, CER 0% EN |
 | 2 | **Rasterize: RENDER_DPI=200 -> 300 (T4)** | A4 du net; nang len 300 DPI cho ban ve A3/A2/A1 co ky hieu nho |
 | 3 | **enable_mkldnn=False** | paddlepaddle 3.3.0 loi oneDNN/PIR runtime khi mkldnn=True |
-| 4 | **LLM & Vision VLM: LM Studio (REST API) + Qwen2-VL-2B-Instruct GGUF Q4_K_M** | Tach inference sang LM Studio local, ho tro ca Text RAG lan Multimodal Vision phân tích trực tiếp hình ảnh bản vẽ, nhẹ (~2.78GB) chạy tốt trên CPU máy yếu |
+| 4 | **LLM & Vision VLM: Ollama (production) / LM Studio (dev) + Qwen2-VL-2B-Instruct GGUF Q4_K_M** | Ollama chạy headless trong Docker (server/VPS), LM Studio cho dev local. Qwen2-VL hỗ trợ cả Text RAG lẫn Multimodal Vision phân tích trực tiếp hình ảnh bản vẽ, RAM ~1.3GB Q4 vừa đủ VPS 8GB |
 | 5 | **Embed: multilingual-e5-small ONNX** | <400MB, multilingual, chay CPU |
 | 6 | **Vector DB: ChromaDB** | Persistent tren edge, de dong goi offline |
 | 7 | **Frontend: Flutter Web + Android** | 1 codebase, target chinh: Web kiosk + Android mobile |
@@ -249,13 +230,16 @@ data/eval/questions.csv
 | 14 | **Async Ingest: Celery + Redis (T2)** | Thay the FastAPI BackgroundTasks. Embed model (470MB) chi nap 1 lan trong worker, task_acks_late=True |
 | 15 | **Callback Push per-step (T2)** | AI worker chu dong push trang thai ve BE tai moi buoc — khong can BE polling. Endpoint: `POST /api/internal/ingest-status` |
 | 16 | **SSE Streaming Query (T2)** | `POST /ai/query/stream` stream tung token tu LM Studio theo RFC 8895. Meta event -> chu hien dan — trai nghiem giong ChatGPT |
-| 17 | **BE SSE Proxy `GET /api/query/stream` (T3)** | BE forward SSE tu AI ve Flutter, giu nguyen event format. Ghi query_logs khi nhan event `done`. Flutter khong goi thang AI service |
-| 18 | **STOMP WebSocket cho ingest progress (T3)** | BE broadcast per-step status qua `/topic/ingest/{versionId}` bang `SimpMessagingTemplate`. Flutter subscribe STOMP khi upload xong |
+| 17 | **BE SSE Proxy `POST /api/query/stream` (T3)** | `QueryController.askStreaming()` forward SSE tu AI ve Flutter qua `SseEmitter`. Ghi query_logs khi nhan event `done`. Flutter khong goi thang AI service. |
+| 18 | **STOMP WebSocket cho ingest progress (T3)** | `InternalIngestController.ingestStatus()` broadcast per-step qua `/topic/ingest/{versionId}` bang `SimpMessagingTemplate`. |
 | 19 | **True Multimodal Vision API (VLM)** | Ho tro gui `image_url` base64 qua LM Studio voi model **Qwen2-VL-2B-Instruct GGUF Q4_K_M** xem truc tiep va phan tich hinh ve ban ve ky thuat. |
 | 20 | **ChatML & Small Model Prompt Tuning** | Chuyen history ve OpenAI message list `[{"role": "user/assistant", ...}]`, rut gon system prompt de cac model 1.5B/3B (Qwen 2.5, Llama 3.2) chay mượt ma khong lặp lai system prompt. |
 | 21 | **Visual Bounding Box Chunking & `image_path`** | Cắt các vùng sơ đồ/bản vẽ thành file ảnh riêng trong `uploads/crops/`, lưu `image_path` vào metadata ChromaDB để Frontend UI render ảnh trích dẫn trực tiếp. |
 | 22 | **Pure-Text Vision Skip** | Tự động phát hiện và bỏ qua Qwen2-VL 2B khi trang PDF là thuần văn bản để tối ưu Ingestion latency và tiết kiệm tài nguyên CPU/GPU. |
 | 23 | **Fullstack Delete Document Pipeline** | Xóa tài liệu đồng bộ qua `DELETE /api/documents/{id}` ở Backend (MinIO PDF/pages + DB records) + `DELETE /ai/documents/{document_id}` ở AI Service (purge ChromaDB vectors + crop files) + nút xóa UI Flutter. |
+| 24 | **Admin Console Flutter + BE CRUD (T3)** | `admin_screen.dart` quản lý toàn bộ người dùng: search/filter/tạo/reset-mật-khẩu/kích-hoạt-khóa. BE `UserController` `/api/admin/users` với 5 endpoint, `@PreAuthorize("hasRole('ADMIN')")`. |
+| 25 | **SSE Chat UI multi-turn (T3)** | `search_screen.dart` nâng cấp thành ChatGPT-like: `_ChatEntry` list, stream từng token SSE `delta`, citations render ngay lập tức khi nhận `meta`, filter tài liệu theo version ID. |
+| 26 | **Snap & Ask Vision Screen (T3)** | `snap_ask_screen.dart`: per-image Q&A threads (`_SnapEntry` + `_ChatMessage`), camera/file_picker, gọi `POST /api/query/vision` multipart, fallback answer offline graceful. |
 
 
 ---

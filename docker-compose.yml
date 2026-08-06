@@ -4,6 +4,8 @@ volumes:
   minio_data: {}
   chroma_data: {}  # ChromaDB persistent vector index (T2 — M1c)
   redis_data: {}   # Redis persistence cho Celery task results
+  ollama_data: {}
+  paddle_models: {}
 
 services:
   postgres:
@@ -91,11 +93,15 @@ services:
       CHROMA_PORT: 8000
       # Redis — Celery broker/backend (service `redis`, port nội bộ 6379)
       REDIS_URL: redis://redis:6379/0
+      LM_STUDIO_BASE_URL: http://ollama:11434/v1
+      LM_STUDIO_API_KEY: ollama
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5vl:3b}
     depends_on:
       - minio
       - chroma
       - ai-ocr
       - redis
+      - ollama
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -120,11 +126,15 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       REDIS_URL: redis://redis:6379/0
+      LM_STUDIO_BASE_URL: http://ollama:11434/v1
+      LM_STUDIO_API_KEY: ollama
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5vl:3b}
     depends_on:
       - redis
       - minio
       - chroma
       - ai-ocr
+      - ollama
     restart: unless-stopped
 
   # ── Flower: Celery monitoring UI (http://localhost:5555) ─────────────────
@@ -149,14 +159,26 @@ services:
     container_name: dcid-ai-ocr
     environment:
       AI_INTERNAL_TOKEN: change-me-internal-token
+      PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
       MINIO_BUCKET: kcn-docs
+    volumes:
+      # OCR dependencies are heavy; mount application code so local changes do not
+      # require exporting a multi-GB Paddle image on every rebuild.
+      - ./dcid-ai/app:/srv/dcid-ai/app:ro
+      - paddle_models:/root/.paddlex
     depends_on:
       - minio
     ports:
       - "8002:8001"
+    cpus: 2.0
+    mem_limit: 2g
     restart: unless-stopped
 
   chroma:
@@ -166,6 +188,21 @@ services:
       - chroma_data:/chroma/.chroma/index
     ports:
       - "8001:8000"  # host 8001 tránh đụng với dcid-ai (8000)
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dcid-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"  # OpenAI-compatible local model API
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
 
   kafka:

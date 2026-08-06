@@ -7,6 +7,8 @@ import '../data/auth_repository_interface.dart';
 import '../data/docs_repository.dart';
 import '../data/docs_repository_interface.dart';
 
+import '../data/offline_cache_repository.dart';
+
 final secureStorageProvider =
     Provider<FlutterSecureStorage>((ref) => const FlutterSecureStorage());
 
@@ -25,10 +27,10 @@ final authRepositoryProvider = Provider<IAuthRepository>(
   ),
 );
 
-/// Document operations. Override with `MockDocsRepository` during Week 1:
-///
-/// ```dart
-/// docsRepositoryProvider.overrideWithValue(MockDocsRepository()),
-/// ```
-final docsRepositoryProvider =
-    Provider<IDocsRepository>((ref) => DocsRepository(ref.watch(apiClientProvider)));
+/// Document operations with local offline caching.
+final docsRepositoryProvider = Provider<IDocsRepository>(
+  (ref) => OfflineCacheDocsRepository(
+    DocsRepository(ref.watch(apiClientProvider)),
+    ref.watch(secureStorageProvider),
+  ),
+);

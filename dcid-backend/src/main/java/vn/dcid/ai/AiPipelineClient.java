@@ -18,5 +18,8 @@ public interface AiPipelineClient {
 
     /** Thông báo AI service xóa toàn bộ vector chunks của tài liệu. */
     void deleteDocument(java.util.UUID documentId);
+
+    /** Truy vấn RAG stream. */
+    void queryStream(AiQueryRequest request, java.util.function.Consumer<String> tokenConsumer, Runnable onComplete, java.util.function.Consumer<Throwable> onError);
 }
 

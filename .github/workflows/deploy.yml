@@ -1,0 +1,117 @@
+name: Deploy DCID
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          
+      - name: Build backend with Maven
+        run: |
+          cd dcid-backend
+          ./mvnw clean package -DskipTests
+          
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: dcid-backend/target/*.jar
+          retention-days: 1
+
+  build-flutter-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+          
+      - name: Build Flutter web
+        run: |
+          cd dcid-app
+          flutter pub get
+          flutter build web --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+          
+      - name: Upload Flutter artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web
+          path: dcid-app/build/web/
+          retention-days: 1
+
+  deploy:
+    needs: [build-backend, build-flutter-web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: dcid-backend/target/
+          
+      - name: Download Flutter artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-web
+          path: flutter-build/
+          
+      - name: SCP artifacts to VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "flutter-build/*"
+          target: "/opt/dcid/flutter-build"
+          strip_components: 1
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            cd /opt/dcid/dcid-web
+
+            # Pull latest code (Dockerfiles, compose, config)
+            git pull origin main
+
+            # Ghi .env.production từ GitHub Secret
+            echo "${{ secrets.ENV_FILE_CONTENT }}" > .env.production
+
+            # Build lại images bị thay đổi (backend, ai, ai-ocr)
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
+              --env-file .env.production build --no-cache backend ai ai-ocr
+
+            # Rolling restart (zero-downtime với docker-compose up -d)
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
+              --env-file .env.production up -d
+
+            # Deploy Flutter Web static
+            rm -rf /var/www/dcid-web/*
+            cp -r /opt/dcid/flutter-build/* /var/www/dcid-web/
+
+            # Health check
+            sleep 15
+            curl -sf http://localhost:8080/api/health && echo "✓ Backend healthy" || echo "✗ Health check failed"

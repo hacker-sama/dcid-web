@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -7,6 +8,7 @@ import 'docs_repository_interface.dart';
 import 'models/answer_result.dart';
 import 'models/document_detail.dart';
 import 'models/document_summary.dart';
+import 'models/sse_event.dart';
 
 /// Read/query/upload documents via the backend (which forwards to the AI service).
 class DocsRepository implements IDocsRepository {
@@ -33,6 +35,105 @@ class DocsRepository implements IDocsRepository {
       },
     );
     return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
+  }
+
+  @override
+  Stream<SseEvent> askStream(
+    String question, {
+    bool reasoningMode = false,
+    List<String>? selectedVersionIds,
+    List<Map<String, String>>? history,
+  }) async* {
+    try {
+      final response = await _api.dio.post<ResponseBody>(
+        '/api/query/stream',
+        data: {
+          'question': question,
+          'reasoningMode': reasoningMode,
+          if (selectedVersionIds != null && selectedVersionIds.isNotEmpty)
+            'selectedVersionIds': selectedVersionIds,
+          if (history != null && history.isNotEmpty)
+            'history': history,
+        },
+        options: Options(
+          responseType: ResponseType.stream,
+          receiveTimeout: const Duration(minutes: 10),
+          headers: {'Accept': 'text/event-stream'},
+        ),
+      );
+
+      final stream = response.data?.stream;
+      if (stream == null) {
+        yield const SseEvent(
+          type: SseEventType.error,
+          errorMessage: 'Không nhận được dữ liệu stream từ server',
+        );
+        return;
+      }
+
+      String buffer = '';
+      String eventType = 'message';
+
+      await for (final chunk in stream.map((bytes) => utf8.decode(bytes))) {
+        buffer += chunk;
+        final lines = buffer.split('\n');
+        buffer = lines.removeLast();
+
+        for (final line in lines) {
+          final trimmed = line.trim();
+          if (trimmed.startsWith('event:')) {
+            eventType = trimmed.substring(6).trim();
+          } else if (trimmed.startsWith('data:')) {
+            final dataStr = trimmed.substring(5).trim();
+            if (dataStr.isEmpty) continue;
+            try {
+              final json = jsonDecode(dataStr) as Map<String, dynamic>;
+              // The AI service includes the event name in its JSON payload.
+              // Standard SSE `event:` lines remain supported as a fallback.
+              final effectiveEvent = json['event'] as String? ?? eventType;
+              if (effectiveEvent == 'meta') {
+                final citations = (json['citations'] as List<dynamic>? ?? [])
+                    .map((e) => Citation.fromJson(e as Map<String, dynamic>))
+                    .toList();
+                final guard = json['guard'] as Map<String, dynamic>? ?? {};
+                yield SseEvent(
+                  type: SseEventType.meta,
+                  citations: citations,
+                  locked: guard['locked'] as bool? ?? false,
+                  numericRule: guard['numericRule'] as bool? ?? false,
+                  reasoningMode:
+                      guard['reasoningMode'] as bool? ?? reasoningMode,
+                  confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+                );
+              } else if (effectiveEvent == 'delta') {
+                yield SseEvent(
+                  type: SseEventType.delta,
+                  textDelta:
+                      json['text'] as String? ?? json['delta'] as String? ?? '',
+                );
+              } else if (effectiveEvent == 'done') {
+                yield SseEvent(
+                  type: SseEventType.done,
+                  latencyMs: (json['latencyMs'] as num?)?.toInt(),
+                );
+              } else if (effectiveEvent == 'error') {
+                yield SseEvent(
+                  type: SseEventType.error,
+                  errorMessage: json['message'] as String? ?? 'Lỗi truy vấn AI',
+                );
+              }
+            } catch (_) {
+              if (eventType == 'delta') {
+                yield SseEvent(type: SseEventType.delta, textDelta: dataStr);
+              }
+            }
+            eventType = 'message';
+          }
+        }
+      }
+    } catch (e) {
+      yield SseEvent(type: SseEventType.error, errorMessage: e.toString());
+    }
   }
 
   @override

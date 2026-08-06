@@ -1,9 +1,10 @@
 # Cài đặt & chạy dự án (Getting Started)
 
-> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (16/07/2026) —
+> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (06/08/2026) —
 > xem [§5](#5-cái-gì-chạy-được--cái-gì-còn-mock) để biết rõ phần nào là thật, phần nào còn mock.
 > **Toàn bộ luồng dưới đây đã chạy thật và verify end-to-end** (login → upload PDF → OCR qua `ai-ocr` →
-> chunking → embedding → index ChromaDB → version ACTIVE với đúng số trang → hỏi–đáp), không phải suy đoán từ code.
+> chunking → embedding → index ChromaDB → version ACTIVE với đúng số trang → hỏi–đáp SSE ChatGPT-like
+> → Snap & Ask Vision → Admin Console CRUD), không phải suy đoán từ code.
 
 ---
 
@@ -18,7 +19,7 @@ dcid-ai-ocr/    FastAPI (Python/Uvicorn)— worker bóc tách chữ chuyên dụ
 dcid-app/       Flutter                — web (kiosk/admin) + Android (mobile)            :3000 (web dev)
 ```
 
-Hạ tầng (Docker): **PostgreSQL** (bắt buộc) · **MinIO** (bắt buộc để upload) · **ChromaDB** (bắt buộc cho vector RAG) · Redis, Kafka, Zookeeper (đã cấu hình sẵn).
+Hạ tầng (Docker): **PostgreSQL** (bắt buộc) · **MinIO** (bắt buộc để upload) · **ChromaDB** (bắt buộc cho vector RAG) · **Ollama** (LLM inference headless — production) · Redis, Kafka, Zookeeper (đã cấu hình sẵn).
 
 ---
 
@@ -155,29 +156,47 @@ flutter pub get
 
 **Web** (khuyến nghị cho máy tính — kiosk/admin, xem [`FRONTEND.md`](FRONTEND.md) §0.1):
 ```bash
-flutter run -d chrome --web-port=3000 --dart-define=API_BASE_URL=http://localhost:8080
+flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 ```
 Cố định port **3000** để khớp CORS mặc định của backend (`CORS_ALLOWED_ORIGINS=http://localhost:3000`).
 
 **Android** (thiết bị/emulator đã kết nối):
 ```bash
-flutter run --dart-define=API_BASE_URL=http://localhost:8080
+flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 ```
 
-### 3.5. Local LLM Service (LM Studio — DeepSeek R1) — port 1234
+### 3.5. Local LLM Service — Ollama
 
-Để tính năng Hỏi–đáp RAG (`/ai/query`) hoạt động thực tế với LLM, hệ thống sử dụng **LM Studio** chạy local (API tương thích OpenAI) thay vì chạy trực tiếp `llama-cpp-python` bên trong container Python:
+#### Option A — Ollama trong Docker (khuyến nghị cho production/server)
 
-1. Tải và cài đặt **[LM Studio](https://lmstudio.ai/)**.
-2. Tìm và tải model: `DeepSeek-R1-Distill-Qwen-1.5B-Q8_0` (Identifier hiển thị trong UI: `deepseek-r1-distill-qwen-1.5b`).
-3. Vào tab **Local Inference Server** trên LM Studio, bật server ở port **1234** (`http://localhost:1234/v1`).
-4. `dcid-ai` (`config.py` và `docker-compose.yml`) mặc định đã cấu hình kết nối tới `http://host.docker.internal:1234/v1` (`http://localhost:1234/v1` khi chạy uvicorn trực tiếp) với model `deepseek-r1-distill-qwen-1.5b`, kèm cấu hình tối ưu chuyên kỹ thuật: **`temperature=0.2`**, **`top_p=0.9`**, **`repetition_penalty=1.2`** (tự động thử lại không tham số nếu server local từ chối `repetition_penalty`).
+```bash
+# Ollama đã được thêm vào docker-compose.yml — chỉ cần pull model
+docker-compose up -d ollama
+docker exec dcid-ollama ollama pull qwen2.5vl:3b
 
-Verify local inference:
+# Verify
+curl http://localhost:11434/v1/models
+# Trả về danh sách model đã được cài trong volume ollama_data
+```
+
+`dcid-ai` đã cấu hình mặc định trỏ về Ollama (`LM_STUDIO_BASE_URL=http://ollama:11434/v1`), không cần đổi gì nếu dùng docker-compose.
+
+#### Tùy chọn cũ — LM Studio (không cần khi chạy dự án bằng Docker)
+
+1. Tải và cài **[LM Studio](https://lmstudio.ai/)**.
+2. Tìm và tải model: `Qwen2-VL-2B-Instruct-GGUF` — chọn bản **Q4_K_M** (~2.78GB).
+3. Vào tab **Local Inference Server**, bật server ở port **1234** (`http://localhost:1234/v1`).
+4. Trong `dcid-ai/.env`, đổi:
+   ```
+   LM_STUDIO_BASE_URL=http://host.docker.internal:1234/v1
+   LM_STUDIO_MODEL=qwen2-vl-2b-instruct
+   ```
+
+Verify:
 ```bash
 curl http://localhost:1234/v1/models
-# Trả về danh sách model đang load trong LM Studio
 ```
+
 > Nếu chạy trên **thiết bị thật/emulator riêng** (không phải cùng máy với backend), đổi
 > `API_BASE_URL` thành IP LAN của máy chạy backend (`http://<ip-máy>:8080`), không dùng `localhost`.
 
@@ -189,9 +208,11 @@ curl http://localhost:1234/v1/models
 
 1. Mở app (web hoặc Android) → đăng nhập `admin` / `admin123`.
 2. Vào tab **Tài liệu** → nút "Tải tài liệu" → chọn 1 file PDF bất kỳ → điền Tiêu đề + Loại tài liệu → Tải lên.
-3. Backend lưu PDF vào MinIO, gọi `dcid-ai` ingest → `dcid-ai` gọi `ai-ocr` (PaddleOCR + PyMuPDF) bóc tách chữ kèm **tọa độ không gian (Bbox: `[x0, y0, x1, y1]`)** → `chunk.py` cắt đoạn cấu trúc hóa Markdown (`### [Bảng/Đoạn kỹ thuật - Trang X | Bbox: ...]`) → `embed.py` nhúng vector `multilingual-e5-small` → `index.py` upsert vào **ChromaDB** (`kcn_chunks`) kèm metadata `bbox` & `snippet` → gọi callback về backend đổi status sang **ACTIVE** (vài chục giây tùy CPU).
+3. Backend lưu PDF vào MinIO, gọi `dcid-ai` ingest → `dcid-ai` gọi `ai-ocr` (PaddleOCR + PyMuPDF) bóc tách chữ kèm **tọa độ không gian (Bbox: `[x0, y0, x1, y1]`)** → `chunk.py` cắt đoạn cấu trúc hóa Markdown (`### [Bảng/Đoạn kỹ thuật - Trang X | Bbox: ...]`) → `embed.py` nhúng vector `multilingual-e5-small` → `index.py` upsert vào **ChromaDB** (`kcn_chunks`) kèm metadata `bbox` & `snippet` → gọi callback về backend đổi status sang **ACTIVE** (vài chục giây tùy CPU). AI worker đồng thời push per-step status (`PROCESSING_OCR → PROCESSING_EMBED → READY`) về BE qua `POST /api/internal/ingest-status` → broadcast STOMP `/topic/ingest/{versionId}`.
 4. Bấm vào tài liệu vừa tạo → thấy version với chip trạng thái **ACTIVE** và đúng số trang PDF.
-5. Vào tab **Tra cứu**, hỏi thử một câu chứa "điện áp" → nhận câu trả lời thực tế từ LLM kèm trích dẫn tọa độ `p{pageNo}_[{bbox}]`. Bấm vào nhãn trích dẫn để mở **Hộp thoại Trích Dẫn Không Gian (`AlertDialog`)** hiển thị chính xác tọa độ Bbox và đoạn văn bản gốc (`snippet`).
+5. Vào tab **Tra cứu**, hỏi thử một câu chứa "điện áp" → nhận câu trả lời **SSE streaming token-by-token** (typing effect ChatGPT-like) kèm trích dẫn tọa độ `p{pageNo}_[{bbox}]`. Khi nhận được `event: meta`, citations và guardrail banner hiện ngay lập tức. Bấm vào nhãn trích dẫn để mở **Hộp thoại Trích Dẫn Không Gian (`AlertDialog`)** hiển thị chính xác tọa độ Bbox và đoạn văn bản gốc (`snippet`).
+6. Vào tab **Snap & Ask** → chụp ảnh hoặc chọn file ảnh bản vẽ → hỏi câu về thông số kỹ thuật → nhận câu trả lời Vision từ Qwen2-VL qua `POST /api/query/vision`.
+7. *(ADMIN only)* Vào tab **Quản trị** → tạo tài khoản người dùng mới, reset mật khẩu, kích hoạt/khóa tài khoản.
 
 ### 4.1. Bộ công cụ kiểm thử độc lập ChromaDB (`chroma-tools/`)
 
@@ -204,7 +225,7 @@ python chroma-tools/clear_collection.py                  # Dọn dẹp collectio
 ```
 
 **Đã verify bằng lệnh thật (curl & smoke_test_t2.py & chroma-tools):** upload PDF
-→ backend lưu MinIO + gọi ingest → `dcid-ai` + `ai-ocr` bóc tách chữ & tọa độ Bbox + đếm trang → chunking + embedding + upsert ChromaDB → callback → `GET /api/documents/{id}` trả `status: "ACTIVE"` → `/api/query` retrieve top-k ChromaDB + guardrail + gọi LM Studio trả lời đúng logic kẹp trích dẫn Bbox. Audit log ghi đúng `DOCUMENT_UPLOAD` lẫn `DOCUMENT_INGESTED`.
+→ backend lưu MinIO + gọi ingest → `dcid-ai` + `ai-ocr` bóc tách chữ & tọa độ Bbox + đếm trang → chunking + embedding + upsert ChromaDB → callback → `GET /api/documents/{id}` trả `status: "ACTIVE"` → `/api/query` retrieve top-k ChromaDB + guardrail + gọi LLM trả lời đúng logic kẹp trích dẫn Bbox. Audit log ghi đúng `DOCUMENT_UPLOAD` lẫn `DOCUMENT_INGESTED`.
 
 ---
 
@@ -216,16 +237,60 @@ python chroma-tools/clear_collection.py                  # Dọn dẹp collectio
 | Upload PDF → MinIO → tạo version | ✅ Thật |
 | Ingest pipeline (OCR + Chunking + Embedding + ChromaDB index) | ✅ Thật — PaddleOCR 3.7 + PyMuPDF bóc tách chữ và tọa độ Bbox + cấu trúc hóa Markdown + `multilingual-e5-small` + `ChromaDB` (`kcn_chunks` kèm metadata `bbox`, `snippet`) |
 | `document_pages` (ảnh trang, bbox) | ✅ `ocrText` và `bbox` (`boxes` Bbox `[x0,y0,x1,y1]`) đã bóc tách thật; `imageKey` sẵn sàng cho crop render |
-| Hỏi–đáp `/api/query` & Trích dẫn Không gian | ✅ **Thật (RAG + LLM)** — retrieve top-k từ ChromaDB, kiểm tra guardrail (`allowedVersionIds`, threshold θ=0.60), sinh câu trả lời qua LM Studio (`deepseek-r1-distill-qwen-1.5b`) kèm trích dẫn `bboxKey` & `snippet`. Tự động bóc tách thẻ `<think>` (reasoning mode). Tự động trả lời cùng ngôn ngữ với câu hỏi người dùng. Nhấp vào nhãn trích dẫn mở Hộp thoại Tọa độ & Nội dung gốc trên Flutter App. |
-| Guardrail (ngưỡng tin cậy, trích số liệu) | ✅ **Thật** — kiểm tra allowed versions, cosine confidence gate < 0.60 → locked, và numeric rule detection trong `query_service.py` |
-| Kiosk fullscreen, Snap & Ask (camera) | ⬜ Chưa làm (M4) |
+| Hỏi–đáp `POST /api/query` (đồng bộ) | ✅ **Thật (RAG + LLM)** — retrieve top-k từ ChromaDB, kiểm tra guardrail, sinh câu trả lời qua Ollama/LM Studio (Qwen2-VL 2B Q4_K_M) kèm trích dẫn `bboxKey` & `snippet` |
+| Hỏi–đáp SSE stream `POST /api/query/stream` | ✅ **Thật** — BE `QueryController.askStreaming()` proxy SSE từ AI về Flutter qua `SseEmitter`, stream từng token |
+| Vision multimodal `POST /api/query/vision` | ✅ **Thật** — BE `QueryController.askWithVision()` nhận multipart (ảnh + question), forward sang AI `/ai/query/vision`, Qwen2-VL phân tích trực tiếp ảnh bản vẽ |
+| File proxy `GET /api/files/{versionId}/{pageNo}/{bboxKey}` | ✅ **Thật** — `FileProxyController` proxy ảnh trang từ MinIO, JWT-protected |
+| Ingest status STOMP broadcast | ✅ **Thật** — `POST /api/internal/ingest-status` → `InternalIngestController` broadcast `/topic/ingest/{versionId}` qua `SimpMessagingTemplate` |
+| Guardrail (ngưỡng tin cậy, trích số liệu) | ✅ **Thật** — kiểm tra allowed versions, cosine confidence gate < 0.60 → locked, và numeric rule detection |
+| Flutter SSE Chat UI (ChatGPT-like typing effect) | ✅ **Thật** — `search_screen.dart`: `askStream()` SSE, `_ChatEntry` list, typing effect per-token, guard banner, filter tài liệu |
+| Flutter Snap & Ask (Vision multimodal) | ✅ **Thật** — `snap_ask_screen.dart`: camera/file_picker, per-image chat thread, gọi `/api/query/vision`, fallback offline graceful |
+| Flutter Admin Console (CRUD người dùng) | ✅ **Thật** — `admin_screen.dart`: list/filter/search, tạo tài khoản, reset mật khẩu, kích hoạt/khóa. Nối API `GET/POST /api/admin/users` |
+| BE Admin User CRUD | ✅ **Thật** — `UserController` `/api/admin/users`: GET (filter role/search), POST create, PUT update, PUT password, PATCH status. `@PreAuthorize("hasRole('ADMIN')")` |
+| Flutter Upload progress UI (STOMP) | ⏾ Chưa làm (T4 — M3b) |
+| Kiosk fullscreen | ⏾ Chưa làm (M4) |
 | Redis / Kafka | Cấu hình sẵn, **chưa có tính năng nào thực sự dùng** — an toàn khi bỏ qua lúc dev |
 
 Chi tiết lộ trình: [`PLAN-THESIS.md`](PLAN-THESIS.md) §5 (bảng cột mốc 8 tuần).
 
+-
+
+## 6. Production Deploy (VPS / Server)
+
+Xem hướng dẫn đầy đủ trong các file sau (tạo ngày 04/08/2026):
+
+| File | Mục đích |
+|---|---|
+| [`docker-compose.prod.yml`](../docker-compose.prod.yml) | Override production: tắt expose internal ports, memory limits, `${ENV}` secrets |
+| [`nginx/dcid.conf`](../nginx/dcid.conf) | Nginx reverse proxy: HTTPS, SSE `proxy_buffering off`, WebSocket Upgrade |
+| [`.env.example`](../.env.example) | Template để tạo `.env.production` với secrets thật |
+| [`scripts/deploy.sh`](../scripts/deploy.sh) | Helper script: `--full`, `--restart`, `--logs`, `--status` |
+| [`scripts/backup.sh`](../scripts/backup.sh) | Backup PostgreSQL tự động (giữ 7 bản) |
+| [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) | GitHub Actions CI/CD: build → SCP → SSH deploy |
+
+**Khởi động production:**
+```bash
+# Sau khi clone repo lên server và tạo .env.production từ .env.example:
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
+  --env-file .env.production up -d
+
+# Tải LLM model (lần đầu tiên, đợi ~5 phút)
+docker exec dcid-ollama ollama pull qwen2-vl:2b-instruct-q4_k_m
+```
+
+**GitHub Secrets cần thiết lập:**
+```
+VPS_HOST        — IP hoặc hostname của VPS
+VPS_USER        — user SSH (thường là root hoặc deploy)
+VPS_SSH_KEY     — private SSH key (PEM format)
+VPS_PORT        — SSH port (mặc định 22)
+API_BASE_URL    — URL công khai của backend (ví dụ: https://your-domain.io/api)
+ENV_FILE_CONTENT — nội dung đầy đủ của file .env.production
+```
+
 ---
 
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 Đã tìm và sửa 3 bug thật khi verify E2E lần đầu (đều đã fix trong code/config hiện tại — liệt kê
 ở đây để hiểu nếu bạn checkout một commit cũ hơn, hoặc gặp biến thể tương tự):
@@ -251,7 +316,7 @@ Các tình huống khác:
 
 ---
 
-## 7. Tài liệu liên quan
+## 8. Tài liệu liên quan
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — kiến trúc tổng thể 2 mặt phẳng, sơ đồ, data model.
 - [`ERD.md`](ERD.md) — schema Postgres chi tiết.

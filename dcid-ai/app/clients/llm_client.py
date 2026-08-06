@@ -1,8 +1,7 @@
-"""Client kết nối LM Studio qua OpenAI-compatible REST API.
+"""Client kết nối local LLM qua OpenAI-compatible REST API.
 
-LM Studio expose endpoint `/v1/chat/completions` tương thích 100% OpenAI SDK.
-Khi chạy trong Docker container: host.docker.internal:1234 trỏ về Host OS (Windows/Linux).
-Khi dev local không Docker: sửa LM_STUDIO_BASE_URL=http://localhost:1234/v1 trong .env.
+Mặc định ứng dụng dùng Ollama tại `/v1/chat/completions`. Các tên cấu hình
+`LM_STUDIO_*` được giữ lại để không làm hỏng file `.env` cũ.
 
 Thiết kế:
 - Client singleton per process (lazy init, thread-safe với lru_cache).
@@ -21,6 +20,129 @@ from typing import Any
 from app.config import get_settings
 
 logger = logging.getLogger("dcid-ai.llm_client")
+
+
+def _supports_extra_repeat_penalty(settings: Any) -> bool:
+    """Chỉ gửi extension penalty cho server/model đã biết là tương thích.
+
+    Ollama có native options riêng và Qwen vision không nhận ổn định hai field
+    extension này qua OpenAI endpoint, nên bỏ chúng để tránh HTTP 400/500.
+    """
+    base_url = str(getattr(settings, "lm_studio_base_url", "")).lower()
+    model = re.sub(r"[^a-z0-9]", "", str(getattr(settings, "lm_studio_model", "")).lower())
+    is_ollama = "ollama" in base_url or ":11434" in base_url
+    is_qwen_vision = "qwen2vl" in model or "qwen25vl" in model
+    return not is_ollama and not is_qwen_vision
+
+
+def _estimated_tokens(value: Any) -> int:
+    """Ước lượng token bảo thủ, không buộc cài tokenizer riêng cho từng model."""
+    if isinstance(value, str):
+        # UTF-8/3 an toàn hơn quy tắc chars/4 với tiếng Việt và dữ liệu OCR.
+        return max(1, (len(value.encode("utf-8")) + 2) // 3)
+    if isinstance(value, list):
+        total = 0
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "image_url":
+                # Ảnh được VLM chuyển thành visual tokens; chừa một ngân sách bảo thủ.
+                total += 1024
+            else:
+                total += _estimated_tokens(item.get("text", ""))
+        return total
+    return 0
+
+
+def _truncate_text_keep_ends(text: str, token_budget: int) -> str:
+    """Giữ tài liệu đầu tiên và câu hỏi ở cuối khi phải thu gọn RAG prompt."""
+    max_bytes = max(0, token_budget * 3)
+    raw = text.encode("utf-8")
+    if len(raw) <= max_bytes:
+        return text
+    if max_bytes < 96:
+        return raw[-max_bytes:].decode("utf-8", errors="ignore") if max_bytes else ""
+
+    marker = "\n...[ngữ cảnh đã được rút gọn để phù hợp model]...\n"
+    available = max_bytes - len(marker.encode("utf-8"))
+    head_size = available * 2 // 3
+    tail_size = available - head_size
+    head = raw[:head_size].decode("utf-8", errors="ignore")
+    tail = raw[-tail_size:].decode("utf-8", errors="ignore")
+    return head + marker + tail
+
+
+def _fit_messages_to_context(messages: list[dict[str, Any]], settings: Any) -> list[dict[str, Any]]:
+    """Rút gọn prompt trước khi gửi, luôn giữ system prompt và câu hỏi mới nhất."""
+    context_window = max(512, int(getattr(settings, "llm_context_window", 4096)))
+    safety = max(64, int(getattr(settings, "llm_context_safety_tokens", 256)))
+    completion = max(1, int(settings.llm_max_tokens))
+    input_budget = max(256, context_window - completion - safety)
+    overhead = 12 * len(messages) + 8
+    content_budget = max(128, input_budget - overhead)
+
+    fitted = [dict(message) for message in messages]
+    total = sum(_estimated_tokens(message.get("content", "")) for message in fitted)
+    if total <= content_budget:
+        return fitted
+
+    # Lịch sử là phần ít quan trọng nhất; loại lượt cũ trước.
+    while len(fitted) > 2 and total > content_budget:
+        removed = fitted.pop(1)
+        total -= _estimated_tokens(removed.get("content", ""))
+
+    if total > content_budget and fitted:
+        system_tokens = sum(_estimated_tokens(m.get("content", "")) for m in fitted[:-1])
+        last = fitted[-1]
+        content = last.get("content", "")
+        text_budget = max(64, content_budget - system_tokens)
+        if isinstance(content, str):
+            last["content"] = _truncate_text_keep_ends(content, text_budget)
+        elif isinstance(content, list):
+            copied = [dict(item) for item in content]
+            text_items = [item for item in copied if item.get("type") == "text"]
+            if text_items:
+                text_items[-1]["text"] = _truncate_text_keep_ends(text_items[-1].get("text", ""), text_budget)
+            last["content"] = copied
+
+    final_total = sum(_estimated_tokens(message.get("content", "")) for message in fitted)
+    logger.info(
+        "Prompt được giới hạn theo context: estimated=%d budget=%d context_window=%d",
+        final_total, content_budget, context_window,
+    )
+    return fitted
+
+
+_UNHELPFUL_ANSWER_PATTERNS = (
+    "vui lòng cung cấp thêm",
+    "xin vui lòng cung cấp thêm",
+    "hãy cung cấp thêm",
+    "không thể phân tích",
+    "không đủ thông tin để phân tích",
+    "i need more information",
+    "please provide more information",
+)
+
+
+def _is_unhelpful_answer(answer: str) -> bool:
+    """Nhận diện câu trả lời né tránh dù RAG đã cung cấp tài liệu."""
+    normalized = answer.casefold().strip()
+    return bool(normalized) and any(pattern in normalized for pattern in _UNHELPFUL_ANSWER_PATTERNS)
+
+
+def _messages_for_direct_retry(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Tạo prompt thử lại ngắn, ép model dùng context hiện có thay vì hỏi thêm."""
+    retry = [dict(message) for message in messages]
+    instruction = (
+        "Câu trả lời trước chưa hữu ích. Hãy dùng ngay dữ liệu trong context để trả lời. "
+        "Nếu người dùng yêu cầu phân tích tài liệu, hãy đưa ra bản tóm tắt có cấu trúc gồm "
+        "nội dung chính, chi tiết kỹ thuật và lưu ý. Không lặp câu hỏi và không yêu cầu thêm dữ liệu."
+    )
+    if retry and retry[0].get("role") == "system":
+        retry[0]["content"] = str(retry[0].get("content", "")) + "\n" + instruction
+    else:
+        retry.insert(0, {"role": "system", "content": instruction})
+    return retry
 
 
 @lru_cache(maxsize=1)
@@ -55,7 +177,7 @@ def _get_client():
 # ────────────────────────────────────────────────────────────────────────────
 
 def generate_answer(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None) -> tuple[str, str]:
-    """Gọi LM Studio để sinh câu trả lời (hỗ trợ cả Text LLM lẫn Vision VLM).
+    """Gọi local LLM để sinh câu trả lời (hỗ trợ cả Text LLM lẫn Vision VLM).
 
     Args:
         system_prompt: Hướng dẫn hành vi + context chunks đã được inject.
@@ -67,7 +189,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         (answer_text, model_name) — cả 2 luôn là str không None.
 
     Raises:
-        LLMConnectionError: LM Studio chưa chạy hoặc không thể kết nối.
+        LLMConnectionError: Ollama chưa chạy hoặc không thể kết nối.
         LLMInferenceError:  Model đã nạp nhưng gặp lỗi inference.
     """
     try:
@@ -97,6 +219,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
             if role and content:
                 role_name = "AI" if role in ("ai", "assistant") else "Người dùng"
                 # Lọc sạch các từ khóa rác và tiêm injection từ lịch sử cũ
+                clean_content = _sanitize_history_content(str(content))
                 clean_content = re.sub(r"\[CÂU HỎI\]|Câu hỏi mới nhất[^\n]*|Câu hỏi:[^\n]*", "", clean_content).strip()
                 # Cắt ngắn câu trả lời cũ của assistant
                 if role_name == "AI" and len(clean_content) > 150:
@@ -117,6 +240,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         user_content = final_user_prompt
 
     messages.append({"role": "user", "content": user_content})
+    messages = _fit_messages_to_context(messages, s)
 
     call_kwargs: dict[str, Any] = {
         "model": s.lm_studio_model,
@@ -129,7 +253,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     if top_p and 0.0 < top_p < 1.0:
         call_kwargs["top_p"] = top_p
     # frequency/presence penalty — CHỈ thêm khi khác 0;
-    # LM Studio có thể trả Channel Error khi nhận các field này cho một số model
+    # Một số OpenAI-compatible server có thể lỗi khi nhận các field này.
     freq_p = getattr(s, "llm_frequency_penalty", 0.0)
     pres_p = getattr(s, "llm_presence_penalty", 0.0)
     if freq_p:
@@ -138,7 +262,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         call_kwargs["presence_penalty"] = pres_p
 
     rep_penalty = getattr(s, "llm_repetition_penalty", 0.0)
-    if rep_penalty and rep_penalty > 1.0 and "qwen2-vl" not in s.lm_studio_model.lower():
+    if rep_penalty and rep_penalty > 1.0 and _supports_extra_repeat_penalty(s):
         call_kwargs["extra_body"] = {
             "repeat_penalty": rep_penalty,
             "repetition_penalty": rep_penalty
@@ -148,26 +272,26 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         response = client.chat.completions.create(**call_kwargs)
     except APIConnectionError as exc:
         logger.error(
-            "LM Studio không thể kết nối tại %s — Kiểm tra LM Studio đang chạy trên Host (port 1234). Error: %s",
+            "Ollama không thể kết nối tại %s — kiểm tra container dcid-ollama. Error: %s",
             s.lm_studio_base_url, exc,
         )
         raise LLMConnectionError(
-            f"LM Studio không phản hồi tại {s.lm_studio_base_url}. "
-            "Hãy mở LM Studio trên máy Host → nạp model → Start Server (port 1234)."
+            f"Ollama không phản hồi tại {s.lm_studio_base_url}. "
+            "Hãy kiểm tra container dcid-ollama và model qwen2.5vl:3b."
         ) from exc
     except APITimeoutError as exc:
         logger.error(
-            "LM Studio timeout sau %.1fs — model=%s. Thử tăng LLM_TIMEOUT hoặc dùng model nhỏ hơn.",
+            "Ollama timeout sau %.1fs — model=%s. Thử tăng LLM_TIMEOUT hoặc kiểm tra RAM.",
             s.llm_timeout, s.lm_studio_model,
         )
         raise LLMInferenceError(
-            f"LM Studio timeout sau {s.llm_timeout}s. "
-            "Kiểm tra: model còn xử lý? RAM/VRAM đủ? Thử model nhỏ hơn (1.5B)."
+            f"Ollama timeout sau {s.llm_timeout}s. "
+            "Kiểm tra container, model và dung lượng RAM/VRAM."
         ) from exc
     except APIStatusError as exc:
-        # Channel Error — LM Studio trả HTTP error (400/500) do params không hợp lệ
+        # OpenAI-compatible endpoint trả HTTP error (400/500) do params không hợp lệ.
         logger.error(
-            "LM Studio Channel Error (status %s): %s — thử lại với params tối thiểu.",
+            "Ollama API error (status %s): %s — thử lại với params tối thiểu.",
             exc.status_code, exc.message,
         )
         # Retry với params tối thiểu (chỉ messages + temperature + max_tokens)
@@ -181,8 +305,8 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         except Exception as retry_exc:  # noqa: BLE001
             logger.error("Retry thất bại: %s", retry_exc)
             raise LLMInferenceError(
-                f"LM Studio Channel Error (status {exc.status_code}). "
-                "Kiểm tra: model đã nạp chưa? LM Studio Server đang chạy?"
+                f"Ollama API error (status {exc.status_code}). "
+                "Kiểm tra model qwen2.5vl:3b đã được pull và container đang chạy."
             ) from exc
     except Exception as exc:  # noqa: BLE001
         logger.error("LLM inference lỗi không xác định: %s", exc)
@@ -193,6 +317,33 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
     answer = _clean_think_tags(raw_content, fallback_reasoning=reasoning_content)
     model_used = response.model or s.lm_studio_model
+
+    # Model nhỏ đôi khi bỏ qua context và yêu cầu người dùng gửi thêm tài liệu.
+    # Thử lại một lần với chỉ dẫn trực tiếp, không mang theo sampling mở rộng.
+    if _is_unhelpful_answer(answer):
+        logger.warning("LLM trả lời né tránh dù đã có RAG context; đang thử lại một lần.")
+        try:
+            retry_response = client.chat.completions.create(
+                model=s.lm_studio_model,
+                messages=_fit_messages_to_context(_messages_for_direct_retry(messages), s),
+                temperature=min(s.llm_temperature, 0.2),
+                max_tokens=s.llm_max_tokens,
+            )
+            retry_msg = retry_response.choices[0].message
+            retry_answer = _clean_think_tags(
+                retry_msg.content or "",
+                fallback_reasoning=(
+                    getattr(retry_msg, "reasoning_content", None)
+                    or getattr(retry_msg, "reasoning", None)
+                    or ""
+                ),
+            )
+            if retry_answer.strip():
+                answer = retry_answer
+                response = retry_response
+                model_used = retry_response.model or s.lm_studio_model
+        except Exception as retry_exc:  # noqa: BLE001
+            logger.warning("Thử lại câu trả lời trực tiếp thất bại: %s", retry_exc)
 
     # DEBUG: log raw và cleaned để phát hiện blank answer
     logger.debug(
@@ -225,7 +376,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
 
 
 def generate_answer_stream(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None):
-    """Generator: Stream từng token text từ LM Studio về client qua SSE (hỗ trợ cả Vision VLM).
+    """Generator: stream token từ local LLM về client qua SSE (hỗ trợ Vision VLM).
 
     Sử dụng OpenAI SDK streaming mode (stream=True). Mỗi lần yield là một
     đoạn text (delta) nhỏ từ model — phù hợp để pipe thẳng vào SSE response.
@@ -287,6 +438,7 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
         user_content = user_prompt
 
     messages.append({"role": "user", "content": user_content})
+    messages = _fit_messages_to_context(messages, s)
 
     stream_kwargs: dict = {
         "model": s.lm_studio_model,
@@ -301,7 +453,7 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
         stream_kwargs["top_p"] = top_p
 
     rep_penalty = getattr(s, "llm_repetition_penalty", 0.0)
-    if rep_penalty and rep_penalty > 1.0 and "qwen2-vl" not in s.lm_studio_model.lower():
+    if rep_penalty and rep_penalty > 1.0 and _supports_extra_repeat_penalty(s):
         stream_kwargs["extra_body"] = {
             "repeat_penalty": rep_penalty,
             "repetition_penalty": rep_penalty
@@ -375,22 +527,22 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
 
     except APIConnectionError as exc:
         if image_base64:
-            logger.warning("LM Studio Vision stream kết nối lỗi (%s) → Thử lại chế độ Text RAG thuần...", exc)
+            logger.warning("Ollama Vision stream kết nối lỗi (%s) → thử lại chế độ Text RAG thuần...", exc)
             yield from generate_answer_stream(system_prompt, user_prompt, history=history, image_base64=None)
             return
         logger.error("LLM stream kết nối thất bại: %s", exc)
         raise LLMConnectionError(
-            f"LM Studio không phản hồi tại {s.lm_studio_base_url}. "
-            "Hãy mở LM Studio trên máy Host → nạp model → Start Server (port 1234)."
+            f"Ollama không phản hồi tại {s.lm_studio_base_url}. "
+            "Hãy kiểm tra container dcid-ollama và model qwen2.5vl:3b."
         ) from exc
     except APITimeoutError as exc:
         if image_base64:
-            logger.warning("LM Studio Vision stream timeout (%s) → Thử lại chế độ Text RAG thuần...", exc)
+            logger.warning("Ollama Vision stream timeout (%s) → thử lại chế độ Text RAG thuần...", exc)
             yield from generate_answer_stream(system_prompt, user_prompt, history=history, image_base64=None)
             return
         logger.error("LLM stream timeout sau %.1fs", s.llm_timeout)
         raise LLMInferenceError(
-            f"LM Studio timeout sau {s.llm_timeout}s khi streaming."
+            f"Ollama timeout sau {s.llm_timeout}s khi streaming."
         ) from exc
     except APIStatusError as exc:
         if image_base64:
@@ -468,6 +620,7 @@ def _clean_think_tags(text: str, fallback_reasoning: str = "") -> str:
 
     # Loại bỏ các block meta (ví dụ: [CHỈ THỊ CHUYÊN GIA...]: ... TUYỆT ĐỐI KHÔNG... \n\n hoặc ---)
     meta_patterns = [
+        r"<user_request>.*?</user_request>",
         r"\[CHỈ THỊ[^\]]*\][:.]?\s*(.*?)(?=\n\s*\n|\n\s*---|$)",
         r"\[YÊU CẦU[^\]]*\][:.]?\s*(.*?)(?=\n\s*\n|\n\s*---|$)",
         r"\[NGUYÊN TẮC[^\]]*\][:.]?\s*(.*?)(?=\n\s*\n|\n\s*---|$)",

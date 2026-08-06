@@ -31,7 +31,8 @@ PROMPT_QWEN_VL_CLASSIFY = (
 # ────────────────────────────────────────────────────────────────────────────
 
 _SYSTEM_BASE = """Bạn là trợ lý AI phân tích tài liệu kỹ thuật.
-Hãy suy luận và trả lời câu hỏi của người dùng một cách trực tiếp, tự nhiên dựa trên thông tin tài liệu được cung cấp."""
+Hãy trả lời trực tiếp, tự nhiên và hữu ích như một trợ lý hội thoại thông thường, dựa trên tài liệu được cung cấp.
+Không chép lại câu hỏi, không mô tả nhiệm vụ của bạn và không mở đầu bằng các nhãn như "Câu hỏi" hay "Câu hỏi mới nhất"."""
 
 _SYSTEM_REASONING_BASE = """Bạn là chuyên gia cơ khí tư vấn kỹ thuật và tháo lắp thiết bị.
 Hãy suy luận tự do và giải đáp chính xác câu hỏi của người dùng dựa trên dữ liệu tài liệu đính kèm."""
@@ -54,8 +55,29 @@ def build_system_prompt(
     reasoning_mode: bool = False,
     has_image: bool = False,
 ) -> str:
-    """Không dùng System Prompt — để AI Local tự do tiếp nhận câu hỏi và trả lời tự nhiên."""
-    return ""
+    """Build system prompt hướng dẫn LLM trả lời dựa trên context tài liệu + ảnh đã được cung cấp."""
+    if has_image and reasoning_mode:
+        base = _SYSTEM_VISION_REASONING_BASE
+    elif has_image:
+        base = _SYSTEM_VISION_BASE
+    elif reasoning_mode:
+        base = _SYSTEM_REASONING_BASE
+    else:
+        base = _SYSTEM_BASE
+
+    suffix = _NUMERIC_SUFFIX if numeric_rule else ""
+
+    # Chỉ thị cứng: LLM phải trả lời trực tiếp từ dữ liệu đã có, KHÔNG hỏi thêm
+    direct_instruction = (
+        "\nDữ liệu cần dùng nằm trong context của tin nhắn người dùng. "
+        "Chỉ xuất ra câu trả lời cuối cùng; không lặp lại câu hỏi hoặc chỉ dẫn. "
+        "Nếu yêu cầu mang tính tổng quát như 'phân tích tài liệu', hãy chủ động tóm tắt nội dung, "
+        "nêu các ý chính, thông số kỹ thuật, quy trình và cảnh báo tìm thấy. "
+        "Nếu tài liệu chỉ có một phần thông tin, hãy phân tích phần hiện có và nói rõ giới hạn ở cuối. "
+        "Không yêu cầu người dùng cung cấp lại tài liệu hoặc hình ảnh đã có trong context."
+    )
+
+    return base + direct_instruction + suffix
 
 
 def build_user_prompt(
@@ -111,6 +133,10 @@ def build_user_prompt(
                 "Lưu ý: Tọa độ là các số nguyên từ 0 đến 1000.\n"
             )
 
-    parts.append(f"\nCâu hỏi: {question.strip()}\n")
+    parts.append(
+        "\n<user_request>\n"
+        f"{question.strip()}\n"
+        "</user_request>\n"
+        "Trả lời ngay yêu cầu trên bằng nội dung hoàn chỉnh, không chép lại yêu cầu.\n"
+    )
     return "".join(parts)
-

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import time
+import unicodedata
 from uuid import UUID
 
 from app.clients import llm_client
@@ -34,6 +35,110 @@ LOCKED_ANSWER = (
     "Không đủ dữ liệu chắc chắn. Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm."
 )
 LOCKED_CONFIDENCE = 0.30
+VISION_IMAGE_MAX_SIDE = 1280
+
+
+def _normalize_question(question: str) -> str:
+    normalized = unicodedata.normalize("NFKD", question.lower().replace("đ", "d"))
+    return normalized.encode("ascii", "ignore").decode("ascii")
+
+
+def _prefers_ocr_only(question: str) -> bool:
+    """Questions that can be answered from recognized text without visual reasoning."""
+    normalized = _normalize_question(question)
+    text_terms = (
+        "doc chu",
+        "trich xuat van ban",
+        "noi dung van ban",
+        "ten ban ve",
+        "ma ban ve",
+        "so ban ve",
+        "khung ten",
+        "ty le ban ve",
+        "nguoi ve",
+        "ngay ve",
+        "drawing no",
+        "project",
+        "title",
+        "scale",
+    )
+    return any(term in normalized for term in text_terms)
+
+
+def _usable_ocr_text(text: str) -> bool:
+    normalized = _normalize_question(text)
+    if "chua hinh anh" in normalized and "xem anh dinh kem" in normalized:
+        return False
+    return sum(char.isalnum() for char in normalized) >= 12
+
+
+def _needs_visual_context(question: str) -> bool:
+    """Use the expensive Vision path only when the question refers to visuals."""
+    if _prefers_ocr_only(question):
+        return False
+    normalized = _normalize_question(question)
+    visual_terms = (
+        "ban ve",
+        "so do",
+        "hinh anh",
+        "hinh ve",
+        "anh chup",
+        "ky hieu",
+        "nhin vao",
+        "vi tri tren hinh",
+        "kich thuoc tren ban ve",
+        "doc nhan",
+        "nhan thiet bi",
+        "image",
+        "diagram",
+        "drawing",
+        "vi tri",
+        "o dau",
+        "hinh dang",
+        "bo tri",
+        "cau tao",
+        "duong kinh",
+        "ban kinh",
+        "khoang cach",
+        "kich thuoc cua",
+    )
+    return any(term in normalized for term in visual_terms)
+
+
+def _prepare_uploaded_image(req: QueryRequest, *, stream: bool = False) -> tuple[str | None, str]:
+    """OCR an uploaded image first; attach pixels only when visual reasoning is needed."""
+    if not req.imageStorageKey:
+        return None, ""
+
+    from app.clients import minio_client, ocr_client
+
+    mode = " (stream)" if stream else ""
+    ocr_only_requested = _prefers_ocr_only(req.question)
+    image_text = ""
+    try:
+        pages = ocr_client.extract_pages(req.imageStorageKey, ["vi", "en"])
+        image_text = "\n".join(page.text for page in pages if page.text).strip()
+        if _usable_ocr_text(image_text):
+            req.question = f"{req.question}\n[Thông tin OCR từ ảnh]:\n{image_text}"
+            logger.info("Vision Query%s: OCR OK (%d ký tự)", mode, len(image_text))
+    except Exception as exc:
+        logger.warning("Vision Query%s: OCR thất bại, chuyển sang Vision: %s", mode, exc)
+
+    use_vision = not (ocr_only_requested and _usable_ocr_text(image_text))
+    if not use_vision:
+        logger.info("Vision Query%s: chọn OCR-only để giảm độ trễ", mode)
+        return None, image_text
+
+    try:
+        image_base64 = minio_client.get_object_base64(
+            req.imageStorageKey,
+            max_side=VISION_IMAGE_MAX_SIDE,
+        )
+        logger.info("Vision Query%s: chọn OCR + Vision (%dpx)", mode, VISION_IMAGE_MAX_SIDE)
+        return image_base64, image_text
+    except Exception as exc:
+        logger.error("Vision Query%s: không thể tải ảnh %s: %s", mode, req.imageStorageKey, exc)
+        return None, image_text
 
 
 def run_query(req: QueryRequest) -> QueryResponse:
@@ -48,8 +153,12 @@ def run_query(req: QueryRequest) -> QueryResponse:
     """
     start_ns = time.perf_counter()
 
+    # An uploaded image is a valid standalone source even when the user has not
+    # selected any indexed document version.
+    image_base64, image_text = _prepare_uploaded_image(req)
+
     # ── 0. Fast-path: allowedVersionIds rỗng → không cần query chroma ──────
-    if not req.allowedVersionIds:
+    if not req.allowedVersionIds and not req.imageStorageKey:
         logger.info("Query bị khóa sớm: allowedVersionIds rỗng (question=%s)", req.question[:80])
         return _locked_response(
             latency_ms=_elapsed_ms(start_ns),
@@ -57,23 +166,9 @@ def run_query(req: QueryRequest) -> QueryResponse:
         )
 
     # ── 0.5. Vision Query: Tải ảnh base64 từ MinIO & OCR (nếu có) ──────────────
-    image_base64: str | None = None
-    if req.imageStorageKey:
-        try:
-            from app.clients import minio_client, ocr_client
-            logger.info("Vision Query: đang tải ảnh base64 & OCR file ảnh %s", req.imageStorageKey)
-            image_base64 = minio_client.get_object_base64(req.imageStorageKey)
-            pages = ocr_client.extract_pages(req.imageStorageKey, ["vi", "en"])
-            image_text = "\n".join(p.text for p in pages if p.text)
-            if image_text:
-                req.question = f"{req.question}\n[Thông tin từ OCR ảnh chụp]:\n{image_text}"
-                logger.info("Đã nối text OCR từ ảnh vào câu hỏi (%d ký tự)", len(image_text))
-        except Exception as exc:
-            logger.error("Xử lý Vision Query ảnh %s thất bại: %s", req.imageStorageKey, exc)
-
     # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
     try:
-        query_vec = embed_pipeline.embed_query(req.question)
+        query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
     except Exception as exc:
         logger.error("Embed câu hỏi thất bại: %s", exc)
         return _locked_response(
@@ -83,11 +178,15 @@ def run_query(req: QueryRequest) -> QueryResponse:
 
     # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
     try:
-        hits = index_pipeline.search(
-            query_embedding=query_vec,
-            allowed_version_ids=req.allowedVersionIds,
-            top_k=req.topK,
-            machine_code=req.machineCode,
+        hits = (
+            index_pipeline.search(
+                query_embedding=query_vec,
+                allowed_version_ids=req.allowedVersionIds,
+                top_k=req.topK,
+                machine_code=req.machineCode,
+            )
+            if req.allowedVersionIds
+            else []
         )
     except Exception as exc:
         logger.error("ChromaDB search thất bại: %s", exc)
@@ -106,7 +205,9 @@ def run_query(req: QueryRequest) -> QueryResponse:
     # ── 3. Guardrail — cosine threshold & trigger phrase ─────────────────────
     numeric_rule = guardrails.check_numeric(req.question)
     reasoning_mode = guardrails.check_reasoning_mode(req.question, explicit_flag=req.reasoningMode)
-    locked       = guardrails.is_locked(hits, req.question, reasoning_mode=reasoning_mode)
+    locked = guardrails.is_locked(hits, req.question, reasoning_mode=reasoning_mode)
+    if req.imageStorageKey and (image_base64 or _usable_ocr_text(image_text)):
+        locked = False
 
     if locked:
         logger.info(
@@ -126,7 +227,7 @@ def run_query(req: QueryRequest) -> QueryResponse:
         )
 
     # Nếu chưa có image_base64 từ SnapAsk, tự động bốc/dựng ảnh trang PDF của kết quả top 1 từ MinIO
-    if not image_base64 and hits:
+    if not req.imageStorageKey and not image_base64 and hits and _needs_visual_context(req.question):
         top_hit = hits[0]
         top_v_id = top_hit.get("version_id")
         top_doc_id = top_hit.get("document_id")
@@ -160,11 +261,11 @@ def run_query(req: QueryRequest) -> QueryResponse:
             system_prompt, user_prompt, history=req.history, image_base64=image_base64
         )
     except LLMConnectionError as exc:
-        logger.error("LLM kết nối thất bại (LM Studio không chạy?): %s", exc)
+        logger.error("LLM kết nối thất bại (Ollama không chạy?): %s", exc)
         # Khi LM Studio chết → vẫn trả response nhưng là locked để BE không bị 503
         return QueryResponse(
             answer=(
-                "Dịch vụ AI tạm thời không khả dụng (LM Studio chưa chạy). "
+                "Dịch vụ AI tạm thời không khả dụng (Ollama chưa sẵn sàng). "
                 "Vui lòng liên hệ quản trị viên hệ thống."
             ),
             confidence=0.0,
@@ -317,31 +418,19 @@ def run_query_stream(req: QueryRequest):
         """Helper tạo SSE line chuẩn RFC 8895."""
         return f"data: {json.dumps({'event': event, **data}, ensure_ascii=False)}\n\n"
 
+    image_base64, image_text = _prepare_uploaded_image(req, stream=True)
+
     # ── Fast-path: no versions ──────────────────────────────────────────────
-    if not req.allowedVersionIds:
+    if not req.allowedVersionIds and not req.imageStorageKey:
         yield _sse("meta", citations=[], confidence=LOCKED_CONFIDENCE, guard={"locked": True, "numericRule": False, "reasoningMode": False})
         yield _sse("delta", text=LOCKED_ANSWER)
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="guardrail-no-versions")
         return
 
     # ── 0.5. Vision Query: Tải ảnh base64 từ MinIO & OCR (nếu có) ──────────────
-    image_base64: str | None = None
-    if req.imageStorageKey:
-        try:
-            from app.clients import minio_client, ocr_client
-            logger.info("Vision Query (stream): đang tải ảnh base64 & OCR file ảnh %s", req.imageStorageKey)
-            image_base64 = minio_client.get_object_base64(req.imageStorageKey)
-            pages = ocr_client.extract_pages(req.imageStorageKey, ["vi", "en"])
-            image_text = "\n".join(p.text for p in pages if p.text)
-            if image_text:
-                req.question = f"{req.question}\n[Thông tin từ OCR ảnh chụp]:\n{image_text}"
-                logger.info("Đã nối text OCR từ ảnh vào câu hỏi (%d ký tự)", len(image_text))
-        except Exception as exc:
-            logger.error("Xử lý Vision Query ảnh %s thất bại (stream): %s", req.imageStorageKey, exc)
-
     # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
     try:
-        query_vec = embed_pipeline.embed_query(req.question)
+        query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
     except Exception as exc:
         logger.error("Embed câu hỏi thất bại (stream): %s", exc)
         yield _sse("error", message="Lỗi embed câu hỏi.")
@@ -350,11 +439,15 @@ def run_query_stream(req: QueryRequest):
 
     # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
     try:
-        hits = index_pipeline.search(
-            query_embedding=query_vec,
-            allowed_version_ids=req.allowedVersionIds,
-            top_k=req.topK,
-            machine_code=req.machineCode,
+        hits = (
+            index_pipeline.search(
+                query_embedding=query_vec,
+                allowed_version_ids=req.allowedVersionIds,
+                top_k=req.topK,
+                machine_code=req.machineCode,
+            )
+            if req.allowedVersionIds
+            else []
         )
     except Exception as exc:
         logger.error("ChromaDB search thất bại (stream): %s", exc)
@@ -366,6 +459,8 @@ def run_query_stream(req: QueryRequest):
     numeric_rule = guardrails.check_numeric(req.question)
     reasoning_mode = guardrails.check_reasoning_mode(req.question, explicit_flag=req.reasoningMode)
     locked = guardrails.is_locked(hits, req.question, reasoning_mode=reasoning_mode)
+    if req.imageStorageKey and (image_base64 or _usable_ocr_text(image_text)):
+        locked = False
     confidence = round(hits[0]["score"], 4) if hits else 0.0
     citations_data = [
         {
@@ -387,7 +482,7 @@ def run_query_stream(req: QueryRequest):
         return
 
     # Nếu chưa có image_base64 từ SnapAsk, tự động bốc/dựng ảnh trang PDF của kết quả top 1 từ MinIO (nếu có)
-    if not image_base64 and hits:
+    if not req.imageStorageKey and not image_base64 and hits and _needs_visual_context(req.question):
         top_hit = hits[0]
         top_v_id = top_hit.get("version_id")
         top_doc_id = top_hit.get("document_id")
@@ -425,7 +520,7 @@ def run_query_stream(req: QueryRequest):
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model=model_name)
 
     except llm_client.LLMConnectionError:
-        yield _sse("error", message="LM Studio chưa chạy. Vui lòng liên hệ quản trị viên.")
+        yield _sse("error", message="Ollama chưa sẵn sàng. Vui lòng liên hệ quản trị viên.")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-connection")
     except llm_client.LLMInferenceError as exc:
         yield _sse("error", message=f"Lỗi LLM inference: {exc}")

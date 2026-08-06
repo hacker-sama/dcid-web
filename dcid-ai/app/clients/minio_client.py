@@ -79,13 +79,14 @@ def get_or_render_page_base64(
     version_id: str | None = None,
     document_id: str | None = None,
     page_no: int = 1,
+    max_side: int = 1280,
 ) -> str | None:
     """Tải Base64 ảnh trang từ MinIO; nếu chưa có (tài liệu cũ) → tự động lấy PDF gốc, render trang PNG và lưu lại MinIO."""
     import logging
     logger = logging.getLogger("dcid-ai.minio")
 
     try:
-        return get_object_base64(page_img_key)
+        return get_object_base64(page_img_key, max_side=max_side)
     except Exception:
         logger.info("Ảnh trang %s chưa có sẵn trong MinIO, tự động dựng từ PDF gốc...", page_img_key)
 
@@ -121,10 +122,10 @@ def get_or_render_page_base64(
             page_idx = 0
         page = doc[page_idx]
 
-        # Tối ưu kích thước ảnh cho Vision LLM: giới hạn max_dim 672px để tránh vượt quá context size
+        # Only visual questions reach this path; retain enough detail for dimensions and labels.
         rect = page.rect
         max_dim = max(rect.width, rect.height)
-        scale = 672.0 / max_dim if max_dim > 672 else 1.0
+        scale = float(max_side) / max_dim if max_dim > max_side else 1.0
         mat = fitz.Matrix(scale, scale)
         pix = page.get_pixmap(matrix=mat)
         

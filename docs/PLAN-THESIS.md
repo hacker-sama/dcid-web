@@ -199,6 +199,11 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
   - Cấu hình `VisualDensity.adaptivePlatformDensity` cho `ThemeData` để tự động thu hẹp khoảng trắng trên desktop/web.
   - Cập nhật hằng số `Breakpoints` chuẩn vào `responsive.dart` và cập nhật các logic rẽ nhánh layout.
   - Chạy `flutter analyze` (0 issue) và `flutter test` (xanh 100%) hoàn tất việc verify.
+- ✅ **Nâng cấp Snap & Ask Multi-Image & Persistence (01/08/2026)**:
+  - Chuyển router sang `StatefulShellRoute.indexedStack` giúp bảo toàn 100% trạng thái (state, scroll position) của các tab khi chuyển đổi qua lại giữa Tra cứu, Snap & Ask, và Tài liệu.
+  - Hỗ trợ **chọn và tải lên cùng lúc nhiều ảnh thiết bị (`pickMultiImage` / `allowMultiple: true`)**; tự động chọn ảnh đầu tiên trong đợt tải lên mới làm active selection.
+  - Tự động mã hóa Base64 và lưu trữ 2 lớp (Stateful Riverpod Notifier + `FlutterSecureStorage` / `localStorage` trên Web), giúp dữ liệu ảnh và lịch sử Q&A tồn tại qua cả quá trình refresh trang web.
+  - Verify bằng `flutter analyze` (0 issue).
 
 
 **Còn lại của T1 (làm nốt trước khi vào T2):**

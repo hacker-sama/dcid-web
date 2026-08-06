@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/constrained_content.dart';
 import '../../data/models/answer_result.dart';
 import '../../data/models/document_summary.dart';
+import '../../data/models/sse_event.dart';
 import '../../state/providers.dart';
 
 class _ChatEntry {
   final String role; // 'user' or 'assistant'
-  final String content;
-  final AnswerResult? result;
+  String content;
+  AnswerResult? result;
 
   _ChatEntry({required this.role, required this.content, this.result});
 }
@@ -74,39 +76,79 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (question.isEmpty || _loading) return;
 
     _controller.clear();
+    final assistantEntry = _ChatEntry(role: 'assistant', content: '');
+
     setState(() {
       _loading = true;
       _error = null;
       _chatMessages.add(_ChatEntry(role: 'user', content: question));
+      _chatMessages.add(assistantEntry);
     });
     _scrollToBottom();
 
     try {
       final history = _chatMessages
-          .take(_chatMessages.length - 1)
+          .take(_chatMessages.length - 2)
           .map((m) => {'role': m.role, 'content': m.content})
           .toList();
 
-      final result = await ref.read(docsRepositoryProvider).ask(
+      final stream = ref.read(docsRepositoryProvider).askStream(
             question,
             reasoningMode: _reasoningMode,
-            selectedVersionIds: _selectedDocIds.isEmpty ? null : _selectedDocIds.toList(),
+            selectedVersionIds:
+                _selectedDocIds.isEmpty ? null : _selectedDocIds.toList(),
             history: history,
           );
 
-      if (mounted) {
-        setState(() {
-          _chatMessages.add(_ChatEntry(
-            role: 'assistant',
-            content: result.answer,
-            result: result,
-          ));
-        });
-        _scrollToBottom();
+      List<Citation> currentCitations = [];
+      bool isLocked = false;
+      bool isNumeric = false;
+      bool isReasoning = _reasoningMode;
+      double confidenceVal = 0.0;
+
+      await for (final event in stream) {
+        if (!mounted) break;
+        if (event.type == SseEventType.meta) {
+          currentCitations = event.citations;
+          isLocked = event.locked;
+          isNumeric = event.numericRule;
+          isReasoning = event.reasoningMode;
+          confidenceVal = event.confidence;
+          setState(() {
+            assistantEntry.result = AnswerResult(
+              answer: assistantEntry.content,
+              confidence: confidenceVal,
+              locked: isLocked,
+              numericRule: isNumeric,
+              reasoningMode: isReasoning,
+              citations: currentCitations,
+            );
+          });
+        } else if (event.type == SseEventType.delta) {
+          if (event.textDelta != null) {
+            setState(() {
+              assistantEntry.content += event.textDelta!;
+              assistantEntry.result = AnswerResult(
+                answer: assistantEntry.content,
+                confidence: confidenceVal,
+                locked: isLocked,
+                numericRule: isNumeric,
+                reasoningMode: isReasoning,
+                citations: currentCitations,
+              );
+            });
+            _scrollToBottom();
+          }
+        } else if (event.type == SseEventType.error) {
+          setState(() {
+            _error = event.errorMessage ?? 'Không truy vấn được.';
+          });
+        }
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Không truy vấn được. Kiểm tra kết nối backend/AI.');
+        setState(() =>
+            _error = 'Không truy vấn được. Kiểm tra kết nối backend/AI.');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -349,6 +391,34 @@ class _MessageBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!isUser && entry.result?.isOfflineFallback == true) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade400, width: 1.2),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.wifi_off_rounded, size: 18, color: Colors.amber.shade900),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '⚠️ Backend/AI offline — Hiển thị kết quả ngoại tuyến / bộ nhớ tạm',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber.shade900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   Text(
                     entry.content,
                     style: TextStyle(
@@ -365,11 +435,18 @@ class _MessageBubble extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 4,
                       children: [
-                        _Badge(
-                          label: 'Độ tin cậy: ${(entry.result!.confidence * 100).toStringAsFixed(0)}%',
-                          color: colorScheme.secondaryContainer,
-                          textColor: colorScheme.onSecondaryContainer,
-                        ),
+                        if (entry.result!.isOfflineFallback)
+                          _Badge(
+                            label: 'Ngoại tuyến (Offline)',
+                            color: Colors.amber.shade200,
+                            textColor: Colors.amber.shade900,
+                          )
+                        else
+                          _Badge(
+                            label: 'Độ tin cậy: ${(entry.result!.confidence * 100).toStringAsFixed(0)}%',
+                            color: colorScheme.secondaryContainer,
+                            textColor: colorScheme.onSecondaryContainer,
+                          ),
                         if (entry.result!.numericRule)
                           _Badge(
                             label: 'Trích số liệu trực tiếp',
@@ -469,6 +546,14 @@ class _MessageBubble extends StatelessWidget {
                                   TextButton(
                                     onPressed: () => Navigator.of(ctx).pop(),
                                     child: const Text('Đóng'),
+                                  ),
+                                  FilledButton.icon(
+                                    onPressed: () {
+                                      Navigator.of(ctx).pop();
+                                      context.push('/viewer/${c.versionId}?page=${c.pageNo}');
+                                    },
+                                    icon: const Icon(Icons.open_in_new, size: 16),
+                                    label: const Text('Mở trang xem tài liệu (Viewer)'),
                                   ),
                                 ],
                               ),
