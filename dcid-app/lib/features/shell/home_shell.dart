@@ -15,7 +15,7 @@ class _Dest {
 /// Branch ordering must stay in sync with [routerProvider] in router.dart:
 ///   index 0 = /search, 1 = /snap, 2 = /documents, 3 = /admin
 const _allDestinations = <_Dest>[
-  _Dest(Icons.search, 'Lookup'),
+  _Dest(Icons.search, 'Search'),
   _Dest(Icons.camera_alt, 'Snap & Ask'),
   _Dest(Icons.folder, 'Documents'),
   _Dest(Icons.admin_panel_settings, 'Admin', adminOnly: true),
