@@ -155,13 +155,13 @@ flutter pub get
 
 **Web** (khuyến nghị cho máy tính — kiosk/admin, xem [`FRONTEND.md`](FRONTEND.md) §0.1):
 ```bash
-flutter run -d chrome --web-port=3000 --dart-define=API_BASE_URL=http://localhost:8080
+flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 ```
 Cố định port **3000** để khớp CORS mặc định của backend (`CORS_ALLOWED_ORIGINS=http://localhost:3000`).
 
 **Android** (thiết bị/emulator đã kết nối):
 ```bash
-flutter run --dart-define=API_BASE_URL=http://localhost:8080
+flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 ```
 
 ### 3.5. Local LLM Service — Ollama
