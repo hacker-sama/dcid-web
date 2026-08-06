@@ -1,6 +1,7 @@
-"""Wrapper gọi Local LLM (Qwen2-VL-2B cho Vision, Qwen2.5-7B cho Text RAG) qua API OpenAI-compatible."""
+"""Wrapper gọi Qwen2.5-VL 3B trên Ollama qua API OpenAI-compatible."""
 
 import logging
+import os
 import re
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
@@ -17,12 +18,12 @@ def _load_config() -> Dict[str, Any]:
     except Exception:
         return {
             "models": {
-                "vision_model": "Qwen2-VL-2B-Instruct",
-                "main_llm_model": "Qwen2.5-7B-Instruct",
+                "vision_model": "qwen2.5vl:3b",
+                "main_llm_model": "qwen2.5vl:3b",
             },
             "lm_studio": {
-                "base_url": "http://localhost:1234/v1",
-                "api_key": "lm-studio",
+                "base_url": "http://ollama:11434/v1",
+                "api_key": "ollama",
                 "timeout": 60.0,
                 "temperature": 0.2,
                 "max_tokens": 2048,
@@ -37,8 +38,8 @@ def get_openai_client():
     cfg = _load_config()
     lm_cfg = cfg.get("lm_studio", {})
     return OpenAI(
-        base_url=lm_cfg.get("base_url", "http://localhost:1234/v1"),
-        api_key=lm_cfg.get("api_key", "lm-studio"),
+        base_url=os.getenv("LM_STUDIO_BASE_URL", lm_cfg.get("base_url", "http://ollama:11434/v1")),
+        api_key=os.getenv("LM_STUDIO_API_KEY", lm_cfg.get("api_key", "ollama")),
         timeout=lm_cfg.get("timeout", 60.0),
     )
 
@@ -50,7 +51,7 @@ def generate_vision_caption(
 ) -> str:
     """Gọi Qwen2-VL-2B-Instruct để làm Visual Captioner cho ảnh đã crop."""
     cfg = _load_config()
-    model = model_name or cfg.get("models", {}).get("vision_model", "Qwen2-VL-2B-Instruct")
+    model = model_name or os.getenv("LM_STUDIO_MODEL") or cfg.get("models", {}).get("vision_model", "qwen2.5vl:3b")
 
     client = get_openai_client()
 
@@ -87,7 +88,7 @@ def generate_rag_answer(
 ) -> Tuple[str, str]:
     """Gọi Main Text LLM (Qwen2.5-7B / Gemma-2-9B) để thực hiện suy luận RAG và trả lời người dùng."""
     cfg = _load_config()
-    model = model_name or cfg.get("models", {}).get("main_llm_model", "Qwen2.5-7B-Instruct")
+    model = model_name or os.getenv("LM_STUDIO_MODEL") or cfg.get("models", {}).get("main_llm_model", "qwen2.5vl:3b")
     lm_cfg = cfg.get("lm_studio", {})
 
     client = get_openai_client()
@@ -122,7 +123,7 @@ def generate_rag_answer_stream(
 ) -> Generator[str, None, None]:
     """Generator streaming SSE trả về từng token text cho Main Text LLM."""
     cfg = _load_config()
-    model = model_name or cfg.get("models", {}).get("main_llm_model", "Qwen2.5-7B-Instruct")
+    model = model_name or os.getenv("LM_STUDIO_MODEL") or cfg.get("models", {}).get("main_llm_model", "qwen2.5vl:3b")
     lm_cfg = cfg.get("lm_studio", {})
 
     client = get_openai_client()

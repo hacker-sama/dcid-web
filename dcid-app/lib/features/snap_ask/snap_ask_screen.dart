@@ -68,7 +68,7 @@ AnswerResult _buildFallbackAnswer(
         '| Dòng định mức | 3.5 A |\n'
         '| Nhiệt độ vận hành | 0°C – 55°C |\n\n'
         '**Gợi ý cho câu hỏi:** "$question"\n\n'
-        'Kiểm tra kết nối backend (`dcid-ai` port 8000) và LM Studio (port 1234). '
+        'Kiểm tra kết nối backend (`dcid-ai` port 8000) và Ollama (port 11434). '
         'Nếu dịch vụ sẵn sàng, thử lại câu hỏi — kết quả sẽ đến từ LLM thực.',
     confidence: 0.0,
     locked: false,

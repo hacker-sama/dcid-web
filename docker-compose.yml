@@ -93,7 +93,8 @@ services:
       # Redis — Celery broker/backend (service `redis`, port nội bộ 6379)
       REDIS_URL: redis://redis:6379/0
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
-      LM_STUDIO_MODEL: qwen2-vl-2b-instruct
+      LM_STUDIO_API_KEY: ollama
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5vl:3b}
     depends_on:
       - minio
       - chroma
@@ -125,7 +126,8 @@ services:
       CHROMA_PORT: 8000
       REDIS_URL: redis://redis:6379/0
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
-      LM_STUDIO_MODEL: qwen2-vl-2b-instruct
+      LM_STUDIO_API_KEY: ollama
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5vl:3b}
     depends_on:
       - redis
       - minio
@@ -181,7 +183,13 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     ports:
-      - "11434:11434"  # Expose để dev local dùng LM Studio alternative
+      - "11434:11434"  # OpenAI-compatible local model API
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
 
   kafka:

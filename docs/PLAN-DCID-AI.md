@@ -3,6 +3,8 @@
 > **Dành cho agent thực thi độc lập.** Tài liệu này tự chứa: đọc xong là code được, không cần
 > ngữ cảnh hội thoại nào khác. Nguồn sự thật về API: [`API-CONTRACT.md`](API-CONTRACT.md) (cùng thư mục).
 > Nếu thấy contract mâu thuẫn với plan này → **contract thắng**, ghi chú lại, KHÔNG tự sửa contract.
+>
+> 🛑 **CẬP NHẬT 07/2026**: Kế hoạch dựng skeleton này **đã hoàn thành và vượt mức**. Pipeline hiện tại không còn là skeleton (mock) nữa mà là một Pipeline RAG hoàn chỉnh (với PaddleOCR, Qwen2-VL, ChromaDB, Celery workers) được đặt tại `dcid-ai/src/`. Xem `ROADMAP.md` và `ARCHITECTURE.md` để nắm kiến trúc mới. File này hiện có giá trị lịch sử về quá trình khởi tạo project.
 
 ---
 

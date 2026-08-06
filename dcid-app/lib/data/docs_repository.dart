@@ -57,6 +57,7 @@ class DocsRepository implements IDocsRepository {
         },
         options: Options(
           responseType: ResponseType.stream,
+          receiveTimeout: const Duration(minutes: 10),
           headers: {'Accept': 'text/event-stream'},
         ),
       );
@@ -87,7 +88,10 @@ class DocsRepository implements IDocsRepository {
             if (dataStr.isEmpty) continue;
             try {
               final json = jsonDecode(dataStr) as Map<String, dynamic>;
-              if (eventType == 'meta') {
+              // The AI service includes the event name in its JSON payload.
+              // Standard SSE `event:` lines remain supported as a fallback.
+              final effectiveEvent = json['event'] as String? ?? eventType;
+              if (effectiveEvent == 'meta') {
                 final citations = (json['citations'] as List<dynamic>? ?? [])
                     .map((e) => Citation.fromJson(e as Map<String, dynamic>))
                     .toList();
@@ -101,18 +105,18 @@ class DocsRepository implements IDocsRepository {
                       guard['reasoningMode'] as bool? ?? reasoningMode,
                   confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
                 );
-              } else if (eventType == 'delta') {
+              } else if (effectiveEvent == 'delta') {
                 yield SseEvent(
                   type: SseEventType.delta,
                   textDelta:
                       json['text'] as String? ?? json['delta'] as String? ?? '',
                 );
-              } else if (eventType == 'done') {
+              } else if (effectiveEvent == 'done') {
                 yield SseEvent(
                   type: SseEventType.done,
                   latencyMs: (json['latencyMs'] as num?)?.toInt(),
                 );
-              } else if (eventType == 'error') {
+              } else if (effectiveEvent == 'error') {
                 yield SseEvent(
                   type: SseEventType.error,
                   errorMessage: json['message'] as String? ?? 'Lỗi truy vấn AI',
@@ -123,6 +127,7 @@ class DocsRepository implements IDocsRepository {
                 yield SseEvent(type: SseEventType.delta, textDelta: dataStr);
               }
             }
+            eventType = 'message';
           }
         }
       }

@@ -1,9 +1,10 @@
 # Cài đặt & chạy dự án (Getting Started)
 
-> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (04/08/2026) —
+> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (06/08/2026) —
 > xem [§5](#5-cái-gì-chạy-được--cái-gì-còn-mock) để biết rõ phần nào là thật, phần nào còn mock.
 > **Toàn bộ luồng dưới đây đã chạy thật và verify end-to-end** (login → upload PDF → OCR qua `ai-ocr` →
-> chunking → embedding → index ChromaDB → version ACTIVE với đúng số trang → hỏi–đáp), không phải suy đoán từ code.
+> chunking → embedding → index ChromaDB → version ACTIVE với đúng số trang → hỏi–đáp SSE ChatGPT-like
+> → Snap & Ask Vision → Admin Console CRUD), không phải suy đoán từ code.
 
 ---
 
@@ -155,32 +156,32 @@ flutter pub get
 
 **Web** (khuyến nghị cho máy tính — kiosk/admin, xem [`FRONTEND.md`](FRONTEND.md) §0.1):
 ```bash
-flutter run -d chrome --web-port=3000 --dart-define=API_BASE_URL=http://localhost:8080
+flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 ```
 Cố định port **3000** để khớp CORS mặc định của backend (`CORS_ALLOWED_ORIGINS=http://localhost:3000`).
 
 **Android** (thiết bị/emulator đã kết nối):
 ```bash
-flutter run --dart-define=API_BASE_URL=http://localhost:8080
+flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 ```
 
-### 3.5. Local LLM Service — Ollama (production) hoặc LM Studio (dev local)
+### 3.5. Local LLM Service — Ollama
 
 #### Option A — Ollama trong Docker (khuyến nghị cho production/server)
 
 ```bash
 # Ollama đã được thêm vào docker-compose.yml — chỉ cần pull model
 docker-compose up -d ollama
-docker exec dcid-ollama ollama pull qwen2-vl:2b-instruct-q4_k_m
+docker exec dcid-ollama ollama pull qwen2.5vl:3b
 
 # Verify
 curl http://localhost:11434/v1/models
-# Trả về danh sách model đang load
+# Trả về danh sách model đã được cài trong volume ollama_data
 ```
 
 `dcid-ai` đã cấu hình mặc định trỏ về Ollama (`LM_STUDIO_BASE_URL=http://ollama:11434/v1`), không cần đổi gì nếu dùng docker-compose.
 
-#### Option B — LM Studio (dev local — GUI, dễ test)
+#### Tùy chọn cũ — LM Studio (không cần khi chạy dự án bằng Docker)
 
 1. Tải và cài **[LM Studio](https://lmstudio.ai/)**.
 2. Tìm và tải model: `Qwen2-VL-2B-Instruct-GGUF` — chọn bản **Q4_K_M** (~2.78GB).
@@ -207,9 +208,11 @@ curl http://localhost:1234/v1/models
 
 1. Mở app (web hoặc Android) → đăng nhập `admin` / `admin123`.
 2. Vào tab **Tài liệu** → nút "Tải tài liệu" → chọn 1 file PDF bất kỳ → điền Tiêu đề + Loại tài liệu → Tải lên.
-3. Backend lưu PDF vào MinIO, gọi `dcid-ai` ingest → `dcid-ai` gọi `ai-ocr` (PaddleOCR + PyMuPDF) bóc tách chữ kèm **tọa độ không gian (Bbox: `[x0, y0, x1, y1]`)** → `chunk.py` cắt đoạn cấu trúc hóa Markdown (`### [Bảng/Đoạn kỹ thuật - Trang X | Bbox: ...]`) → `embed.py` nhúng vector `multilingual-e5-small` → `index.py` upsert vào **ChromaDB** (`kcn_chunks`) kèm metadata `bbox` & `snippet` → gọi callback về backend đổi status sang **ACTIVE** (vài chục giây tùy CPU).
+3. Backend lưu PDF vào MinIO, gọi `dcid-ai` ingest → `dcid-ai` gọi `ai-ocr` (PaddleOCR + PyMuPDF) bóc tách chữ kèm **tọa độ không gian (Bbox: `[x0, y0, x1, y1]`)** → `chunk.py` cắt đoạn cấu trúc hóa Markdown (`### [Bảng/Đoạn kỹ thuật - Trang X | Bbox: ...]`) → `embed.py` nhúng vector `multilingual-e5-small` → `index.py` upsert vào **ChromaDB** (`kcn_chunks`) kèm metadata `bbox` & `snippet` → gọi callback về backend đổi status sang **ACTIVE** (vài chục giây tùy CPU). AI worker đồng thời push per-step status (`PROCESSING_OCR → PROCESSING_EMBED → READY`) về BE qua `POST /api/internal/ingest-status` → broadcast STOMP `/topic/ingest/{versionId}`.
 4. Bấm vào tài liệu vừa tạo → thấy version với chip trạng thái **ACTIVE** và đúng số trang PDF.
-5. Vào tab **Tra cứu**, hỏi thử một câu chứa "điện áp" → nhận câu trả lời thực tế từ LLM kèm trích dẫn tọa độ `p{pageNo}_[{bbox}]`. Bấm vào nhãn trích dẫn để mở **Hộp thoại Trích Dẫn Không Gian (`AlertDialog`)** hiển thị chính xác tọa độ Bbox và đoạn văn bản gốc (`snippet`).
+5. Vào tab **Tra cứu**, hỏi thử một câu chứa "điện áp" → nhận câu trả lời **SSE streaming token-by-token** (typing effect ChatGPT-like) kèm trích dẫn tọa độ `p{pageNo}_[{bbox}]`. Khi nhận được `event: meta`, citations và guardrail banner hiện ngay lập tức. Bấm vào nhãn trích dẫn để mở **Hộp thoại Trích Dẫn Không Gian (`AlertDialog`)** hiển thị chính xác tọa độ Bbox và đoạn văn bản gốc (`snippet`).
+6. Vào tab **Snap & Ask** → chụp ảnh hoặc chọn file ảnh bản vẽ → hỏi câu về thông số kỹ thuật → nhận câu trả lời Vision từ Qwen2-VL qua `POST /api/query/vision`.
+7. *(ADMIN only)* Vào tab **Quản trị** → tạo tài khoản người dùng mới, reset mật khẩu, kích hoạt/khóa tài khoản.
 
 ### 4.1. Bộ công cụ kiểm thử độc lập ChromaDB (`chroma-tools/`)
 
@@ -222,7 +225,7 @@ python chroma-tools/clear_collection.py                  # Dọn dẹp collectio
 ```
 
 **Đã verify bằng lệnh thật (curl & smoke_test_t2.py & chroma-tools):** upload PDF
-→ backend lưu MinIO + gọi ingest → `dcid-ai` + `ai-ocr` bóc tách chữ & tọa độ Bbox + đếm trang → chunking + embedding + upsert ChromaDB → callback → `GET /api/documents/{id}` trả `status: "ACTIVE"` → `/api/query` retrieve top-k ChromaDB + guardrail + gọi LM Studio trả lời đúng logic kẹp trích dẫn Bbox. Audit log ghi đúng `DOCUMENT_UPLOAD` lẫn `DOCUMENT_INGESTED`.
+→ backend lưu MinIO + gọi ingest → `dcid-ai` + `ai-ocr` bóc tách chữ & tọa độ Bbox + đếm trang → chunking + embedding + upsert ChromaDB → callback → `GET /api/documents/{id}` trả `status: "ACTIVE"` → `/api/query` retrieve top-k ChromaDB + guardrail + gọi LLM trả lời đúng logic kẹp trích dẫn Bbox. Audit log ghi đúng `DOCUMENT_UPLOAD` lẫn `DOCUMENT_INGESTED`.
 
 ---
 
@@ -234,20 +237,23 @@ python chroma-tools/clear_collection.py                  # Dọn dẹp collectio
 | Upload PDF → MinIO → tạo version | ✅ Thật |
 | Ingest pipeline (OCR + Chunking + Embedding + ChromaDB index) | ✅ Thật — PaddleOCR 3.7 + PyMuPDF bóc tách chữ và tọa độ Bbox + cấu trúc hóa Markdown + `multilingual-e5-small` + `ChromaDB` (`kcn_chunks` kèm metadata `bbox`, `snippet`) |
 | `document_pages` (ảnh trang, bbox) | ✅ `ocrText` và `bbox` (`boxes` Bbox `[x0,y0,x1,y1]`) đã bóc tách thật; `imageKey` sẵn sàng cho crop render |
-| Hỏi–đáp `POST /api/query` & Trích dẫn Không gian | ✅ **Thật (RAG + LLM)** — retrieve top-k từ ChromaDB, kiểm tra guardrail, sinh câu trả lời qua Ollama/LM Studio (Qwen2-VL 2B Q4_K_M) kèm trích dẫn `bboxKey` & `snippet` |
-| Hỏi–đáp SSE stream `GET /api/query/stream` | ✅ **Thật** — BE proxy SSE từ AI về Flutter qua `SseEmitter`, stream từng token |
-| File proxy `GET /api/files/{versionId}/{pageNo}/{bboxKey}` | ✅ **Thật** — BE proxy ảnh trang từ MinIO, JWT-protected |
-| Ingest status STOMP broadcast | ✅ **Thật** — `POST /api/internal/ingest-status` broadcast `/topic/ingest/{versionId}` |
+| Hỏi–đáp `POST /api/query` (đồng bộ) | ✅ **Thật (RAG + LLM)** — retrieve top-k từ ChromaDB, kiểm tra guardrail, sinh câu trả lời qua Ollama/LM Studio (Qwen2-VL 2B Q4_K_M) kèm trích dẫn `bboxKey` & `snippet` |
+| Hỏi–đáp SSE stream `POST /api/query/stream` | ✅ **Thật** — BE `QueryController.askStreaming()` proxy SSE từ AI về Flutter qua `SseEmitter`, stream từng token |
+| Vision multimodal `POST /api/query/vision` | ✅ **Thật** — BE `QueryController.askWithVision()` nhận multipart (ảnh + question), forward sang AI `/ai/query/vision`, Qwen2-VL phân tích trực tiếp ảnh bản vẽ |
+| File proxy `GET /api/files/{versionId}/{pageNo}/{bboxKey}` | ✅ **Thật** — `FileProxyController` proxy ảnh trang từ MinIO, JWT-protected |
+| Ingest status STOMP broadcast | ✅ **Thật** — `POST /api/internal/ingest-status` → `InternalIngestController` broadcast `/topic/ingest/{versionId}` qua `SimpMessagingTemplate` |
 | Guardrail (ngưỡng tin cậy, trích số liệu) | ✅ **Thật** — kiểm tra allowed versions, cosine confidence gate < 0.60 → locked, và numeric rule detection |
-| Flutter SSE Chat UI (typing effect) | ⏾ Chưa làm (T3) |
-| Flutter Upload progress UI (STOMP) | ⏾ Chưa làm (T3) |
-| Flutter Citation Viewer (bbox overlay) | ⏾ Chưa làm (T3) |
-| Kiosk fullscreen, Snap & Ask (camera) | ⏾ Chưa làm (M4) |
+| Flutter SSE Chat UI (ChatGPT-like typing effect) | ✅ **Thật** — `search_screen.dart`: `askStream()` SSE, `_ChatEntry` list, typing effect per-token, guard banner, filter tài liệu |
+| Flutter Snap & Ask (Vision multimodal) | ✅ **Thật** — `snap_ask_screen.dart`: camera/file_picker, per-image chat thread, gọi `/api/query/vision`, fallback offline graceful |
+| Flutter Admin Console (CRUD người dùng) | ✅ **Thật** — `admin_screen.dart`: list/filter/search, tạo tài khoản, reset mật khẩu, kích hoạt/khóa. Nối API `GET/POST /api/admin/users` |
+| BE Admin User CRUD | ✅ **Thật** — `UserController` `/api/admin/users`: GET (filter role/search), POST create, PUT update, PUT password, PATCH status. `@PreAuthorize("hasRole('ADMIN')")` |
+| Flutter Upload progress UI (STOMP) | ⏾ Chưa làm (T4 — M3b) |
+| Kiosk fullscreen | ⏾ Chưa làm (M4) |
 | Redis / Kafka | Cấu hình sẵn, **chưa có tính năng nào thực sự dùng** — an toàn khi bỏ qua lúc dev |
 
 Chi tiết lộ trình: [`PLAN-THESIS.md`](PLAN-THESIS.md) §5 (bảng cột mốc 8 tuần).
 
----
+-
 
 ## 6. Production Deploy (VPS / Server)
 
@@ -310,7 +316,7 @@ Các tình huống khác:
 
 ---
 
-## 7. Tài liệu liên quan
+## 8. Tài liệu liên quan
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — kiến trúc tổng thể 2 mặt phẳng, sơ đồ, data model.
 - [`ERD.md`](ERD.md) — schema Postgres chi tiết.

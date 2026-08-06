@@ -9,12 +9,11 @@ import 'data/mock/mock_auth_repository.dart';
 import 'data/mock/mock_docs_repository.dart';
 import 'state/providers.dart';
 
-/// Set to `true` during Week 1 (APIs not ready) to use mock data.
-/// Flip to `false` when the real backend is available — zero other
-/// code changes required.
+/// Real backend/AI is the default. Enable mock data explicitly only for
+/// isolated UI development with `--dart-define=USE_MOCK_DATA=true`.
 const bool _useMockData = bool.fromEnvironment(
   'USE_MOCK_DATA',
-  defaultValue: true,
+  defaultValue: false,
 );
 
 Future<void> main() async {

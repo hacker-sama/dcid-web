@@ -194,7 +194,7 @@ public class QueryService {
                     .toList();
         }
 
-        SseEmitter emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(5));
+        SseEmitter emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(10));
 
         if (allowed.isEmpty()) {
             try {
