@@ -34,18 +34,23 @@ class Settings(BaseSettings):
     # Docker Compose ghi đè URL thành http://ollama:11434/v1.
     lm_studio_base_url: str = "http://localhost:11434/v1"
     lm_studio_api_key: str = "ollama"
-    lm_studio_model: str = "qwen2.5vl:3b"
+    # Use the lighter text model for OCR/RAG; load the VLM only for image requests.
+    lm_studio_model: str = "qwen2.5:1.5b"
+    vision_model: str = "qwen2.5vl:3b"
     llm_temperature: float = 0.2          # Cấu hình suy luận tối ưu theo sơ đồ (Low Temperature: 0.2)
     llm_top_p: float = 0.9               # Cấu hình suy luận tối ưu theo sơ đồ (Top-P: 0.9)
     llm_repetition_penalty: float = 1.2  # Cấu hình suy luận tối ưu theo sơ đồ (High Repetition Penalty: 1.2)
     llm_frequency_penalty: float = 0.0
     llm_presence_penalty: float = 0.0
-    llm_max_tokens: int = 2048
+    llm_max_tokens: int = 1024
     # Giới hạn context phía ứng dụng để kiểm soát RAM và độ trễ của Ollama.
-    llm_context_window: int = 4096
+    llm_context_window: int = 2048
     llm_context_safety_tokens: int = 256
     # CPU cold-start for a 3B vision model can exceed two minutes.
     llm_timeout: float = 300.0
+    # Avoid loading the ~700 MiB SentenceTransformer in the query API. Ingest
+    # still creates embeddings; selected-document queries use lexical ranking.
+    low_memory_query_mode: bool = True
 
     # ── Redis / Celery (async task queue) ─────────────────────────────────────
     # service `redis` trong docker-compose.yml (port nội bộ 6379)

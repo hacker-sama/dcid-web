@@ -173,6 +173,7 @@ flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://
 # Ollama đã được thêm vào docker-compose.yml — chỉ cần pull model
 docker-compose up -d ollama
 docker exec dcid-ollama ollama pull qwen2.5vl:3b
+docker compose exec ollama ollama pull qwen2.5:1.5b
 
 # Verify
 curl http://localhost:11434/v1/models

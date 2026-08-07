@@ -6,6 +6,7 @@ volumes:
   redis_data: {}   # Redis persistence cho Celery task results
   ollama_data: {}
   paddle_models: {}
+  hf_models: {}
 
 services:
   postgres:
@@ -22,6 +23,7 @@ services:
       # cài sẵn trên máy dev (rất hay gặp). Container backend dùng service name
       # `postgres:5432` qua mạng nội bộ compose, không bị ảnh hưởng bởi mapping này.
       - "5433:5432"
+    mem_limit: 384m
     restart: unless-stopped
 
   redis:
@@ -32,6 +34,7 @@ services:
       - redis_data:/data
     ports:
       - "6379:6379"  # Expose ra host để dev local debug / kiểm tra Celery queue
+    mem_limit: 128m
     restart: unless-stopped
 
   minio:
@@ -46,6 +49,7 @@ services:
       - minio_data:/data
     ports:
       - "9000:9000"
+    mem_limit: 256m
     restart: unless-stopped
 
   backend:
@@ -73,6 +77,7 @@ services:
       - minio
     ports:
       - "8080:8080"
+    mem_limit: 768m
     restart: unless-stopped
 
   ai:
@@ -95,7 +100,17 @@ services:
       REDIS_URL: redis://redis:6379/0
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
       LM_STUDIO_API_KEY: ollama
-      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5vl:3b}
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+      VISION_MODEL: ${VISION_MODEL:-qwen2.5vl:3b}
+      LLM_CONTEXT_WINDOW: "2048"
+      LLM_MAX_TOKENS: "1024"
+    volumes:
+      - hf_models:/root/.cache/huggingface
     depends_on:
       - minio
       - chroma
@@ -104,6 +119,7 @@ services:
       - ollama
     ports:
       - "8000:8000"
+    mem_limit: 1g
     restart: unless-stopped
 
   # ── Celery Worker: chạy Embed/Index pipeline bất đồng bộ ─────────────────
@@ -114,7 +130,8 @@ services:
     container_name: dcid-ai-worker
     # Worker chạy Celery thay vì uvicorn
     command: ["celery", "-A", "app.celery_app.celery_app", "worker",
-              "--loglevel=info", "--concurrency=2", "-Q", "ingest,default"]
+              "--loglevel=info", "--concurrency=1", "--prefetch-multiplier=1",
+              "--max-tasks-per-child=1", "-Q", "ingest,default"]
     environment:
       AI_INTERNAL_TOKEN: change-me-internal-token
       BE_BASE_URL: http://backend:8080
@@ -128,13 +145,24 @@ services:
       REDIS_URL: redis://redis:6379/0
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
       LM_STUDIO_API_KEY: ollama
-      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5vl:3b}
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+      VISION_MODEL: ${VISION_MODEL:-qwen2.5vl:3b}
+      LLM_CONTEXT_WINDOW: "2048"
+      LLM_MAX_TOKENS: "1024"
+    volumes:
+      - hf_models:/root/.cache/huggingface
     depends_on:
       - redis
       - minio
       - chroma
       - ai-ocr
       - ollama
+    mem_limit: 1g
     restart: unless-stopped
 
   # ── Flower: Celery monitoring UI (http://localhost:5555) ─────────────────
@@ -150,6 +178,8 @@ services:
       - "5555:5555"
     depends_on:
       - redis
+    profiles: ["monitoring"]
+    mem_limit: 256m
     restart: unless-stopped
 
   ai-ocr:
@@ -178,7 +208,7 @@ services:
     ports:
       - "8002:8001"
     cpus: 2.0
-    mem_limit: 2g
+    mem_limit: 768m
     restart: unless-stopped
 
   chroma:
@@ -188,11 +218,21 @@ services:
       - chroma_data:/chroma/.chroma/index
     ports:
       - "8001:8000"  # host 8001 tránh đụng với dcid-ai (8000)
+    mem_limit: 384m
     restart: unless-stopped
 
   ollama:
     image: ollama/ollama:latest
     container_name: dcid-ollama
+    environment:
+      # 7.57 GiB Docker budget: never keep text + vision models resident together.
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_QUEUE: "8"
+      OLLAMA_CONTEXT_LENGTH: "2048"
+      OLLAMA_KEEP_ALIVE: "2m"
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: "q8_0"
     volumes:
       - ollama_data:/root/.ollama
     ports:
@@ -203,6 +243,7 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    mem_limit: 5g
     restart: unless-stopped
 
   kafka:
@@ -218,8 +259,10 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
     depends_on:
       - zookeeper
+    profiles: ["messaging"]
     ports:
       - "9092:9092"
+    mem_limit: 512m
     restart: unless-stopped
 
   zookeeper:
@@ -230,4 +273,6 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    profiles: ["messaging"]
+    mem_limit: 256m
     restart: unless-stopped

@@ -165,27 +165,36 @@ def run_query(req: QueryRequest) -> QueryResponse:
 
     # ── 0.5. Vision Query: Tải ảnh base64 từ MinIO & OCR (nếu có) ──────────────
     # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
-    try:
-        query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
-    except Exception as exc:
-        logger.error("Embed câu hỏi thất bại: %s", exc)
-        return _locked_response(
-            latency_ms=_elapsed_ms(start_ns),
-            model="error-embed",
-        )
+    low_memory_query = getattr(get_settings(), "low_memory_query_mode", True)
+    query_vec: list[float] = []
+    if not low_memory_query:
+        try:
+            query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
+        except Exception as exc:
+            logger.error("Embed câu hỏi thất bại: %s", exc)
+            return _locked_response(
+                latency_ms=_elapsed_ms(start_ns),
+                model="error-embed",
+            )
 
     # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
     try:
-        hits = (
-            index_pipeline.search(
+        if not req.allowedVersionIds:
+            hits = []
+        elif low_memory_query:
+            hits = index_pipeline.search_selected_text(
+                question=req.question,
+                allowed_version_ids=req.allowedVersionIds,
+                top_k=req.topK,
+                machine_code=req.machineCode,
+            )
+        else:
+            hits = index_pipeline.search(
                 query_embedding=query_vec,
                 allowed_version_ids=req.allowedVersionIds,
                 top_k=req.topK,
                 machine_code=req.machineCode,
             )
-            if req.allowedVersionIds
-            else []
-        )
     except Exception as exc:
         logger.error("ChromaDB search thất bại: %s", exc)
         return _locked_response(
@@ -427,26 +436,35 @@ def run_query_stream(req: QueryRequest):
 
     # ── 0.5. Vision Query: Tải ảnh base64 từ MinIO & OCR (nếu có) ──────────────
     # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
-    try:
-        query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
-    except Exception as exc:
-        logger.error("Embed câu hỏi thất bại (stream): %s", exc)
-        yield _sse("error", message="Lỗi embed câu hỏi.")
-        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-embed")
-        return
+    low_memory_query = getattr(get_settings(), "low_memory_query_mode", True)
+    query_vec: list[float] = []
+    if not low_memory_query:
+        try:
+            query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
+        except Exception as exc:
+            logger.error("Embed câu hỏi thất bại (stream): %s", exc)
+            yield _sse("error", message="Lỗi embed câu hỏi.")
+            yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-embed")
+            return
 
     # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
     try:
-        hits = (
-            index_pipeline.search(
+        if not req.allowedVersionIds:
+            hits = []
+        elif low_memory_query:
+            hits = index_pipeline.search_selected_text(
+                question=req.question,
+                allowed_version_ids=req.allowedVersionIds,
+                top_k=req.topK,
+                machine_code=req.machineCode,
+            )
+        else:
+            hits = index_pipeline.search(
                 query_embedding=query_vec,
                 allowed_version_ids=req.allowedVersionIds,
                 top_k=req.topK,
                 machine_code=req.machineCode,
             )
-            if req.allowedVersionIds
-            else []
-        )
     except Exception as exc:
         logger.error("ChromaDB search thất bại (stream): %s", exc)
         yield _sse("error", message="Lỗi tìm kiếm tài liệu.")
@@ -510,7 +528,7 @@ def run_query_stream(req: QueryRequest):
 
     # ── 5. Stream từ LM Studio ──────────────────────────────────────────────
     try:
-        model_name = get_settings().lm_studio_model
+        model_name = llm_client.get_model_name(image_base64)
         for token in llm_client.generate_answer_stream(
             system_prompt, user_prompt, history=req.history, image_base64=image_base64
         ):

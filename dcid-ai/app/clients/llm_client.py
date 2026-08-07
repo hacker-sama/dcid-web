@@ -176,6 +176,12 @@ def _get_client():
 # Public API
 # ────────────────────────────────────────────────────────────────────────────
 
+def get_model_name(image_base64: str | None = None) -> str:
+    """Select the lightweight text model unless an image is actually attached."""
+    settings = get_settings()
+    return settings.vision_model if image_base64 else settings.lm_studio_model
+
+
 def generate_answer(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None) -> tuple[str, str]:
     """Gọi local LLM để sinh câu trả lời (hỗ trợ cả Text LLM lẫn Vision VLM).
 
@@ -199,10 +205,11 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
 
     s = get_settings()
     client = _get_client()
+    model_name = get_model_name(image_base64)
 
     logger.debug(
         "Gọi LLM: model=%s max_tokens=%d temperature=%.2f",
-        s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
+        model_name, s.llm_max_tokens, s.llm_temperature,
     )
 
     messages = []
@@ -243,7 +250,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     messages = _fit_messages_to_context(messages, s)
 
     call_kwargs: dict[str, Any] = {
-        "model": s.lm_studio_model,
+        "model": model_name,
         "messages": messages,
         "temperature": s.llm_temperature,
         "max_tokens": s.llm_max_tokens,
@@ -282,7 +289,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     except APITimeoutError as exc:
         logger.error(
             "Ollama timeout sau %.1fs — model=%s. Thử tăng LLM_TIMEOUT hoặc kiểm tra RAM.",
-            s.llm_timeout, s.lm_studio_model,
+            s.llm_timeout, model_name,
         )
         raise LLMInferenceError(
             f"Ollama timeout sau {s.llm_timeout}s. "
@@ -297,7 +304,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         # Retry với params tối thiểu (chỉ messages + temperature + max_tokens)
         try:
             response = client.chat.completions.create(
-                model=s.lm_studio_model,
+                model=model_name,
                 messages=call_kwargs["messages"],
                 temperature=s.llm_temperature,
                 max_tokens=s.llm_max_tokens,
@@ -316,7 +323,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     raw_content = msg.content or ""
     reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
     answer = _clean_think_tags(raw_content, fallback_reasoning=reasoning_content)
-    model_used = response.model or s.lm_studio_model
+    model_used = response.model or model_name
 
     # Model nhỏ đôi khi bỏ qua context và yêu cầu người dùng gửi thêm tài liệu.
     # Thử lại một lần với chỉ dẫn trực tiếp, không mang theo sampling mở rộng.
@@ -324,7 +331,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         logger.warning("LLM trả lời né tránh dù đã có RAG context; đang thử lại một lần.")
         try:
             retry_response = client.chat.completions.create(
-                model=s.lm_studio_model,
+                model=model_name,
                 messages=_fit_messages_to_context(_messages_for_direct_retry(messages), s),
                 temperature=min(s.llm_temperature, 0.2),
                 max_tokens=s.llm_max_tokens,
@@ -341,7 +348,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
             if retry_answer.strip():
                 answer = retry_answer
                 response = retry_response
-                model_used = retry_response.model or s.lm_studio_model
+                model_used = retry_response.model or model_name
         except Exception as retry_exc:  # noqa: BLE001
             logger.warning("Thử lại câu trả lời trực tiếp thất bại: %s", retry_exc)
 
@@ -406,10 +413,11 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
 
     s = get_settings()
     client = _get_client()
+    model_name = get_model_name(image_base64)
 
     logger.debug(
         "Gọi LLM stream: model=%s max_tokens=%d temperature=%.2f",
-        s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
+        model_name, s.llm_max_tokens, s.llm_temperature,
     )
 
     messages = []
@@ -441,7 +449,7 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
     messages = _fit_messages_to_context(messages, s)
 
     stream_kwargs: dict = {
-        "model": s.lm_studio_model,
+        "model": model_name,
         "messages": messages,
         "temperature": s.llm_temperature,
         "max_tokens": s.llm_max_tokens,
@@ -523,7 +531,7 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
                 clean_think = re.sub(r"\[CHỈ THỊ[^\]]*\][:.]?\s*", "", clean_think, flags=re.IGNORECASE)
                 yield clean_think
 
-        logger.info("LLM stream OK: model=%s tokens_streamed=%d", s.lm_studio_model, token_count)
+        logger.info("LLM stream OK: model=%s tokens_streamed=%d", model_name, token_count)
 
     except APIConnectionError as exc:
         if image_base64:

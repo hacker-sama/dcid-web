@@ -185,3 +185,60 @@ def search(
 
     # Đã sắp xếp theo distance tăng dần → similarity giảm dần (tốt nhất trước)
     return hits
+
+
+def search_selected_text(
+    question: str,
+    allowed_version_ids: list[UUID],
+    top_k: int = 5,
+    machine_code: str | None = None,
+) -> list[dict[str, Any]]:
+    """Rank chunks from explicitly selected documents without loading an embed model."""
+    import re
+    import unicodedata
+
+    collection = _get_collection()
+    version_values = [str(value) for value in allowed_version_ids]
+    version_filter: dict[str, Any]
+    if len(version_values) == 1:
+        version_filter = {"version_id": version_values[0]}
+    else:
+        version_filter = {"version_id": {"$in": version_values}}
+
+    clauses = [version_filter]
+    if machine_code:
+        clauses.append({"machineCode": machine_code})
+    where = {"$and": clauses} if len(clauses) > 1 else clauses[0]
+
+    results = collection.get(where=where, include=["documents", "metadatas"])
+
+    def tokens(value: str) -> set[str]:
+        normalized = unicodedata.normalize("NFKD", value.lower())
+        plain = "".join(char for char in normalized if not unicodedata.combining(char))
+        return {token for token in re.findall(r"\w+", plain) if len(token) > 1}
+
+    question_tokens = tokens(question)
+    hits: list[dict[str, Any]] = []
+    for doc, meta in zip(results.get("documents", []), results.get("metadatas", [])):
+        overlap = len(question_tokens & tokens(doc or ""))
+        # The user explicitly selected these versions, so a generic summary
+        # request must still pass the relevance guardrail.
+        score = min(0.95, 0.65 + overlap * 0.05)
+        hits.append(
+            {
+                "text": doc,
+                "page_no": meta.get("page_no"),
+                "version_id": meta.get("version_id"),
+                "document_id": meta.get("document_id"),
+                "chunk_index": meta.get("chunk_index"),
+                "bbox": meta.get("bbox", ""),
+                "image_path": meta.get("image_path", ""),
+                "snippet": meta.get("snippet", ""),
+                "title": meta.get("title", ""),
+                "category": meta.get("category", ""),
+                "score": round(score, 4),
+            }
+        )
+
+    hits.sort(key=lambda item: (-item["score"], item.get("page_no") or 0, item.get("chunk_index") or 0))
+    return hits[:top_k]

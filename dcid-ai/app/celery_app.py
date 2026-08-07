@@ -44,6 +44,8 @@ def _make_celery() -> Celery:
         task_acks_late=True,             # Chỉ ack sau khi task hoàn thành — không mất job khi worker restart
         worker_prefetch_multiplier=1,    # Mỗi worker chỉ nhận 1 task/lần — tránh OOM khi embed model nặng
         task_reject_on_worker_lost=True, # Reject (requeue) task nếu worker đột ngột chết
+        # Restore unacked Redis tasks after five minutes instead of one hour.
+        broker_transport_options={"visibility_timeout": 300},
         # Timeouts
         task_soft_time_limit=s.celery_task_soft_time_limit,
         task_time_limit=s.celery_task_time_limit,
