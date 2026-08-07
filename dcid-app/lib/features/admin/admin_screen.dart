@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/app_user.dart';
 import '../../data/models/user_role.dart';
+import '../../state/auth_controller.dart';
 import '../../state/providers.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
@@ -40,32 +41,30 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     try {
       final repo = ref.read(authRepositoryProvider);
       final list = await repo.listUsers(
+        search: _searchController.text.trim().isEmpty
+            ? null
+            : _searchController.text.trim(),
         role: _selectedRoleFilter?.wire,
-        search: _searchController.text.trim(),
       );
-      if (mounted) {
-        setState(() {
-          _users = list;
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _users = list;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _errorMessage = 'Failed to load users: $e';
+        _isLoading = false;
+      });
     }
   }
 
   void _showCreateUserDialog() {
+    final formKey = GlobalKey<FormState>();
     final usernameCtrl = TextEditingController();
     final passwordCtrl = TextEditingController();
-    final nameCtrl = TextEditingController();
+    final fullNameCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
     UserRole selectedRole = UserRole.operatorRole;
-    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -73,7 +72,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         final nav = Navigator.of(ctx);
         final messenger = ScaffoldMessenger.of(context);
         return AlertDialog(
-          title: const Text('Tạo tài khoản người dùng mới'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Create New User Account'),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -84,32 +84,52 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   children: [
                     TextFormField(
                       controller: usernameCtrl,
-                      decoration: const InputDecoration(labelText: 'Tên đăng nhập *'),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Vui lòng nhập tên đăng nhập' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Username *',
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: passwordCtrl,
                       obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Mật khẩu *'),
-                      validator: (v) => (v == null || v.length < 6) ? 'Mật khẩu tối thiểu 6 ký tự' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Password *',
+                        prefixIcon: Icon(Icons.lock),
+                      ),
+                      validator: (v) =>
+                          v == null || v.length < 4 ? 'Min 4 chars' : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
-                      controller: nameCtrl,
-                      decoration: const InputDecoration(labelText: 'Họ và tên'),
+                      controller: fullNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Full Name',
+                        prefixIcon: Icon(Icons.badge),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: emailCtrl,
-                      decoration: const InputDecoration(labelText: 'Email'),
+                      decoration: const InputDecoration(
+                        labelText: 'Email Address',
+                        prefixIcon: Icon(Icons.email),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<UserRole>(
-                      initialValue: selectedRole,
-                      decoration: const InputDecoration(labelText: 'Vai trò (Role)'),
+                      value: selectedRole,
+                      decoration: const InputDecoration(
+                        labelText: 'Role *',
+                        prefixIcon: Icon(Icons.admin_panel_settings),
+                      ),
                       items: UserRole.values
-                          .map((r) => DropdownMenuItem(value: r, child: Text('${r.label} (${r.wire})')))
+                          .map((r) => DropdownMenuItem(
+                                value: r,
+                                child: Text(r.label),
+                              ))
                           .toList(),
                       onChanged: (v) {
                         if (v != null) selectedRole = v;
@@ -123,9 +143,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           actions: [
             TextButton(
               onPressed: () => nav.pop(),
-              child: const Text('Hủy'),
+              child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            FilledButton(
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
                 try {
@@ -133,23 +153,30 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   await repo.createUser(
                     username: usernameCtrl.text.trim(),
                     password: passwordCtrl.text,
-                    fullName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
-                    email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(),
+                    fullName: fullNameCtrl.text.trim().isEmpty
+                        ? null
+                        : fullNameCtrl.text.trim(),
+                    email: emailCtrl.text.trim().isEmpty
+                        ? null
+                        : emailCtrl.text.trim(),
                     role: selectedRole.wire,
                   );
-
                   nav.pop();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Tạo tài khoản thành công!')),
+                    SnackBar(
+                      content: Text(
+                        'Account "${usernameCtrl.text.trim()}" created successfully!',
+                      ),
+                    ),
                   );
                   _fetchUsers();
                 } catch (e) {
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Lỗi: $e')),
+                    SnackBar(content: Text('Error: $e')),
                   );
                 }
               },
-              child: const Text('Tạo mới'),
+              child: const Text('Create Account'),
             ),
           ],
         );
@@ -158,8 +185,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   }
 
   void _showResetPasswordDialog(AppUser user) {
-    final passwordCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final passwordCtrl = TextEditingController();
 
     showDialog(
       context: context,
@@ -167,7 +194,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         final nav = Navigator.of(ctx);
         final messenger = ScaffoldMessenger.of(context);
         return AlertDialog(
-          title: Text('Reset mật khẩu: ${user.username}'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Reset Password (${user.username})'),
           content: Form(
             key: formKey,
             child: SizedBox(
@@ -175,28 +203,37 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               child: TextFormField(
                 controller: passwordCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Mật khẩu mới *'),
-                validator: (v) => (v == null || v.length < 6) ? 'Mật khẩu tối thiểu 6 ký tự' : null,
+                decoration: const InputDecoration(
+                  labelText: 'New Password *',
+                  prefixIcon: Icon(Icons.key),
+                ),
+                validator: (v) =>
+                    v == null || v.length < 4 ? 'Min 4 chars' : null,
               ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => nav.pop(), child: const Text('Hủy')),
-            ElevatedButton(
+            TextButton(
+              onPressed: () => nav.pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
                 try {
                   final repo = ref.read(authRepositoryProvider);
-                  await repo.resetPassword(id: user.id, newPassword: passwordCtrl.text);
+                  await repo.resetPassword(
+                      id: user.id, newPassword: passwordCtrl.text);
                   nav.pop();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Đổi mật khẩu thành công!')),
+                    const SnackBar(
+                        content: Text('Password reset successfully!')),
                   );
                 } catch (e) {
-                  messenger.showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+                  messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
-              child: const Text('Lưu mật khẩu'),
+              child: const Text('Save Password'),
             ),
           ],
         );
@@ -210,11 +247,15 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       final repo = ref.read(authRepositoryProvider);
       await repo.updateUserStatus(id: user.id, isActive: newStatus);
       messenger.showSnackBar(
-        SnackBar(content: Text('${newStatus ? "Kích hoạt" : "Khóa"} tài khoản ${user.username} thành công!')),
+        SnackBar(
+          content: Text(
+            'Account ${user.username} is now ${newStatus ? "Active" : "Inactive"}!',
+          ),
+        ),
       );
       _fetchUsers();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -231,62 +272,215 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required ColorScheme scheme,
+  }) {
+    return Card(
+      elevation: 0,
+      color: color.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
+    final totalUsers = _users.length;
+    final activeUsers = _users.where((u) => u.isActive).length;
+    final engineers = _users.where((u) => u.role == UserRole.engineer).length;
+    final admins = _users
+        .where((u) => u.role == UserRole.admin || u.role == UserRole.qaAdmin)
+        .length;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quản trị hệ thống & Tài khoản'),
+        title: const Text('System & Account Management'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _fetchUsers,
-            tooltip: 'Làm mới',
+            tooltip: 'Refresh',
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Controls Card
+            // ── 1. Overview Stat Cards Row ──────────────────────────────
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 700;
+                final cards = [
+                  _buildStatCard(
+                    title: 'Total Users',
+                    value: '$totalUsers',
+                    icon: Icons.people_alt_rounded,
+                    color: scheme.primary,
+                    scheme: scheme,
+                  ),
+                  _buildStatCard(
+                    title: 'Active Accounts',
+                    value: '$activeUsers',
+                    icon: Icons.check_circle_rounded,
+                    color: Colors.green.shade700,
+                    scheme: scheme,
+                  ),
+                  _buildStatCard(
+                    title: 'Engineers',
+                    value: '$engineers',
+                    icon: Icons.engineering_rounded,
+                    color: Colors.blue.shade700,
+                    scheme: scheme,
+                  ),
+                  _buildStatCard(
+                    title: 'Admins & QA',
+                    value: '$admins',
+                    icon: Icons.admin_panel_settings_rounded,
+                    color: Colors.purple.shade700,
+                    scheme: scheme,
+                  ),
+                ];
+
+                if (isWide) {
+                  return Row(
+                    children: cards
+                        .map((c) => Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: c,
+                              ),
+                            ))
+                        .toList(),
+                  );
+                }
+
+                return GridView.count(
+                  crossAxisCount: constraints.maxWidth < 400 ? 1 : 2,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: constraints.maxWidth < 400 ? 2.8 : 2.2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: cards,
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // ── 2. Toolbar Row (Expanded search, no filter button) ──────
             Card(
-              elevation: 2,
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 260,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 600;
+
+                    final searchInput = SizedBox(
+                      height: 44,
                       child: TextField(
                         controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Tìm theo tên, username, email...',
-                          prefixIcon: const Icon(Icons.search),
-                          isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
+                        style: const TextStyle(fontSize: 13),
+                        onChanged: (_) => _fetchUsers(),
                         onSubmitted: (_) => _fetchUsers(),
+                        decoration: InputDecoration(
+                          hintText: 'Search by name, username, email...',
+                          hintStyle: TextStyle(fontSize: 13, color: scheme.outline),
+                          prefixIcon: const Icon(Icons.search, size: 18),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                       ),
-                    ),
-                    SizedBox(
-                      width: 180,
+                    );
+
+                    final roleDropdown = SizedBox(
+                      width: isMobile ? double.infinity : 190,
+                      height: 44,
                       child: DropdownButtonFormField<UserRole?>(
                         initialValue: _selectedRoleFilter,
+                        borderRadius: BorderRadius.circular(12),
+                        menuMaxHeight: 300,
+                        style: TextStyle(fontSize: 13, color: scheme.onSurface),
                         decoration: InputDecoration(
                           isDense: true,
-                          labelText: 'Lọc vai trò',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          labelText: 'Filter Role',
+                          labelStyle: const TextStyle(fontSize: 13),
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         items: [
-                          const DropdownMenuItem(value: null, child: Text('Tất cả vai trò')),
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('All Roles', style: TextStyle(fontSize: 13)),
+                          ),
                           ...UserRole.values.map(
-                            (r) => DropdownMenuItem(value: r, child: Text(r.label)),
+                            (r) => DropdownMenuItem(
+                              value: r,
+                              child: Text(r.label, style: const TextStyle(fontSize: 13)),
+                            ),
                           ),
                         ],
                         onChanged: (v) {
@@ -294,104 +488,302 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                           _fetchUsers();
                         },
                       ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: _fetchUsers,
-                      icon: const Icon(Icons.filter_list),
-                      label: const Text('Lọc'),
-                    ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                      onPressed: _showCreateUserDialog,
-                      icon: const Icon(Icons.person_add),
-                      label: const Text('Tạo tài khoản mới'),
-                    ),
+                    );
 
-                  ],
+                    final createBtn = SizedBox(
+                      height: 44,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: _showCreateUserDialog,
+                        icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                        label: const Text('Create New Account'),
+                      ),
+                    );
+
+                    if (isMobile) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          searchInput,
+                          const SizedBox(height: 10),
+                          roleDropdown,
+                          const SizedBox(height: 10),
+                          createBtn,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(child: searchInput),
+                        const SizedBox(width: 12),
+                        roleDropdown,
+                        const SizedBox(width: 12),
+                        createBtn,
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            // Content Area
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
-                              const SizedBox(height: 8),
-                              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-                              const SizedBox(height: 12),
-                              ElevatedButton(onPressed: _fetchUsers, child: const Text('Thử lại')),
-                            ],
-                          ),
-                        )
-                      : _users.isEmpty
-                          ? const Center(child: Text('Không tìm thấy tài khoản nào'))
-                          : Card(
-                              elevation: 2,
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.vertical,
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: DataTable(
-                                    columns: const [
-                                      DataColumn(label: Text('Username')),
-                                      DataColumn(label: Text('Họ và tên')),
-                                      DataColumn(label: Text('Email')),
-                                      DataColumn(label: Text('Vai trò (Role)')),
-                                      DataColumn(label: Text('Trạng thái')),
-                                      DataColumn(label: Text('Thao tác')),
-                                    ],
-                                    rows: _users.map((user) {
-                                      return DataRow(cells: [
-                                        DataCell(Text(user.username, style: const TextStyle(fontWeight: FontWeight.bold))),
-                                        DataCell(Text(user.fullName ?? '—')),
-                                        DataCell(Text(user.email ?? '—')),
-                                        DataCell(Chip(
-                                          label: Text(
-                                            user.role.label,
-                                            style: const TextStyle(color: Colors.white, fontSize: 12),
+            // ── 3. Data Table Area (Shrink-wrap height + Pagination) ────
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(40.0),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.all(40.0),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: scheme.error),
+                      const SizedBox(height: 8),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyle(color: scheme.error),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _fetchUsers,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_users.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(40.0),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.people_outline, size: 48, color: scheme.outline),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No accounts found',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                      color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minWidth: constraints.maxWidth,
+                              ),
+                              child: DataTable(
+                                headingRowHeight: 48,
+                                dataRowMinHeight: 52,
+                                dataRowMaxHeight: 56,
+                                headingRowColor: WidgetStateProperty.all(
+                                  scheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
+                                ),
+                                columns: const [
+                                  DataColumn(
+                                    label: Text(
+                                      'Username',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Full Name',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Text(
+                                      'Email',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Role',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Status',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    label: Expanded(
+                                      child: Text(
+                                        'Actions',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                rows: _users.map((user) {
+                                  return DataRow(cells: [
+                                    // Username (Left-aligned)
+                                    DataCell(
+                                      Text(
+                                        user.username,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                    // Full Name (Left-aligned)
+                                    DataCell(Text(user.fullName ?? '—')),
+                                    // Email (Left-aligned)
+                                    DataCell(Text(user.email ?? '—')),
+                                    // Role Badge (Center-aligned)
+                                    DataCell(
+                                      Center(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: _getRoleColor(user.role),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
-                                          backgroundColor: _getRoleColor(user.role),
-                                        )),
-                                        DataCell(Row(
+                                          child: Text(
+                                            user.role.label,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // Status Switch & Label (Center-aligned)
+                                    DataCell(
+                                      Center(
+                                        child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Switch(
-                                              value: user.isActive,
-                                              onChanged: (val) => _toggleUserStatus(user, val),
+                                            Transform.scale(
+                                              scale: 0.8,
+                                              child: Switch(
+                                                value: user.isActive,
+                                                onChanged: (val) =>
+                                                    _toggleUserStatus(
+                                                        user, val ?? false),
+                                              ),
                                             ),
-                                            Text(user.isActive ? 'Hoạt động' : 'Đã khóa'),
-                                          ],
-                                        )),
-                                        DataCell(Row(
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.lock_reset, color: Colors.amber),
-                                              tooltip: 'Reset mật khẩu',
-                                              onPressed: () => _showResetPasswordDialog(user),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              user.isActive ? 'Active' : 'Inactive',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: user.isActive
+                                                    ? Colors.green.shade700
+                                                    : scheme.outline,
+                                              ),
                                             ),
                                           ],
-                                        )),
-                                      ]);
-                                    }).toList(),
-                                  ),
-                                ),
+                                        ),
+                                      ),
+                                    ),
+                                    // Actions (Center-aligned)
+                                    DataCell(
+                                      Center(
+                                        child: IconButton(
+                                          icon: Icon(Icons.key_rounded,
+                                              size: 18, color: scheme.primary),
+                                          tooltip: 'Reset Password',
+                                          onPressed: () =>
+                                              _showResetPasswordDialog(user),
+                                        ),
+                                      ),
+                                    ),
+                                  ]);
+                                }).toList(),
                               ),
                             ),
-            ),
+                          );
+                        },
+                      ),
+
+                      // ── Pagination Footer ──────────────────────────────────
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Showing ${_users.length} account${_users.length == 1 ? "" : "s"}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Icon(Icons.verified_outlined,
+                                    size: 14, color: scheme.primary),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Page 1 of 1',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 }
+
+

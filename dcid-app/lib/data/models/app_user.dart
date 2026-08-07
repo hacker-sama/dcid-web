@@ -19,11 +19,13 @@ class AppUser {
   final bool isActive;
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-        id: json['id'] as String,
-        username: json['username'] as String,
-        role: UserRole.fromWire(json['role'] as String),
+        id: json['id'] as String? ?? '',
+        username: json['username'] as String? ?? '',
+        role: UserRole.fromWire(json['role'] as String? ?? 'OPERATOR'),
         fullName: json['fullName'] as String?,
         email: json['email'] as String?,
-        isActive: (json['isActive'] as bool?) ?? true,
+        isActive: json['isActive'] == true ||
+            json['isActive'] == null ||
+            json['isActive'] == 'true',
       );
 }
