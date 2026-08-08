@@ -2,9 +2,9 @@
 
 Luồng xử lý (theo contract §2.2):
     1. Embed câu hỏi bằng multilingual-e5-small (prefix "query: ").
-    2. Truy vấn ChromaDB với filter allowedVersionIds.
+    2. Truy vấn Qdrant với filter allowedVersionIds.
     3. Kiểm tra guardrail (cosine threshold + trigger phrase).
-    4. Build system prompt + inject context chunks từ ChromaDB.
+    4. Build system prompt + inject context chunks từ Qdrant.
     5. Gọi LM Studio để sinh câu trả lời (gọi qua llm_client).
     6. Tính confidence từ điểm similarity tốt nhất.
     7. Trả về QueryResponse đúng schema contract.
@@ -178,7 +178,7 @@ def run_query(req: QueryRequest) -> QueryResponse:
                 model="error-embed",
             )
 
-    # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
+    # ── 2. Truy vấn Qdrant ───────────────────────────────────────────────────
     try:
         if not req.allowedVersionIds:
             hits = []
@@ -197,14 +197,14 @@ def run_query(req: QueryRequest) -> QueryResponse:
                 machine_code=req.machineCode,
             )
     except Exception as exc:
-        logger.error("ChromaDB search thất bại: %s", exc)
+        logger.error("Qdrant search thất bại: %s", exc)
         return _locked_response(
             latency_ms=_elapsed_ms(start_ns),
-            model="error-chroma",
+            model="error-qdrant",
         )
 
     logger.info(
-        "ChromaDB: %d hits | top_score=%.3f | question=%s",
+        "Qdrant: %d hits | top_score=%.3f | question=%s",
         len(hits),
         hits[0]["score"] if hits else 0.0,
         req.question[:80],
@@ -458,7 +458,7 @@ def run_query_stream(req: QueryRequest):
             yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-embed")
             return
 
-    # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
+    # ── 2. Truy vấn Qdrant ───────────────────────────────────────────────────
     try:
         if not req.allowedVersionIds:
             hits = []
@@ -477,9 +477,9 @@ def run_query_stream(req: QueryRequest):
                 machine_code=req.machineCode,
             )
     except Exception as exc:
-        logger.error("ChromaDB search thất bại (stream): %s", exc)
+        logger.error("Qdrant search thất bại (stream): %s", exc)
         yield _sse("error", message="Lỗi tìm kiếm tài liệu.")
-        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-chroma")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-qdrant")
         return
 
     # ── 3. Guardrail ─────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
 ## Kiến trúc production
 
 Production chạy 9 service: `backend`, `ai`, `ai-worker`, `ai-ocr`, `ollama`,
-`chroma`, `postgres`, `redis` và `minio`. Kafka, Zookeeper và Flower không
+`qdrant`, `postgres`, `redis` và `minio`. Kafka, Zookeeper và Flower không
 thuộc stack 8 GB.
 
 Tổng memory limit của các container xấp xỉ 7.47 GiB. Redis cung cấp một
@@ -15,7 +15,7 @@ việc nặng xử lý lần lượt thay vì cùng tăng RAM.
 - VPS Linux có 4 vCPU, 8 GB RAM và ít nhất 30 GB NVMe trống.
 - Docker Engine và Docker Compose v2.
 - Swap 4 GB để chống OOM đột ngột. Swap không thay thế RAM.
-- Chỉ công khai `8080`; PostgreSQL, Redis, MinIO, Chroma, OCR, AI và
+- Chỉ công khai `8080`; PostgreSQL, Redis, MinIO, Qdrant, OCR, AI và
   Ollama chỉ truy cập qua mạng Docker nội bộ.
 
 ## Cấu hình bí mật
@@ -52,7 +52,8 @@ curl http://127.0.0.1:8080/actuator/health
 
 ## Quy tắc vận hành
 
-- `OLLAMA_MAX_LOADED_MODELS=1`, `OLLAMA_NUM_PARALLEL=1`, context 2048.
+- `OLLAMA_MAX_LOADED_MODELS=1`, `OLLAMA_NUM_PARALLEL=1`, context 4096;
+  output tối đa 768 token.
 - Celery worker có concurrency 1 và prefetch 1.
 - Upload trả `taskId`; OCR/index tiếp tục trong hàng đợi Redis.
 - Truy vấn văn bản dùng `qwen2.5:1.5b`; chỉ truy vấn có ảnh hoặc

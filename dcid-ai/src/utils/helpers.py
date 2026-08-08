@@ -62,7 +62,7 @@ def save_crop_image(
 ) -> str:
     """Lưu tấm ảnh crop vào đĩa ở thư mục uploads/crops/ và trả về đường dẫn tương đối.
 
-    Đường dẫn này (`image_path`) sẽ được lưu vào Metadata ChromaDB
+    Đường dẫn này (`image_path`) sẽ được lưu vào payload Qdrant
     để Frontend UI lấy và render trực tiếp tấm ảnh crop lên giao diện.
 
     Returns:

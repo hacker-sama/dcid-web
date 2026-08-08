@@ -10,7 +10,6 @@ app:
 paths:
   uploads_dir: "./uploads"
   crops_dir: "./uploads/crops"
-  chroma_db_dir: "./chroma_db"
   logs_dir: "./logs"
 
 models:
@@ -32,9 +31,13 @@ lm_studio:
   temperature: 0.2
   max_tokens: 2048
 
-chromadb:
-  collection_name: "dcid_document_chunks"
-  distance_space: "cosine"
+qdrant:
+  host: "qdrant"
+  port: 6333
+  collection_name: "kcn_chunks"
+  vector_size: 384
+  distance: "cosine"
+  on_disk: true
 
 chunking:
   chunk_size: 600

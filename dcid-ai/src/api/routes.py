@@ -128,7 +128,7 @@ def health_check():
     return {
         "status": "UP",
         "service": "DCID AI Python Service",
-        "vector_store": "ChromaDB Persistent Local DB",
+        "vector_store": "Qdrant",
         "vision_model": "qwen2.5vl:3b",
     }
 

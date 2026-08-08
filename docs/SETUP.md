@@ -15,7 +15,7 @@ Stack Docker production gồm đúng 9 service:
 | `ai-worker` | Celery worker: OCR, chunk, embedding, index | không publish |
 | `ai-ocr` | PaddleOCR sidecar | 8002 |
 | `ollama` | Model chữ và Vision | 11434 |
-| `chroma` | Vector database | 8001 |
+| `qdrant` | Vector database | 6333 |
 | `postgres` | Dữ liệu nghiệp vụ | 5433 |
 | `redis` | Celery queue, cache và khóa tài nguyên AI | 6379 |
 | `minio` | PDF, ảnh trang và ảnh upload | 9000 |
@@ -92,7 +92,7 @@ Không build bốn image song song trên máy chỉ còn khoảng 20 GB trống.
 ### 4.3. Khởi động hạ tầng và tải model
 
 ```powershell
-docker compose up -d postgres redis minio chroma ollama
+docker compose up -d postgres redis minio qdrant ollama
 docker compose ps
 ```
 
@@ -163,17 +163,42 @@ Thiết bị Android thật phải dùng IP LAN của máy chạy backend, khôn
 
 ### Kiểm tra chỉ mục tài liệu sau khi Docker được tạo lại
 
-ChromaDB được lưu trong named volume `chroma_data` tại `/data`. Không đổi mount
-này về đường dẫn cũ `/chroma/.chroma/index`, vì Chroma 1.x không ghi dữ liệu ở
-đó. Nếu PostgreSQL còn tài liệu `ACTIVE` nhưng AI luôn trả độ tin cậy `0%`, hãy
-kiểm tra số chunk trong Chroma trước khi tái ingest tài liệu.
+Qdrant được lưu trong named volume `qdrant_data` tại `/qdrant/storage`. Nếu
+PostgreSQL còn tài liệu `ACTIVE` nhưng AI luôn trả độ tin cậy `0%`, kiểm tra số
+point bằng `python scripts/qdrant_status.py` và lập chỉ mục lại tài liệu nếu
+collection đang rỗng.
+
+### Chuyển dữ liệu một lần từ ChromaDB cũ
+
+Không chạy `docker compose up --remove-orphans` trước khi hoàn tất bước này.
+Giữ container `dcid-chroma` cũ ở cổng `8001`, sau đó khởi động Qdrant:
+
+```powershell
+docker compose up -d qdrant
+pip install chromadb "qdrant-client>=1.15,<1.17"
+python scripts/migrate_chroma_to_qdrant.py
+python scripts/qdrant_status.py
+```
+
+Script dùng ID xác định nên có thể chạy lại an toàn. Chỉ khi số point Qdrant
+bằng hoặc lớn hơn số chunk Chroma mới rebuild và chuyển toàn bộ dịch vụ:
+
+```powershell
+docker compose build ai ai-worker
+docker compose up -d ai ai-worker backend
+docker compose ps
+```
+
+Sau thời gian kiểm tra, có thể dừng container `dcid-chroma`; volume Chroma cũ
+không tự bị xóa và vẫn có thể giữ tạm để quay lui. Tuyệt đối không dùng
+`docker compose down -v` trong quá trình chuyển đổi.
 
 ## 6. Chạy backend/AI ngoài Docker
 
 Chỉ dùng phần này khi cần debug code. Trước tiên khởi động hạ tầng:
 
 ```powershell
-docker compose up -d postgres redis minio chroma ollama ai-ocr
+docker compose up -d postgres redis minio qdrant ollama ai-ocr
 ```
 
 ### Backend
@@ -205,8 +230,8 @@ Thiết lập các biến cho service chạy ngoài Docker:
 ```powershell
 $env:AI_INTERNAL_TOKEN="change-me-internal-token"
 $env:MINIO_ENDPOINT="localhost:9000"
-$env:CHROMA_HOST="localhost"
-$env:CHROMA_PORT="8001"
+$env:QDRANT_HOST="localhost"
+$env:QDRANT_PORT="6333"
 $env:REDIS_URL="redis://localhost:6379/0"
 $env:OCR_SERVICE_URL="http://localhost:8002"
 $env:LM_STUDIO_BASE_URL="http://localhost:11434/v1"
@@ -224,8 +249,8 @@ cd dcid-ai
 .\.venv\Scripts\Activate.ps1
 $env:REDIS_URL="redis://localhost:6379/0"
 $env:MINIO_ENDPOINT="localhost:9000"
-$env:CHROMA_HOST="localhost"
-$env:CHROMA_PORT="8001"
+$env:QDRANT_HOST="localhost"
+$env:QDRANT_PORT="6333"
 $env:OCR_SERVICE_URL="http://localhost:8002"
 $env:AI_RESOURCE_GATE_ENABLED="true"
 $env:AI_RESOURCE_GATE_FAIL_OPEN="false"
@@ -282,7 +307,7 @@ docker compose --env-file .env.production \
   -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-Production chỉ publish cổng `8080`; PostgreSQL, Redis, MinIO, Chroma, OCR, AI và
+Production chỉ publish cổng `8080`; PostgreSQL, Redis, MinIO, Qdrant, OCR, AI và
 Ollama chỉ truy cập qua Docker network.
 
 Xem thêm [VPS-8GB.md](VPS-8GB.md).
@@ -326,7 +351,7 @@ Xóa container/network nhưng giữ volume:
 docker compose down
 ```
 
-Không chạy `docker compose down -v` nếu muốn giữ PostgreSQL, MinIO, Chroma
+Không chạy `docker compose down -v` nếu muốn giữ PostgreSQL, MinIO, Qdrant
 và model Ollama.
 
 ## 10. Xử lý sự cố thường gặp

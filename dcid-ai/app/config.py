@@ -25,9 +25,15 @@ class Settings(BaseSettings):
     minio_bucket: str = "kcn-docs"
     minio_secure: bool = False
 
-    # ChromaDB — service `chroma` trong docker-compose.yml (port nội bộ 8000)
-    chroma_host: str = "localhost"
-    chroma_port: int = 8000
+    # Qdrant — service `qdrant` trong docker-compose.yml (REST port 6333)
+    qdrant_host: str = "localhost"
+    qdrant_port: int = 6333
+    qdrant_api_key: str = ""
+    qdrant_timeout: float = 30.0
+    qdrant_vector_size: int = 384
+    qdrant_vectors_on_disk: bool = True
+    qdrant_hnsw_on_disk: bool = True
+    qdrant_payload_on_disk: bool = True
 
     # ── Local LLM (Ollama OpenAI-compatible API) ──────────────────────────────
     # Giữ tên biến LM_STUDIO_* để tương thích ngược với các file .env cũ.
@@ -42,9 +48,9 @@ class Settings(BaseSettings):
     llm_repetition_penalty: float = 1.2  # Cấu hình suy luận tối ưu theo sơ đồ (High Repetition Penalty: 1.2)
     llm_frequency_penalty: float = 0.0
     llm_presence_penalty: float = 0.0
-    llm_max_tokens: int = 1024
+    llm_max_tokens: int = 768
     # Giới hạn context phía ứng dụng để kiểm soát RAM và độ trễ của Ollama.
-    llm_context_window: int = 2048
+    llm_context_window: int = 4096
     llm_context_safety_tokens: int = 256
     # CPU cold-start for a 3B vision model can exceed two minutes.
     llm_timeout: float = 300.0
