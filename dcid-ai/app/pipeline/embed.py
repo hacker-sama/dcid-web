@@ -17,6 +17,8 @@ import logging
 import threading
 from functools import lru_cache
 
+from app.services.resource_gate import serialized_heavy
+
 logger = logging.getLogger("dcid-ai.embed")
 
 MODEL_NAME = "intfloat/multilingual-e5-small"
@@ -56,6 +58,7 @@ def _get_model():
         return _load_model()
 
 
+@serialized_heavy("document-embedding")
 def embed_texts(texts: list[str]) -> list[list[float]]:
     """Embed danh sách *passage* (từ chunk văn bản tài liệu).
 
@@ -76,6 +79,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     return [vec.tolist() for vec in embeddings]
 
 
+@serialized_heavy("query-embedding")
 def embed_query(question: str) -> list[float]:
     """Embed 1 câu hỏi (dùng trong pipeline query ở T3).
 

@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # service `redis` trong docker-compose.yml (port nội bộ 6379)
     # Khi dev local: redis://localhost:6379/0
     redis_url: str = "redis://redis:6379/0"
+    # Serialize OCR, embedding and LLM inference across containers so their
+    # memory peaks cannot overlap on the 8 GiB deployment target.
+    ai_resource_gate_enabled: bool = True
+    ai_resource_gate_fail_open: bool = False
+    ai_resource_lock_name: str = "dcid:ai:heavy"
+    ai_resource_lock_wait_seconds: int = 330
+    ai_resource_lock_lease_seconds: int = 180
     # Soft limit: SoftTimeLimitExceeded exception được raise để task có thể cleanup
     celery_task_soft_time_limit: int = 600   # 10 phút — đủ cho PDF 100+ trang
     # Hard limit: worker bị kill nếu vượt quá (tránh zombie process)

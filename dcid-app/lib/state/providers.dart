@@ -9,11 +9,15 @@ import '../data/docs_repository_interface.dart';
 
 import '../data/offline_cache_repository.dart';
 
-final secureStorageProvider =
-    Provider<FlutterSecureStorage>((ref) => const FlutterSecureStorage());
+final secureStorageProvider = Provider<FlutterSecureStorage>(
+  (ref) => const FlutterSecureStorage(),
+);
 
-final apiClientProvider =
-    Provider<ApiClient>((ref) => ApiClient(ref.watch(secureStorageProvider)));
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final client = ApiClient(ref.watch(secureStorageProvider));
+  ref.onDispose(client.dispose);
+  return client;
+});
 
 /// Auth operations. Override with `MockAuthRepository` during Week 1:
 ///

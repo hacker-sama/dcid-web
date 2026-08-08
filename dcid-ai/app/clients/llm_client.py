@@ -18,6 +18,7 @@ from functools import lru_cache
 from typing import Any
 
 from app.config import get_settings
+from app.services.resource_gate import serialized_heavy
 
 logger = logging.getLogger("dcid-ai.llm_client")
 
@@ -182,6 +183,7 @@ def get_model_name(image_base64: str | None = None) -> str:
     return settings.vision_model if image_base64 else settings.lm_studio_model
 
 
+@serialized_heavy("llm-inference")
 def generate_answer(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None) -> tuple[str, str]:
     """Gọi local LLM để sinh câu trả lời (hỗ trợ cả Text LLM lẫn Vision VLM).
 
@@ -382,6 +384,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     return answer, model_used
 
 
+@serialized_heavy("llm-stream")
 def generate_answer_stream(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None):
     """Generator: stream token từ local LLM về client qua SSE (hỗ trợ Vision VLM).
 

@@ -23,18 +23,27 @@ services:
       # cài sẵn trên máy dev (rất hay gặp). Container backend dùng service name
       # `postgres:5432` qua mạng nội bộ compose, không bị ảnh hưởng bởi mapping này.
       - "5433:5432"
-    mem_limit: 384m
+    mem_limit: 320m
     restart: unless-stopped
 
   redis:
     image: redis:7
     container_name: dcid-redis
-    command: ["redis-server", "--save", "900 1", "--loglevel", "warning"]
+    command:
+      - redis-server
+      - --save
+      - "900 1"
+      - --loglevel
+      - warning
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - noeviction
     volumes:
       - redis_data:/data
     ports:
       - "6379:6379"  # Expose ra host để dev local debug / kiểm tra Celery queue
-    mem_limit: 128m
+    mem_limit: 96m
     restart: unless-stopped
 
   minio:
@@ -49,7 +58,7 @@ services:
       - minio_data:/data
     ports:
       - "9000:9000"
-    mem_limit: 256m
+    mem_limit: 192m
     restart: unless-stopped
 
   backend:
@@ -62,7 +71,6 @@ services:
       POSTGRES_USER: dcid
       POSTGRES_PASSWORD: dcid
       REDIS_HOST: redis
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
@@ -71,13 +79,18 @@ services:
       APP_BOOTSTRAP_ADMIN_PASSWORD: admin123
       AI_BASE_URL: http://ai:8000
       AI_INTERNAL_TOKEN: change-me-internal-token
+      JAVA_TOOL_OPTIONS: >-
+        -XX:InitialRAMPercentage=20
+        -XX:MaxRAMPercentage=70
+        -XX:MaxMetaspaceSize=128m
+        -XX:+UseSerialGC
     depends_on:
       - postgres
       - redis
       - minio
     ports:
       - "8080:8080"
-    mem_limit: 768m
+    mem_limit: 512m
     restart: unless-stopped
 
   ai:
@@ -98,6 +111,9 @@ services:
       CHROMA_PORT: 8000
       # Redis — Celery broker/backend (service `redis`, port nội bộ 6379)
       REDIS_URL: redis://redis:6379/0
+      AI_RESOURCE_GATE_ENABLED: "true"
+      AI_RESOURCE_GATE_FAIL_OPEN: "false"
+      AI_RESOURCE_LOCK_WAIT_SECONDS: "330"
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
       LM_STUDIO_API_KEY: ollama
       OMP_NUM_THREADS: "2"
@@ -119,7 +135,7 @@ services:
       - ollama
     ports:
       - "8000:8000"
-    mem_limit: 1g
+    mem_limit: 512m
     restart: unless-stopped
 
   # ── Celery Worker: chạy Embed/Index pipeline bất đồng bộ ─────────────────
@@ -143,6 +159,9 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       REDIS_URL: redis://redis:6379/0
+      AI_RESOURCE_GATE_ENABLED: "true"
+      AI_RESOURCE_GATE_FAIL_OPEN: "false"
+      AI_RESOURCE_LOCK_WAIT_SECONDS: "330"
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
       LM_STUDIO_API_KEY: ollama
       OMP_NUM_THREADS: "2"
@@ -162,26 +181,10 @@ services:
       - chroma
       - ai-ocr
       - ollama
-    mem_limit: 1g
+    mem_limit: 896m
     restart: unless-stopped
 
   # ── Flower: Celery monitoring UI (http://localhost:5555) ─────────────────
-  ai-flower:
-    build:
-      context: ./dcid-ai
-      dockerfile: Dockerfile
-    container_name: dcid-ai-flower
-    command: ["celery", "-A", "app.celery_app.celery_app", "flower", "--port=5555"]
-    environment:
-      REDIS_URL: redis://redis:6379/0
-    ports:
-      - "5555:5555"
-    depends_on:
-      - redis
-    profiles: ["monitoring"]
-    mem_limit: 256m
-    restart: unless-stopped
-
   ai-ocr:
     build:
       context: ./dcid-ai
@@ -208,17 +211,20 @@ services:
     ports:
       - "8002:8001"
     cpus: 2.0
-    mem_limit: 768m
+    mem_limit: 640m
     restart: unless-stopped
 
   chroma:
     image: chromadb/chroma:latest
     container_name: dcid-chroma
     volumes:
-      - chroma_data:/chroma/.chroma/index
+      # Chroma 1.x stores SQLite + vector segments in /data. Mounting the old
+      # /chroma/.chroma/index path leaves the real index inside the disposable
+      # container layer, so recreating the container silently loses all chunks.
+      - chroma_data:/data
     ports:
       - "8001:8000"  # host 8001 tránh đụng với dcid-ai (8000)
-    mem_limit: 384m
+    mem_limit: 256m
     restart: unless-stopped
 
   ollama:
@@ -243,36 +249,6 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
-    mem_limit: 5g
-    restart: unless-stopped
-
-  kafka:
-    # We use the official Confluent Kafka image for a single-node broker
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: dcid-kafka
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-    depends_on:
-      - zookeeper
-    profiles: ["messaging"]
-    ports:
-      - "9092:9092"
-    mem_limit: 512m
-    restart: unless-stopped
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: dcid-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    profiles: ["messaging"]
-    mem_limit: 256m
+    cpus: 3.0
+    mem_limit: 4224m
     restart: unless-stopped

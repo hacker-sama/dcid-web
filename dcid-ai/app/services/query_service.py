@@ -28,6 +28,7 @@ from app.pipeline import index as index_pipeline
 from app.pipeline import guardrails
 from app.pipeline import prompts
 from app.schemas import Citation, Guard, QueryRequest, QueryResponse
+from app.services.resource_gate import ResourceBusyError
 
 logger = logging.getLogger("dcid-ai.query_service")
 
@@ -35,7 +36,7 @@ LOCKED_ANSWER = (
     "Không đủ dữ liệu chắc chắn. Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm."
 )
 LOCKED_CONFIDENCE = 0.30
-VISION_IMAGE_MAX_SIDE = 1280
+VISION_IMAGE_MAX_SIDE = 800
 
 
 def _normalize_question(question: str) -> str:
@@ -266,6 +267,16 @@ def run_query(req: QueryRequest) -> QueryResponse:
     try:
         answer_text, model_name = llm_client.generate_answer(
             system_prompt, user_prompt, history=req.history, image_base64=image_base64
+        )
+    except ResourceBusyError as exc:
+        logger.warning("AI resources busy: %s", exc)
+        return QueryResponse(
+            answer="Hệ thống AI đang xử lý một tác vụ nặng. Vui lòng thử lại sau ít phút.",
+            confidence=0.0,
+            guard=Guard(locked=True, numericRule=numeric_rule, reasoningMode=reasoning_mode),
+            citations=_build_citations(hits),
+            latencyMs=_elapsed_ms(start_ns),
+            model="busy-resource-gate",
         )
     except LLMConnectionError as exc:
         logger.error("LLM kết nối thất bại (Ollama không chạy?): %s", exc)
@@ -535,6 +546,9 @@ def run_query_stream(req: QueryRequest):
             yield _sse("delta", text=token)
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model=model_name)
 
+    except ResourceBusyError:
+        yield _sse("error", message="Hệ thống AI đang bận. Vui lòng thử lại sau ít phút.")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="busy-resource-gate")
     except llm_client.LLMConnectionError:
         yield _sse("error", message="Ollama chưa sẵn sàng. Vui lòng liên hệ quản trị viên.")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-connection")

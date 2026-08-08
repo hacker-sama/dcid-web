@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constrained_content.dart';
 import '../../data/models/answer_result.dart';
+import '../../data/models/document_detail.dart';
 import '../../data/models/document_summary.dart';
 import '../../data/models/sse_event.dart';
 import '../../state/providers.dart';
@@ -13,7 +14,7 @@ class _ChatEntry {
   String content;
   AnswerResult? result;
 
-  _ChatEntry({required this.role, required this.content, this.result});
+  _ChatEntry({required this.role, required this.content});
 }
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -26,13 +27,14 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
+
   bool _loading = false;
   bool _reasoningMode = false;
   String? _error;
 
   List<DocumentSummary> _availableDocs = [];
-  final Set<String> _selectedDocIds = {};
+  final Map<String, String> _selectedVersionIdsByDocId = {};
+  final Set<String> _resolvingDocIds = {};
   final List<_ChatEntry> _chatMessages = [];
 
   @override
@@ -71,6 +73,55 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  Future<void> _setDocumentSelected(
+    DocumentSummary document,
+    bool selected,
+  ) async {
+    if (!selected) {
+      setState(() => _selectedVersionIdsByDocId.remove(document.id));
+      return;
+    }
+
+    setState(() => _resolvingDocIds.add(document.id));
+    try {
+      final detail = await ref
+          .read(docsRepositoryProvider)
+          .getDocumentDetail(document.id);
+      final VersionSummary? version = detail.queryableVersion;
+      if (!mounted) return;
+
+      if (version == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Tài liệu "${document.title}" chưa xử lý xong nên chưa thể dùng để hỏi AI.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        // Query API expects document-version UUIDs, not document UUIDs.
+        _selectedVersionIdsByDocId[document.id] = version.id;
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Không tải được phiên bản tài liệu. Vui lòng thử lại.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _resolvingDocIds.remove(document.id));
+      }
+    }
+  }
+
   Future<void> _ask() async {
     final question = _controller.text.trim();
     if (question.isEmpty || _loading) return;
@@ -92,11 +143,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           .map((m) => {'role': m.role, 'content': m.content})
           .toList();
 
-      final stream = ref.read(docsRepositoryProvider).askStream(
+      final stream = ref
+          .read(docsRepositoryProvider)
+          .askStream(
             question,
             reasoningMode: _reasoningMode,
-            selectedVersionIds:
-                _selectedDocIds.isEmpty ? null : _selectedDocIds.toList(),
+            selectedVersionIds: _selectedVersionIdsByDocId.isEmpty
+                ? null
+                : _selectedVersionIdsByDocId.values.toList(),
             history: history,
           );
 
@@ -147,8 +201,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       }
     } catch (_) {
       if (mounted) {
-        setState(() =>
-            _error = 'Không truy vấn được. Kiểm tra kết nối backend/AI.');
+        setState(
+          () => _error = 'Không truy vấn được. Kiểm tra kết nối backend/AI.',
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -177,38 +232,74 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             Card(
               elevation: 0,
               color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.library_books_outlined, size: 18, color: colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          _selectedDocIds.isEmpty
-                              ? '🌐 Phạm vi: Tất cả tài liệu (Global RAG)'
-                              : '📌 Phạm vi: Đã chỉ định ${_selectedDocIds.length} tài liệu nguồn',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (_selectedDocIds.isNotEmpty)
-                          TextButton.icon(
-                            onPressed: () => setState(() => _selectedDocIds.clear()),
-                            icon: const Icon(Icons.clear_all, size: 16),
-                            label: const Text('Bỏ chọn tất cả', style: TextStyle(fontSize: 12)),
-                            style: TextButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final compact = constraints.maxWidth < 520;
+                        return Row(
+                          children: [
+                            Icon(
+                              Icons.library_books_outlined,
+                              size: 18,
+                              color: colorScheme.primary,
                             ),
-                          ),
-                      ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _selectedVersionIdsByDocId.isEmpty
+                                    ? '🌐 Phạm vi: Tất cả tài liệu (Global RAG)'
+                                    : '📌 Phạm vi: Đã chỉ định ${_selectedVersionIdsByDocId.length} tài liệu nguồn',
+                                maxLines: compact ? 2 : 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (_selectedVersionIdsByDocId.isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              if (compact)
+                                IconButton(
+                                  onPressed: () => setState(
+                                    _selectedVersionIdsByDocId.clear,
+                                  ),
+                                  tooltip: 'Bỏ chọn tất cả',
+                                  visualDensity: VisualDensity.compact,
+                                  icon: const Icon(Icons.clear_all, size: 18),
+                                )
+                              else
+                                TextButton.icon(
+                                  onPressed: () => setState(
+                                    _selectedVersionIdsByDocId.clear,
+                                  ),
+                                  icon: const Icon(Icons.clear_all, size: 16),
+                                  label: const Text(
+                                    'Bỏ chọn tất cả',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ],
+                        );
+                      },
                     ),
                     if (_availableDocs.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -217,28 +308,41 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: _availableDocs.length,
-                          separatorBuilder: (context, index) => const SizedBox(width: 8),
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final doc = _availableDocs[index];
-                            final isSelected = _selectedDocIds.contains(doc.id);
+                            final isSelected = _selectedVersionIdsByDocId
+                                .containsKey(doc.id);
+                            final isResolving = _resolvingDocIds.contains(
+                              doc.id,
+                            );
                             return FilterChip(
                               label: Text(
                                 doc.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
                               ),
                               selected: isSelected,
-                              onSelected: (val) {
-                                setState(() {
-                                  if (val) {
-                                    _selectedDocIds.add(doc.id);
-                                  } else {
-                                    _selectedDocIds.remove(doc.id);
-                                  }
-                                });
-                              },
-                              avatar: isSelected ? const Icon(Icons.check, size: 16) : null,
+                              onSelected: isResolving
+                                  ? null
+                                  : (val) => _setDocumentSelected(doc, val),
+                              avatar: isResolving
+                                  ? const SizedBox.square(
+                                      dimension: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : isSelected
+                                  ? const Icon(Icons.check, size: 16)
+                                  : null,
                               visualDensity: VisualDensity.compact,
                             );
                           },
@@ -259,14 +363,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
                       'Chế độ Tư vấn / Suy luận quy trình lắp đặt',
-                      style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
                     ),
                     subtitle: const Text(
                       'AI suy luận chi tiết các bước thao tác, tháo lắp từ phân tích cấu tạo bản vẽ',
                       style: TextStyle(fontSize: 12),
                     ),
                     value: _reasoningMode,
-                    onChanged: _loading ? null : (val) => setState(() => _reasoningMode = val),
+                    onChanged: _loading
+                        ? null
+                        : (val) => setState(() => _reasoningMode = val),
                   ),
                 ),
                 if (_chatMessages.isNotEmpty)
@@ -286,16 +395,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.auto_awesome_outlined, size: 48, color: colorScheme.outline),
+                          Icon(
+                            Icons.auto_awesome_outlined,
+                            size: 48,
+                            color: colorScheme.outline,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             'Trợ lý AI Smart KCN Docs sẵn sàng',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: colorScheme.outline),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: colorScheme.outline,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Chọn tài liệu phía trên hoặc hỏi trực tiếp để bắt đầu hội thoại',
-                            style: TextStyle(fontSize: 13, color: colorScheme.outline),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colorScheme.outline,
+                            ),
                           ),
                         ],
                       ),
@@ -314,7 +434,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(_error!, style: TextStyle(color: colorScheme.error)),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: colorScheme.error),
+                ),
               ),
             const SizedBox(height: 8),
 
@@ -326,11 +449,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     controller: _controller,
                     onSubmitted: (_) => _ask(),
                     decoration: InputDecoration(
-                      hintText: _selectedDocIds.isEmpty
+                      hintText: _selectedVersionIdsByDocId.isEmpty
                           ? 'Hỏi về SOP, thông số, bản vẽ (Toàn bộ tài liệu)...'
-                          : 'Hỏi về ${_selectedDocIds.length} tài liệu đã chọn...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          : 'Hỏi về ${_selectedVersionIdsByDocId.length} tài liệu đã chọn...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ),
@@ -340,8 +468,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   icon: const Icon(Icons.send),
                   label: const Text('Gửi'),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 18,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
                   ),
                 ),
               ],
@@ -366,14 +499,20 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
             CircleAvatar(
               radius: 16,
               backgroundColor: colorScheme.primaryContainer,
-              child: Icon(Icons.auto_awesome, size: 16, color: colorScheme.primary),
+              child: Icon(
+                Icons.auto_awesome,
+                size: 16,
+                color: colorScheme.primary,
+              ),
             ),
             const SizedBox(width: 8),
           ],
@@ -381,12 +520,24 @@ class _MessageBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isUser ? colorScheme.primary : colorScheme.surfaceContainerLow,
+                color: isUser
+                    ? colorScheme.primary
+                    : colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(16).copyWith(
-                  bottomRight: isUser ? const Radius.circular(2) : const Radius.circular(16),
-                  bottomLeft: !isUser ? const Radius.circular(2) : const Radius.circular(16),
+                  bottomRight: isUser
+                      ? const Radius.circular(2)
+                      : const Radius.circular(16),
+                  bottomLeft: !isUser
+                      ? const Radius.circular(2)
+                      : const Radius.circular(16),
                 ),
-                border: !isUser ? Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)) : null,
+                border: !isUser
+                    ? Border.all(
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.5,
+                        ),
+                      )
+                    : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,7 +545,9 @@ class _MessageBubble extends StatelessWidget {
                   Text(
                     entry.content,
                     style: TextStyle(
-                      color: isUser ? colorScheme.onPrimary : colorScheme.onSurface,
+                      color: isUser
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurface,
                       fontSize: 14,
                       height: 1.4,
                     ),
@@ -408,7 +561,8 @@ class _MessageBubble extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         _Badge(
-                          label: 'Độ tin cậy: ${(entry.result!.confidence * 100).toStringAsFixed(0)}%',
+                          label:
+                              'Độ tin cậy: ${(entry.result!.confidence * 100).toStringAsFixed(0)}%',
                           color: colorScheme.secondaryContainer,
                           textColor: colorScheme.onSecondaryContainer,
                         ),
@@ -430,7 +584,11 @@ class _MessageBubble extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         'Nguồn trích dẫn:',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colorScheme.outline),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.outline,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       for (final c in entry.result!.citations)
@@ -441,31 +599,45 @@ class _MessageBubble extends StatelessWidget {
                               builder: (ctx) => AlertDialog(
                                 title: Row(
                                   children: [
-                                    Icon(Icons.spatial_tracking_outlined, color: colorScheme.primary),
+                                    Icon(
+                                      Icons.spatial_tracking_outlined,
+                                      color: colorScheme.primary,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         'Trích dẫn - Trang ${c.pageNo}',
-                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                                 content: SingleChildScrollView(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       if (c.bboxKey != null) ...[
                                         Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
-                                            color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-                                            borderRadius: BorderRadius.circular(6),
+                                            color: colorScheme.primaryContainer
+                                                .withValues(alpha: 0.3),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
                                           child: Row(
                                             children: [
-                                              Icon(Icons.crop_free, size: 16, color: colorScheme.primary),
+                                              Icon(
+                                                Icons.crop_free,
+                                                size: 16,
+                                                color: colorScheme.primary,
+                                              ),
                                               const SizedBox(width: 6),
                                               Expanded(
                                                 child: Text(
@@ -495,13 +667,23 @@ class _MessageBubble extends StatelessWidget {
                                         width: double.infinity,
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: colorScheme.outlineVariant),
+                                          color: colorScheme
+                                              .surfaceContainerHighest
+                                              .withValues(alpha: 0.5),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                          border: Border.all(
+                                            color: colorScheme.outlineVariant,
+                                          ),
                                         ),
                                         child: Text(
-                                          c.snippet ?? 'Không có thông tin chi tiết.',
-                                          style: const TextStyle(fontSize: 13, height: 1.4),
+                                          c.snippet ??
+                                              'Không có thông tin chi tiết.',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            height: 1.4,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -515,10 +697,17 @@ class _MessageBubble extends StatelessWidget {
                                   FilledButton.icon(
                                     onPressed: () {
                                       Navigator.of(ctx).pop();
-                                      context.push('/viewer/${c.versionId}?page=${c.pageNo}');
+                                      context.push(
+                                        '/viewer/${c.versionId}?page=${c.pageNo}',
+                                      );
                                     },
-                                    icon: const Icon(Icons.open_in_new, size: 16),
-                                    label: const Text('Mở trang xem tài liệu (Viewer)'),
+                                    icon: const Icon(
+                                      Icons.open_in_new,
+                                      size: 16,
+                                    ),
+                                    label: const Text(
+                                      'Mở trang xem tài liệu (Viewer)',
+                                    ),
                                   ),
                                 ],
                               ),
@@ -526,17 +715,27 @@ class _MessageBubble extends StatelessWidget {
                           },
                           borderRadius: BorderRadius.circular(6),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 2,
+                              horizontal: 4,
+                            ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.description_outlined, size: 14, color: colorScheme.primary),
+                                Icon(
+                                  Icons.description_outlined,
+                                  size: 14,
+                                  color: colorScheme.primary,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   c.bboxKey != null
                                       ? 'Trang ${c.pageNo} [Bbox]'
                                       : 'Trang ${c.pageNo} (${c.versionId.substring(0, 8)}...)',
-                                  style: TextStyle(fontSize: 12, color: colorScheme.primary),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: colorScheme.primary,
+                                  ),
                                 ),
                               ],
                             ),
@@ -563,7 +762,11 @@ class _MessageBubble extends StatelessWidget {
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.label, required this.color, required this.textColor});
+  const _Badge({
+    required this.label,
+    required this.color,
+    required this.textColor,
+  });
 
   final String label;
   final Color color;
@@ -579,7 +782,11 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: textColor),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: textColor,
+        ),
       ),
     );
   }
