@@ -35,6 +35,12 @@ final canUploadProvider = Provider<bool>((ref) {
   return auth.user?.role.isAdminLevel ?? false;
 });
 
+/// Whether the current user can delete documents (QA_ADMIN or ADMIN).
+final canDeleteDocumentProvider = Provider<bool>((ref) {
+  final auth = ref.watch(authControllerProvider);
+  return auth.user?.role.isAdminLevel ?? false;
+});
+
 /// Whether the current user can access admin screens.
 final canAccessAdminProvider = Provider<bool>((ref) {
   final auth = ref.watch(authControllerProvider);

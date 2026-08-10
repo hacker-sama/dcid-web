@@ -303,7 +303,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   @override
   Widget build(BuildContext context) {
     final docsAsync = ref.watch(documentsProvider);
-    final isAdminLevel = ref.watch(canUploadProvider);
+    final canUpload = ref.watch(canUploadProvider);
+    final canDelete = ref.watch(canDeleteDocumentProvider);
     final visibleCategories = ref.watch(visibleCategoriesProvider);
     final scheme = Theme.of(context).colorScheme;
 
@@ -339,7 +340,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   return RefreshIndicator(
                     onRefresh: () => ref.refresh(documentsProvider.future),
                     child: _EmptyState(
-                      isAdminLevel: isAdminLevel,
+                      isAdminLevel: canUpload,
                       onUploadPressed: () => _openUploadSheet(context),
                     ),
                   );
@@ -348,7 +349,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 if (isDesktop) {
                   return _DesktopView(
                     docs: docs,
-                    isAdminLevel: isAdminLevel,
+                    canUpload: canUpload,
+                    canDelete: canDelete,
                     sort: _sort,
                     scheme: scheme,
                     onSortChanged: (s) => setState(() => _sort = s),
@@ -403,7 +405,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isAdminLevel)
+                                  if (canDelete)
                                     IconButton(
                                       icon: const Icon(
                                           Icons.delete_outline,
@@ -443,7 +445,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               },
             ),
           ),
-          floatingActionButton: (isAdminLevel &&
+          floatingActionButton: (canUpload &&
                   (!isDesktop || docsAsync.value?.isEmpty == true))
               ? FloatingActionButton.extended(
                   onPressed: () => _openUploadSheet(context),
@@ -464,7 +466,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 class _DesktopView extends StatelessWidget {
   const _DesktopView({
     required this.docs,
-    required this.isAdminLevel,
+    required this.canUpload,
+    required this.canDelete,
     required this.sort,
     required this.scheme,
     required this.onSortChanged,
@@ -474,7 +477,8 @@ class _DesktopView extends StatelessWidget {
   });
 
   final List<DocumentSummary> docs;
-  final bool isAdminLevel;
+  final bool canUpload;
+  final bool canDelete;
   final _SortOption sort;
   final ColorScheme scheme;
   final ValueChanged<_SortOption> onSortChanged;
@@ -530,7 +534,7 @@ class _DesktopView extends StatelessWidget {
                               if (v != null) onSortChanged(v);
                             },
                           ),
-                          if (isAdminLevel) ...[
+                          if (canUpload) ...[
                             const SizedBox(width: 12),
                             FilledButton.icon(
                               onPressed: onUpload,
@@ -588,7 +592,7 @@ class _DesktopView extends StatelessWidget {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isAdminLevel)
+                                  if (canDelete)
                                     IconButton(
                                       icon: const Icon(
                                           Icons.delete_outline,

@@ -38,22 +38,32 @@ class HomeShell extends ConsumerWidget {
     final isAdmin = role?.isAdminLevel ?? false;
     final isWide = Responsive.isWide(context);
 
-    // Filter destinations by role. Indices stay aligned with branch indices
-    // because admin is always the last entry in _allDestinations.
-    final dests = _allDestinations
-        .where((d) => !(d.adminOnly && !isAdmin))
-        .toList();
+    // Build parallel lists: visible destinations and their true branch indices.
+    // Admin is always last in _allDestinations, so filtering preserves order
+    // for all non-admin tabs. branchIndices[i] maps nav-item i → branch i.
+    final dests = <_Dest>[];
+    final branchIndices = <int>[];
+    for (var i = 0; i < _allDestinations.length; i++) {
+      final d = _allDestinations[i];
+      if (!(d.adminOnly && !isAdmin)) {
+        dests.add(d);
+        branchIndices.add(i);
+      }
+    }
 
-    // Branch index (navigationShell.currentIndex) equals nav item index
-    // because the filtered list preserves order and admin is last.
-    final navIndex =
-        navigationShell.currentIndex.clamp(0, dests.length - 1);
+    // Find which nav-item corresponds to the current active branch.
+    // Falls back to 0 if the current branch is not in the visible list
+    // (e.g. a non-admin somehow landed on branch 3 before the redirect fires).
+    final currentBranch = navigationShell.currentIndex;
+    final navIndex = branchIndices.contains(currentBranch)
+        ? branchIndices.indexOf(currentBranch)
+        : 0;
 
     // Tapping the active tab again resets to the branch root; tapping a
-    // different tab resumes where the user left off.
+    // different tab resumes where the user left off (IndexedStack keeps state).
     void onSelect(int i) => navigationShell.goBranch(
-          i,
-          initialLocation: navigationShell.currentIndex == i,
+          branchIndices[i],
+          initialLocation: currentBranch == branchIndices[i],
         );
 
     void logout() =>
