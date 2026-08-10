@@ -65,6 +65,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFoundException(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        ErrorResponse response = ErrorResponse.of("NOT_FOUND", "API endpoint or resource not found: " + ex.getResourcePath(), getTraceId());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleForbiddenException(ForbiddenException ex) {
         ErrorResponse response = ErrorResponse.of(ex.getCode(), ex.getMessage(), getTraceId());

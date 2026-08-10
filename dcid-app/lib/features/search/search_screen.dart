@@ -377,14 +377,39 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ? null
                         : (val) => setState(() => _reasoningMode = val),
                   ),
-                ),
-                if (_chatMessages.isNotEmpty)
-                  OutlinedButton.icon(
-                    onPressed: _loading ? null : _clearChat,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('Xóa hội thoại'),
+                  subtitle: const Text(
+                    'AI analyzes drawing structures to reason detailed assembly procedures',
+                    style: TextStyle(fontSize: 12),
                   ),
-              ],
+                  value: _reasoningMode,
+                  onChanged: _loading ? null : (val) => setState(() => _reasoningMode = val ?? false),
+                );
+
+                final clearBtn = _chatMessages.isNotEmpty
+                    ? OutlinedButton.icon(
+                        onPressed: _loading ? null : _clearChat,
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Clear Chat'),
+                      )
+                    : null;
+
+                if (isNarrow && clearBtn != null) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      switchTile,
+                      Align(alignment: Alignment.centerRight, child: clearBtn),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: switchTile),
+                    if (clearBtn != null) clearBtn,
+                  ],
+                );
+              },
             ),
             const Divider(height: 16),
 
@@ -542,6 +567,34 @@ class _MessageBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!isUser && entry.result?.isOfflineFallback == true) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade400, width: 1.2),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.wifi_off_rounded, size: 18, color: Colors.amber.shade900),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '⚠️ Backend/AI offline — Hiển thị kết quả ngoại tuyến / bộ nhớ tạm',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amber.shade900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   Text(
                     entry.content,
                     style: TextStyle(

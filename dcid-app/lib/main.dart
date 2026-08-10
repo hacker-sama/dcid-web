@@ -22,7 +22,7 @@ Future<void> main() async {
   // Global error boundary handling
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    debugPrint('Global UI Error: ${details.exception}');
+    debugPrint('Global UI Error: ${details.exception}\n${details.stack}');
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
