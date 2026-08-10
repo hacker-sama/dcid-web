@@ -1,4 +1,4 @@
-"""POST /ai/query — RAG pipeline thực tế kết nối ChromaDB + LM Studio.
+"""POST /ai/query — RAG pipeline thực tế kết nối Qdrant + Ollama.
 POST /ai/query/stream — Streaming SSE variant: chữ hiện ra từng từ như ChatGPT.
 
 Luồng xử lý được tách hoàn toàn sang app/services/query_service.py
@@ -34,19 +34,19 @@ router = APIRouter(prefix="/ai", tags=["query"], dependencies=[Depends(require_i
 
 @router.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest) -> QueryResponse:
-    """Truy vấn RAG pipeline — embed → ChromaDB → guardrail → LM Studio → response.
+    """Truy vấn RAG pipeline — embed → Qdrant → guardrail → Ollama → response.
 
     Request (contract §2.2):
         question:          Câu hỏi từ kỹ sư.
-        topK:              Số chunk ChromaDB tối đa (mặc định 5).
+        topK:              Số chunk Qdrant tối đa (mặc định 5).
         allowedVersionIds: Danh sách UUID phiên bản được phép truy cập (RBAC từ BE).
         machineCode:       (Tuỳ chọn) Mã máy để filter bổ sung.
 
     Response (contract §2.2):
         answer:      Câu trả lời sinh từ LM Studio.
-        confidence:  Điểm similarity cao nhất từ ChromaDB (0.0–1.0).
+        confidence:  Điểm similarity cao nhất từ Qdrant (0.0–1.0).
         guard:       {locked, numericRule} — trạng thái guardrail.
-        citations:   Danh sách trích dẫn trang từ ChromaDB hits.
+        citations:   Danh sách trích dẫn trang từ Qdrant hits.
         latencyMs:   Thời gian xử lý end-to-end (ms).
         model:       Tên model LM Studio đã dùng.
     """

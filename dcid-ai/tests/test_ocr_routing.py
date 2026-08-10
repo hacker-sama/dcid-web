@@ -33,6 +33,10 @@ def test_spatial_dimension_question_uses_vision() -> None:
     assert query_service._needs_visual_context("Kích thước của cụm camera là bao nhiêu?")
 
 
+def test_generic_drawing_analysis_does_not_auto_load_vision() -> None:
+    assert not query_service._needs_visual_context("phan tich tai lieu ban ve")
+
+
 def test_uploaded_image_ocr_only_skips_base64(monkeypatch) -> None:
     monkeypatch.setattr(
         ocr_client,

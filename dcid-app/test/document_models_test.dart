@@ -106,6 +106,20 @@ void main() {
     expect(processing.pageCount, isNull);
     expect(processing.lang, isNull);
     expect(processing.ingestedAt, isNull);
+
+    expect(detail.queryableVersion?.id, 'v-active');
+  });
+
+  test('DocumentDetail uses READY only when no ACTIVE version exists', () {
+    final detail = DocumentDetail.fromJson({
+      'document': {'id': 'x', 'title': 't'},
+      'versions': [
+        {'id': 'processing', 'versionNo': 3, 'status': 'PROCESSING'},
+        {'id': 'ready', 'versionNo': 2, 'status': 'READY'},
+      ],
+    });
+
+    expect(detail.queryableVersion?.id, 'ready');
   });
 
   test('DocumentDetail.fromJson tolerates missing versions array', () {

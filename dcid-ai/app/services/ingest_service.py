@@ -1,11 +1,11 @@
-"""Ingest nền: MinIO → OCR (PaddleOCR) → chunk → embed → index (Chroma) → callback BE.
+"""Ingest nền: MinIO → OCR (PaddleOCR) → chunk → embed → index (Qdrant) → callback BE.
 
 Pipeline T2 (M1c):
   1. Tải PDF từ MinIO (storageKey).
   2. OCR từng trang: PyMuPDF rasterize + PaddleOCR nhận dạng.
   3. Chunk layout-aware: giữ bảng nguyên vẹn, sliding window cho text thường.
   4. Embed: multilingual-e5-small (passage prefix theo chuẩn E5).
-  5. Upsert vào ChromaDB collection `kcn_chunks` (idempotent theo version_id).
+  5. Upsert vào Qdrant collection `kcn_chunks` (idempotent theo version_id).
   6. Callback BE: READY (OCR + index thành công) hoặc FAILED (bất kỳ bước nào lỗi).
 
 Ghi chú:
@@ -54,7 +54,7 @@ def run_ingest(req: IngestRequest) -> None:
             len(embeddings[0]) if embeddings else 0,
         )
 
-        # ── 5. Upsert vào ChromaDB ───────────────────────────────
+        # ── 5. Upsert vào Qdrant ─────────────────────────────────
         index_pipeline.upsert_chunks(
             version_id=req.versionId,
             document_id=req.documentId,

@@ -1,326 +1,428 @@
-# Cài đặt & chạy dự án (Getting Started)
+# Cài đặt và chạy dự án
 
-> Hướng dẫn cho người **mới clone repo**. Phản ánh đúng trạng thái hiện tại (06/08/2026) —
-> xem [§5](#5-cái-gì-chạy-được--cái-gì-còn-mock) để biết rõ phần nào là thật, phần nào còn mock.
-> **Toàn bộ luồng dưới đây đã chạy thật và verify end-to-end** (login → upload PDF → OCR qua `ai-ocr` →
-> chunking → embedding → index ChromaDB → version ACTIVE với đúng số trang → hỏi–đáp SSE ChatGPT-like
-> → Snap & Ask Vision → Admin Console CRUD), không phải suy đoán từ code.
+Tài liệu này phản ánh cấu hình hiện tại của DCID Web ngày 08/08/2026.
+Dự án chạy hoàn toàn local/on-premise bằng Docker và Ollama; không cần
+khởi động LM Studio.
 
----
+## 1. Kiến trúc hiện tại
 
-## 0. Tổng quan nhanh
+Stack Docker production gồm đúng 9 service:
 
-Monorepo gồm 4 service chính + hạ tầng dùng chung:
+| Service | Vai trò | Cổng development |
+|---|---|---:|
+| `backend` | Spring Boot: auth, RBAC, tài liệu, proxy AI | 8080 |
+| `ai` | FastAPI: RAG, truy vấn và SSE | 8000 |
+| `ai-worker` | Celery worker: OCR, chunk, embedding, index | không publish |
+| `ai-ocr` | PaddleOCR sidecar | 8002 |
+| `ollama` | Model chữ và Vision | 11434 |
+| `qdrant` | Vector database | 6333 |
+| `postgres` | Dữ liệu nghiệp vụ | 5433 |
+| `redis` | Celery queue, cache và khóa tài nguyên AI | 6379 |
+| `minio` | PDF, ảnh trang và ảnh upload | 9000 |
 
-```
-dcid-backend/   Spring Boot (Java 21)  — auth, RBAC, upload tài liệu, hỏi–đáp, audit    :8080
-dcid-ai/        FastAPI (Python)       — orchestrator RAG (chunk, embed E5, ChromaDB)   :8000
-dcid-ai-ocr/    FastAPI (Python/Uvicorn)— worker bóc tách chữ chuyên dụng (PaddleOCR)    :8001
-dcid-app/       Flutter                — web (kiosk/admin) + Android (mobile)            :3000 (web dev)
-```
+Kafka, Zookeeper và Flower đã được loại khỏi stack 8 GB.
 
-Hạ tầng (Docker): **PostgreSQL** (bắt buộc) · **MinIO** (bắt buộc để upload) · **ChromaDB** (bắt buộc cho vector RAG) · **Ollama** (LLM inference headless — production) · Redis, Kafka, Zookeeper (đã cấu hình sẵn).
+Hai model Ollama:
 
----
+- `qwen2.5:1.5b`: câu hỏi văn bản/RAG.
+- `qwen2.5vl:3b`: hình ảnh và bản vẽ cần suy luận không gian.
 
-## 1. Yêu cầu công cụ
+Hệ thống chỉ giữ một model trong RAM và chỉ chạy một tác vụ AI nặng
+tại một thời điểm. OCR, embedding và Ollama dùng chung khóa Redis để
+không tăng RAM cùng lúc.
 
-| Công cụ | Phiên bản tối thiểu | Đã verify trên máy dev với |
-|---|---|---|
-| **JDK** | 21+ | JDK 24 (build dùng `--release 21`, không sao) |
-| **Python** | 3.11+ | Python 3.12.10 |
-| **Flutter** | 3.35+ (kèm Dart ≥ 3.11) | Flutter 3.41.9 |
-| **Docker Desktop** | bất kỳ bản còn hỗ trợ | Docker 29.4.2 |
-| **Git** | — | — |
+## 2. Yêu cầu máy
 
-Không cần cài Maven/uvicorn/Flutter SDK riêng theo cách thủ công phức tạp — repo đã có Maven Wrapper
-(`./mvnw`), và Python/Flutter dùng công cụ chuẩn.
+### Chạy toàn bộ bằng Docker
 
-**Windows:** để `flutter build`/`flutter run` cho Android hoạt động (plugin cần symlink), bật
-**Developer Mode**: chạy `start ms-settings:developers` rồi bật toggle. Không cần bước này nếu chỉ
-chạy target **web**.
+- Docker Desktop/Engine và Docker Compose v2.
+- Tối thiểu 4 CPU, khuyến nghị 8 CPU trở lên.
+- Docker được cấp tối thiểu 7.57 GB RAM.
+- Ổ đĩa trống tối thiểu 20 GB trước khi build; khuyến nghị 30 GB.
+- Trên VPS 8 GB nên có 4 GB swap.
 
----
+### Chạy thủ công để phát triển
 
-## 2. Clone & tổng quan thư mục
+- JDK 21. Không khuyến nghị chạy test bằng JDK 25 do phiên bản Byte Buddy
+  hiện tại chưa hỗ trợ.
+- Python 3.11 hoặc 3.12.
+- Flutter 3.35 trở lên.
+- Maven hoặc Maven Wrapper trong `dcid-backend`.
+
+Trên Windows, bật Developer Mode nếu build Android/Windows có plugin cần symlink.
+
+## 3. Clone dự án
 
 ```bash
 git clone <repo-url> dcid-web
 cd dcid-web
 ```
 
-```
-dcid-web/
-├── dcid-backend/   ./mvnw ...      (xem dcid-backend/CLAUDE.md)
-├── dcid-ai/        pip / uvicorn   (xem dcid-ai/README.md)
-├── dcid-app/       flutter ...     (xem dcid-app/README.md)
-├── docker-compose.yml
-└── docs/           kiến trúc, ERD, API contract, roadmap...
-```
+Mọi lệnh Docker bên dưới phải chạy từ thư mục gốc `dcid-web`.
 
----
+## 4. Chạy development bằng Docker
 
-## 3. Khởi động từng phần
+Đây là cách đơn giản và ít sai cấu hình nhất.
 
-### 3.1. Hạ tầng (Docker)
+### 4.1. Kiểm tra Docker và dung lượng
 
-Mở **Docker Desktop** trước (Windows/Mac cần app chạy nền), sau đó từ **repo root**:
-
-```bash
-# Cách 1: Khởi động toàn bộ hạ tầng + service OCR và ChromaDB cho local dev (thêm redis cho Celery)
-docker-compose up -d postgres minio chroma ai-ocr redis
-
-# Cách 2 (Khuyến nghị để kiểm chứng full e2e nhanh nhất): Khởi động toàn bộ cả backend và ai (gồm cả worker)
-docker-compose up -d
+```powershell
+docker version
+docker compose version
+docker system df
+Get-PSDrive C
 ```
 
-> Cần `postgres` + `minio` + `chroma` + `ai-ocr` để chạy đủ tính năng hiện có (auth, upload, OCR, chunk, embed, query). Nếu chọn chạy local dev (`dcid-backend` và `dcid-ai` chạy ngoài container bằng lệnh ở mục 3.2 và 3.3), bạn chỉ cần up 4 container hạ tầng trên.
+Nếu Docker Desktop chưa chạy, mở Docker Desktop và chờ Engine hiển thị
+`Running`.
 
-Kiểm tra đã lên:
-```bash
-docker ps
-# kỳ vọng thấy dcid-postgres và dcid-minio, STATUS "Up"
+### 4.2. Build từng image
+
+Với máy có dung lượng hạn chế, build tuần tự:
+
+```powershell
+docker compose build backend
+docker compose build ai
+docker compose build ai-worker
+docker compose build ai-ocr
 ```
 
-### 3.2. Backend (`dcid-backend`) — port 8080
+Không build bốn image song song trên máy chỉ còn khoảng 20 GB trống.
 
-```bash
+### 4.3. Khởi động hạ tầng và tải model
+
+```powershell
+docker compose up -d postgres redis minio qdrant ollama
+docker compose ps
+```
+
+Tải hai model. Chỉ cần thực hiện một lần; model được lưu trong volume
+`ollama_data`:
+
+```powershell
+docker compose exec ollama ollama pull qwen2.5:1.5b
+docker compose exec ollama ollama pull qwen2.5vl:3b
+docker compose exec ollama ollama list
+```
+
+### 4.4. Khởi động toàn bộ backend/AI
+
+```powershell
+docker compose up -d backend ai-ocr ai ai-worker
+docker compose ps
+docker stats --no-stream
+```
+
+Kỳ vọng có 9 container `Up`. Trong development, các cổng hạ tầng được
+publish ra localhost để debug.
+
+### 4.5. Kiểm tra API
+
+```powershell
+curl.exe http://localhost:8080/api/health
+curl.exe http://localhost:8000/ai/health
+curl.exe http://localhost:11434/api/tags
+```
+
+Swagger:
+
+- Backend: <http://localhost:8080/swagger-ui.html>
+- AI: <http://localhost:8000/docs>
+
+Đăng nhập development mặc định:
+
+```text
+username: admin
+password: admin123
+```
+
+Không sử dụng tài khoản/mật khẩu mặc định này trong production.
+
+## 5. Chạy Flutter Web
+
+```powershell
+cd dcid-app
+flutter pub get
+flutter run -d chrome --web-port=3000 `
+  --dart-define=USE_MOCK_DATA=false `
+  --dart-define=API_BASE_URL=http://localhost:8080
+```
+
+PowerShell dùng dấu backtick `` ` `` để xuống dòng. Có thể viết thành một dòng.
+
+Android emulator chạy cùng máy thường phải dùng:
+
+```powershell
+flutter run `
+  --dart-define=USE_MOCK_DATA=false `
+  --dart-define=API_BASE_URL=http://10.0.2.2:8080
+```
+
+Thiết bị Android thật phải dùng IP LAN của máy chạy backend, không dùng
+`localhost`.
+
+### Kiểm tra chỉ mục tài liệu sau khi Docker được tạo lại
+
+Qdrant được lưu trong named volume `qdrant_data` tại `/qdrant/storage`. Nếu
+PostgreSQL còn tài liệu `ACTIVE` nhưng AI luôn trả độ tin cậy `0%`, kiểm tra số
+point bằng `python scripts/qdrant_status.py` và lập chỉ mục lại tài liệu nếu
+collection đang rỗng.
+
+### Chuyển dữ liệu một lần từ ChromaDB cũ
+
+Không chạy `docker compose up --remove-orphans` trước khi hoàn tất bước này.
+Giữ container `dcid-chroma` cũ ở cổng `8001`, sau đó khởi động Qdrant:
+
+```powershell
+docker compose up -d qdrant
+pip install chromadb "qdrant-client>=1.15,<1.17"
+python scripts/migrate_chroma_to_qdrant.py
+python scripts/qdrant_status.py
+```
+
+Script dùng ID xác định nên có thể chạy lại an toàn. Chỉ khi số point Qdrant
+bằng hoặc lớn hơn số chunk Chroma mới rebuild và chuyển toàn bộ dịch vụ:
+
+```powershell
+docker compose build ai ai-worker
+docker compose up -d ai ai-worker backend
+docker compose ps
+```
+
+Sau thời gian kiểm tra, có thể dừng container `dcid-chroma`; volume Chroma cũ
+không tự bị xóa và vẫn có thể giữ tạm để quay lui. Tuyệt đối không dùng
+`docker compose down -v` trong quá trình chuyển đổi.
+
+## 6. Chạy backend/AI ngoài Docker
+
+Chỉ dùng phần này khi cần debug code. Trước tiên khởi động hạ tầng:
+
+```powershell
+docker compose up -d postgres redis minio qdrant ollama ai-ocr
+```
+
+### Backend
+
+```powershell
 cd dcid-backend
+mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+```
+
+Trên Linux/macOS có thể dùng Maven Wrapper:
+
+```bash
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Lần đầu chạy: Flyway tự áp migration (`V1`–`V4`), và **tự seed tài khoản admin**
-(`admin` / `admin123`) nếu bảng `users` đang rỗng.
+Backend local kết nối PostgreSQL tại `localhost:5433`.
 
-> ⚠️ **Khác với `dcid-ai`, Spring Boot KHÔNG tự đọc file `.env`.** `dcid-backend/.env.example`
-> chỉ là tài liệu tham khảo — muốn override giá trị nào thì `export` biến môi trường đó trước khi
-> chạy `./mvnw`, hoặc truyền `-D<property>=<value>`. Mặc định trong `application.yml` đã khớp sẵn
-> với `docker-compose up -d postgres minio`, nên **không cần export gì** cho luồng dev thông thường.
+### AI API
 
-Verify:
-```bash
-curl http://localhost:8080/api/health
-# {"status":"UP",...}
-
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
-# → {"data":{"token":"<jwt>","tokenType":"Bearer",...}}
-```
-Swagger UI: http://localhost:8080/swagger-ui.html
-
-> **Postgres chạy ở host port `5433`, không phải `5432`** — cố ý, để tránh đụng độ với một
-> PostgreSQL cài sẵn trên máy dev (rất hay gặp trên Windows). `POSTGRES_URL` mặc định trong
-> `application.yml`/`.env.example` đã trỏ đúng `5433`, không cần chỉnh gì nếu dùng
-> `docker-compose up -d postgres minio chroma ai-ocr` như trên.
-
-### 3.3. AI service (`dcid-ai`) — port 8000
-
-Terminal mới (chạy API server):
-```bash
+```powershell
 cd dcid-ai
 python -m venv .venv
-.venv\Scripts\activate          # Windows. macOS/Linux: source .venv/bin/activate
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env          # macOS/Linux: cp .env.example .env
-uvicorn app.main:app --port 8000
 ```
 
-Terminal mới (chạy Celery Worker cho tác vụ Ingest E2E):
-```bash
+Thiết lập các biến cho service chạy ngoài Docker:
+
+```powershell
+$env:AI_INTERNAL_TOKEN="change-me-internal-token"
+$env:MINIO_ENDPOINT="localhost:9000"
+$env:QDRANT_HOST="localhost"
+$env:QDRANT_PORT="6333"
+$env:REDIS_URL="redis://localhost:6379/0"
+$env:OCR_SERVICE_URL="http://localhost:8002"
+$env:LM_STUDIO_BASE_URL="http://localhost:11434/v1"
+$env:LM_STUDIO_MODEL="qwen2.5:1.5b"
+$env:VISION_MODEL="qwen2.5vl:3b"
+$env:AI_RESOURCE_GATE_ENABLED="true"
+$env:AI_RESOURCE_GATE_FAIL_OPEN="false"
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Mở terminal khác cho worker:
+
+```powershell
 cd dcid-ai
-.venv\Scripts\activate
-celery -A app.celery_app.celery_app worker --loglevel=info -P solo -Q ingest,default
-
+.\.venv\Scripts\Activate.ps1
+$env:REDIS_URL="redis://localhost:6379/0"
+$env:MINIO_ENDPOINT="localhost:9000"
+$env:QDRANT_HOST="localhost"
+$env:QDRANT_PORT="6333"
+$env:OCR_SERVICE_URL="http://localhost:8002"
+$env:AI_RESOURCE_GATE_ENABLED="true"
+$env:AI_RESOURCE_GATE_FAIL_OPEN="false"
+celery -A app.celery_app.celery_app worker `
+  --loglevel=info --pool=solo --concurrency=1 `
+  --prefetch-multiplier=1 -Q ingest,default
 ```
 
-Verify:
-```bash
-curl http://localhost:8000/ai/health
-# {"status":"ok","model_loaded":false}
-```
-Swagger UI: http://localhost:8000/docs
-Celery Flower (Monitor Worker nếu có chạy container `ai-flower`): http://localhost:5555
+Trên Windows, worker Celery nên dùng `--pool=solo`.
 
-> ⚠️ **`AI_INTERNAL_TOKEN` phải giống nhau** giữa `dcid-ai/.env` và biến môi trường của backend
-> (`AI_INTERNAL_TOKEN`, mặc định `change-me-internal-token` ở cả hai bên — khớp sẵn nếu bạn không
-> đổi gì). Sai token → backend nhận `503` khi ingest/query vì AI trả `401`.
+## 7. Chạy production/VPS 8 GB
 
-### 3.4. Frontend (`dcid-app`) — Flutter
-
-Terminal mới:
-```bash
-cd dcid-app
-flutter pub get
-```
-
-**Web** (khuyến nghị cho máy tính — kiosk/admin, xem [`FRONTEND.md`](FRONTEND.md) §0.1):
-```bash
-flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
-```
-Cố định port **3000** để khớp CORS mặc định của backend (`CORS_ALLOWED_ORIGINS=http://localhost:3000`).
-
-**Android** (thiết bị/emulator đã kết nối):
-```bash
-flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
-```
-
-### 3.5. Local LLM Service — Ollama
-
-#### Option A — Ollama trong Docker (khuyến nghị cho production/server)
+Tạo file secret, tuyệt đối không commit:
 
 ```bash
-# Ollama đã được thêm vào docker-compose.yml — chỉ cần pull model
-docker-compose up -d ollama
-docker exec dcid-ollama ollama pull qwen2.5vl:3b
-
-# Verify
-curl http://localhost:11434/v1/models
-# Trả về danh sách model đã được cài trong volume ollama_data
+cp .env.example .env.production
 ```
 
-`dcid-ai` đã cấu hình mặc định trỏ về Ollama (`LM_STUDIO_BASE_URL=http://ollama:11434/v1`), không cần đổi gì nếu dùng docker-compose.
+Thay tất cả giá trị `change-me`, đặc biệt:
 
-#### Tùy chọn cũ — LM Studio (không cần khi chạy dự án bằng Docker)
+```dotenv
+POSTGRES_PASSWORD=<mat-khau-manh>
+APP_JWT_SECRET=<chuoi-ngau-nhien-it-nhat-32-ky-tu>
+APP_BOOTSTRAP_ADMIN_PASSWORD=<mat-khau-admin>
+MINIO_ROOT_PASSWORD=<mat-khau-minio>
+AI_INTERNAL_TOKEN=<token-noi-bo-ngau-nhien>
+CORS_ALLOWED_ORIGINS=https://ten-mien-cua-ban
+LLM_MODEL=qwen2.5:1.5b
+VISION_MODEL=qwen2.5vl:3b
+AI_RESOURCE_GATE_ENABLED=true
+AI_RESOURCE_GATE_FAIL_OPEN=false
+AI_RESOURCE_LOCK_WAIT_SECONDS=330
+```
 
-1. Tải và cài **[LM Studio](https://lmstudio.ai/)**.
-2. Tìm và tải model: `Qwen2-VL-2B-Instruct-GGUF` — chọn bản **Q4_K_M** (~2.78GB).
-3. Vào tab **Local Inference Server**, bật server ở port **1234** (`http://localhost:1234/v1`).
-4. Trong `dcid-ai/.env`, đổi:
-   ```
-   LM_STUDIO_BASE_URL=http://host.docker.internal:1234/v1
-   LM_STUDIO_MODEL=qwen2-vl-2b-instruct
-   ```
+Xác thực cấu hình trước khi chạy:
 
-Verify:
 ```bash
-curl http://localhost:1234/v1/models
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 ```
 
-> Nếu chạy trên **thiết bị thật/emulator riêng** (không phải cùng máy với backend), đổi
-> `API_BASE_URL` thành IP LAN của máy chạy backend (`http://<ip-máy>:8080`), không dùng `localhost`.
+Build và khởi động:
 
-Đăng nhập bằng `admin` / `admin123`.
-
----
-
-## 4. Kiểm tra end-to-end (đủ cả 4 service chính + hạ tầng)
-
-1. Mở app (web hoặc Android) → đăng nhập `admin` / `admin123`.
-2. Vào tab **Tài liệu** → nút "Tải tài liệu" → chọn 1 file PDF bất kỳ → điền Tiêu đề + Loại tài liệu → Tải lên.
-3. Backend lưu PDF vào MinIO, gọi `dcid-ai` ingest → `dcid-ai` gọi `ai-ocr` (PaddleOCR + PyMuPDF) bóc tách chữ kèm **tọa độ không gian (Bbox: `[x0, y0, x1, y1]`)** → `chunk.py` cắt đoạn cấu trúc hóa Markdown (`### [Bảng/Đoạn kỹ thuật - Trang X | Bbox: ...]`) → `embed.py` nhúng vector `multilingual-e5-small` → `index.py` upsert vào **ChromaDB** (`kcn_chunks`) kèm metadata `bbox` & `snippet` → gọi callback về backend đổi status sang **ACTIVE** (vài chục giây tùy CPU). AI worker đồng thời push per-step status (`PROCESSING_OCR → PROCESSING_EMBED → READY`) về BE qua `POST /api/internal/ingest-status` → broadcast STOMP `/topic/ingest/{versionId}`.
-4. Bấm vào tài liệu vừa tạo → thấy version với chip trạng thái **ACTIVE** và đúng số trang PDF.
-5. Vào tab **Tra cứu**, hỏi thử một câu chứa "điện áp" → nhận câu trả lời **SSE streaming token-by-token** (typing effect ChatGPT-like) kèm trích dẫn tọa độ `p{pageNo}_[{bbox}]`. Khi nhận được `event: meta`, citations và guardrail banner hiện ngay lập tức. Bấm vào nhãn trích dẫn để mở **Hộp thoại Trích Dẫn Không Gian (`AlertDialog`)** hiển thị chính xác tọa độ Bbox và đoạn văn bản gốc (`snippet`).
-6. Vào tab **Snap & Ask** → chụp ảnh hoặc chọn file ảnh bản vẽ → hỏi câu về thông số kỹ thuật → nhận câu trả lời Vision từ Qwen2-VL qua `POST /api/query/vision`.
-7. *(ADMIN only)* Vào tab **Quản trị** → tạo tài khoản người dùng mới, reset mật khẩu, kích hoạt/khóa tài khoản.
-
-### 4.1. Bộ công cụ kiểm thử độc lập ChromaDB (`chroma-tools/`)
-
-Trong folder root có sẵn thư mục `chroma-tools/` giúp kiểm thử trực tiếp việc bóc tách tọa độ không gian và lập chỉ mục RAG:
 ```bash
-python chroma-tools/upload_and_verify.py "<đường_dẫn_pdf>"  # Tự động tải tài liệu mẫu, bóc tách OCR Bbox và verify vector trong ChromaDB
-python chroma-tools/chroma_status.py                     # Xem tổng số chunk đang lưu trong collection kcn_chunks
-python chroma-tools/inspect_chunks.py                    # Hiển thị chi tiết metadata (version_id, page_no, bbox, snippet) của các chunk
-python chroma-tools/clear_collection.py                  # Dọn dẹp collection khi cần reset dữ liệu test
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml build backend
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml build ai
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml build ai-worker
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml build ai-ocr
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-**Đã verify bằng lệnh thật (curl & smoke_test_t2.py & chroma-tools):** upload PDF
-→ backend lưu MinIO + gọi ingest → `dcid-ai` + `ai-ocr` bóc tách chữ & tọa độ Bbox + đếm trang → chunking + embedding + upsert ChromaDB → callback → `GET /api/documents/{id}` trả `status: "ACTIVE"` → `/api/query` retrieve top-k ChromaDB + guardrail + gọi LLM trả lời đúng logic kẹp trích dẫn Bbox. Audit log ghi đúng `DOCUMENT_UPLOAD` lẫn `DOCUMENT_INGESTED`.
+Production chỉ publish cổng `8080`; PostgreSQL, Redis, MinIO, Qdrant, OCR, AI và
+Ollama chỉ truy cập qua Docker network.
 
----
+Xem thêm [VPS-8GB.md](VPS-8GB.md).
 
-## 5. Cái gì chạy được / cái gì còn mock
+## 8. Kiểm tra end-to-end
 
-| Phần | Trạng thái |
-|---|---|
-| Auth (self-JWT), RBAC 4 vai, audit log | ✅ Thật |
-| Upload PDF → MinIO → tạo version | ✅ Thật |
-| Ingest pipeline (OCR + Chunking + Embedding + ChromaDB index) | ✅ Thật — PaddleOCR 3.7 + PyMuPDF bóc tách chữ và tọa độ Bbox + cấu trúc hóa Markdown + `multilingual-e5-small` + `ChromaDB` (`kcn_chunks` kèm metadata `bbox`, `snippet`) |
-| `document_pages` (ảnh trang, bbox) | ✅ `ocrText` và `bbox` (`boxes` Bbox `[x0,y0,x1,y1]`) đã bóc tách thật; `imageKey` sẵn sàng cho crop render |
-| Hỏi–đáp `POST /api/query` (đồng bộ) | ✅ **Thật (RAG + LLM)** — retrieve top-k từ ChromaDB, kiểm tra guardrail, sinh câu trả lời qua Ollama/LM Studio (Qwen2-VL 2B Q4_K_M) kèm trích dẫn `bboxKey` & `snippet` |
-| Hỏi–đáp SSE stream `POST /api/query/stream` | ✅ **Thật** — BE `QueryController.askStreaming()` proxy SSE từ AI về Flutter qua `SseEmitter`, stream từng token |
-| Vision multimodal `POST /api/query/vision` | ✅ **Thật** — BE `QueryController.askWithVision()` nhận multipart (ảnh + question), forward sang AI `/ai/query/vision`, Qwen2-VL phân tích trực tiếp ảnh bản vẽ |
-| File proxy `GET /api/files/{versionId}/{pageNo}/{bboxKey}` | ✅ **Thật** — `FileProxyController` proxy ảnh trang từ MinIO, JWT-protected |
-| Ingest status STOMP broadcast | ✅ **Thật** — `POST /api/internal/ingest-status` → `InternalIngestController` broadcast `/topic/ingest/{versionId}` qua `SimpMessagingTemplate` |
-| Guardrail (ngưỡng tin cậy, trích số liệu) | ✅ **Thật** — kiểm tra allowed versions, cosine confidence gate < 0.60 → locked, và numeric rule detection |
-| Flutter SSE Chat UI (ChatGPT-like typing effect) | ✅ **Thật** — `search_screen.dart`: `askStream()` SSE, `_ChatEntry` list, typing effect per-token, guard banner, filter tài liệu |
-| Flutter Snap & Ask (Vision multimodal) | ✅ **Thật** — `snap_ask_screen.dart`: camera/file_picker, per-image chat thread, gọi `/api/query/vision`, fallback offline graceful |
-| Flutter Admin Console (CRUD người dùng) | ✅ **Thật** — `admin_screen.dart`: list/filter/search, tạo tài khoản, reset mật khẩu, kích hoạt/khóa. Nối API `GET/POST /api/admin/users` |
-| BE Admin User CRUD | ✅ **Thật** — `UserController` `/api/admin/users`: GET (filter role/search), POST create, PUT update, PUT password, PATCH status. `@PreAuthorize("hasRole('ADMIN')")` |
-| Flutter Upload progress UI (STOMP) | ⏾ Chưa làm (T4 — M3b) |
-| Kiosk fullscreen | ⏾ Chưa làm (M4) |
-| Redis / Kafka | Cấu hình sẵn, **chưa có tính năng nào thực sự dùng** — an toàn khi bỏ qua lúc dev |
+1. Đăng nhập bằng tài khoản admin.
+2. Upload một PDF nhỏ.
+3. Xem trạng thái chuyển `PROCESSING_OCR` → `PROCESSING_EMBED` → `READY`.
+4. Chọn tài liệu và gửi câu hỏi văn bản.
+5. Xác nhận model phản hồi là `qwen2.5:1.5b`.
+6. Hỏi về vị trí/kích thước trên bản vẽ.
+7. Xác nhận Vision chỉ nạp `qwen2.5vl:3b` khi có nhu cầu hình ảnh.
+8. Kiểm tra trích dẫn đúng trang và tài liệu đã chọn.
 
-Chi tiết lộ trình: [`PLAN-THESIS.md`](PLAN-THESIS.md) §5 (bảng cột mốc 8 tuần).
+Theo dõi log và RAM:
 
--
-
-## 6. Production Deploy (VPS / Server)
-
-Xem hướng dẫn đầy đủ trong các file sau (tạo ngày 04/08/2026):
-
-| File | Mục đích |
-|---|---|
-| [`docker-compose.prod.yml`](../docker-compose.prod.yml) | Override production: tắt expose internal ports, memory limits, `${ENV}` secrets |
-| [`nginx/dcid.conf`](../nginx/dcid.conf) | Nginx reverse proxy: HTTPS, SSE `proxy_buffering off`, WebSocket Upgrade |
-| [`.env.example`](../.env.example) | Template để tạo `.env.production` với secrets thật |
-| [`scripts/deploy.sh`](../scripts/deploy.sh) | Helper script: `--full`, `--restart`, `--logs`, `--status` |
-| [`scripts/backup.sh`](../scripts/backup.sh) | Backup PostgreSQL tự động (giữ 7 bản) |
-| [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) | GitHub Actions CI/CD: build → SCP → SSH deploy |
-
-**Khởi động production:**
-```bash
-# Sau khi clone repo lên server và tạo .env.production từ .env.example:
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
-  --env-file .env.production up -d
-
-# Tải LLM model (lần đầu tiên, đợi ~5 phút)
-docker exec dcid-ollama ollama pull qwen2-vl:2b-instruct-q4_k_m
+```powershell
+docker compose logs --tail=200 backend ai ai-worker ai-ocr ollama
+docker stats --no-stream
+docker inspect --format '{{.State.OOMKilled}}' dcid-ollama
 ```
 
-**GitHub Secrets cần thiết lập:**
-```
-VPS_HOST        — IP hoặc hostname của VPS
-VPS_USER        — user SSH (thường là root hoặc deploy)
-VPS_SSH_KEY     — private SSH key (PEM format)
-VPS_PORT        — SSH port (mặc định 22)
-API_BASE_URL    — URL công khai của backend (ví dụ: https://your-domain.io/api)
-ENV_FILE_CONTENT — nội dung đầy đủ của file .env.production
+## 9. Dừng và khởi động lại
+
+Dừng container nhưng giữ nguyên dữ liệu:
+
+```powershell
+docker compose stop
 ```
 
----
+Khởi động lại:
 
-## 7. Troubleshooting
+```powershell
+docker compose start
+```
 
-Đã tìm và sửa 3 bug thật khi verify E2E lần đầu (đều đã fix trong code/config hiện tại — liệt kê
-ở đây để hiểu nếu bạn checkout một commit cũ hơn, hoặc gặp biến thể tương tự):
+Xóa container/network nhưng giữ volume:
 
-| Triệu chứng | Nguyên nhân thật đã gặp | Đã xử lý bằng |
-|---|---|---|
-| Backend lỗi `FATAL: password authentication failed for user "dcid"` dù container Postgres đúng | `docker-compose.yml` thiếu `ports:` cho service `postgres` → `localhost:5432` trúng vào **PostgreSQL cài sẵn khác trên máy** (rất hay gặp trên Windows), không phải container | `docker-compose.yml` map `5433:5432`; default `POSTGRES_URL` đã trỏ `5433` |
-| Upload thành công nhưng version `FAILED` ngay lập tức | Spring `RestClient` (JDK HttpClient) mặc định thử nâng cấp **HTTP/2**, nhưng `uvicorn` chỉ nói HTTP/1.1 → request bị hỏng, FastAPI nhận body rỗng | `AiClientConfig` ép `HttpClient.Version.HTTP_1_1` tường minh |
-| Version `FAILED` với lỗi liên quan MinIO khi `dcid-ai` đọc file | Default `MINIO_ACCESS_KEY`/`SECRET_KEY` trong `dcid-ai` là `minioadmin`/`minioadmin`, không khớp `minio`/`minio123` thật của container | Sửa default trong `dcid-ai/app/config.py` + `.env.example` |
+```powershell
+docker compose down
+```
 
-Các tình huống khác:
+Không chạy `docker compose down -v` nếu muốn giữ PostgreSQL, MinIO, Qdrant
+và model Ollama.
 
-| Triệu chứng | Nguyên nhân thường gặp | Cách xử lý |
-|---|---|---|
-| `docker-compose up` báo lỗi kết nối daemon | Docker Desktop chưa mở | Mở Docker Desktop, đợi icon chuyển "Running", chạy lại |
-| Backend lỗi auth Postgres dù đã map đúng port | Volume cũ (`dcid-web_postgres_data`) còn dữ liệu từ trước khi có fix port | `docker-compose down -v` rồi `up -d postgres minio` lại (⚠️ mất dữ liệu cũ trong volume) |
-| Upload xong version cứ `PROCESSING` mãi/không lên `ACTIVE` | `dcid-ai` không chạy, hoặc `AI_INTERNAL_TOKEN` hai bên không khớp | Kiểm `curl :8000/ai/health`; xem log backend có dòng lỗi gọi AI không; version sẽ chuyển `FAILED` nếu AI không phản hồi được — kiểm `errorMessage` trong `GET /api/documents/{id}` |
-| Flutter web: lỗi CORS trong console trình duyệt | Port Flutter dev khác `3000`, hoặc backend origin config khác | Chạy `flutter run -d chrome --web-port=3000`, hoặc set `CORS_ALLOWED_ORIGINS` cho backend đúng origin đang dùng |
-| `flutter run` Android báo lỗi symlink/plugin | Chưa bật Developer Mode (Windows) | `start ms-settings:developers` → bật, chạy lại |
-| `flutter pub get` cảnh báo "Building with plugins requires symlink support" | Như trên | Không chặn `analyze`/`test`/`build web`, chỉ ảnh hưởng build native (Android/Windows) |
-| Backend `mvnw` tải rất chậm lần đầu | Lần đầu tải Maven + toàn bộ dependency | Bình thường, các lần sau nhanh nhờ cache `~/.m2` |
-| Chữ tiếng Việt hiển thị lỗi khi test bằng `curl -F`/`python -m json.tool` trên Windows | Console Windows (codepage cp1252) không hiển thị được UTF-8, **không phải bug backend** | Ghi response ra file rồi mở bằng editor UTF-8, hoặc test qua Swagger UI/Flutter app thay vì gõ tiếng Việt trực tiếp vào lệnh `curl` trên Git Bash |
+## 10. Xử lý sự cố thường gặp
 
----
+### Docker Engine chưa chạy
 
-## 8. Tài liệu liên quan
+```text
+failed to connect to docker API
+```
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — kiến trúc tổng thể 2 mặt phẳng, sơ đồ, data model.
-- [`ERD.md`](ERD.md) — schema Postgres chi tiết.
-- [`API-CONTRACT.md`](API-CONTRACT.md) — hợp đồng ingest/query/callback giữa backend ↔ AI.
-- [`FRONTEND.md`](FRONTEND.md) — kiến trúc Flutter, quyết định Web thay vì app native cho desktop.
-- [`PLAN-THESIS.md`](PLAN-THESIS.md) — kế hoạch 8 tuần, phân công, trạng thái từng mục.
-- `dcid-backend/CLAUDE.md`, `dcid-ai/README.md`, `dcid-app/README.md` — hướng dẫn chi tiết riêng từng service.
+Mở Docker Desktop, chờ Engine `Running`, sau đó chạy `docker version`.
+
+### Ổ C sắp hết dung lượng
+
+Kiểm tra:
+
+```powershell
+docker system df -v
+Get-PSDrive C
+```
+
+Dọn build cache không xóa container/volume:
+
+```powershell
+docker builder prune --filter "until=24h"
+docker image prune
+```
+
+Không dùng `docker system prune --volumes` vì có thể làm mất dữ liệu.
+
+### AI trả thông báo đang bận
+
+OCR, embedding hoặc model khác đang giữ resource gate. Hệ thống sẽ xử lý
+tuần tự. Kiểm tra:
+
+```powershell
+docker compose logs --tail=100 ai ai-worker
+docker compose exec redis redis-cli GET dcid:ai:heavy
+```
+
+Không tắt `AI_RESOURCE_GATE_ENABLED` trên máy/VPS 8 GB.
+
+### Upload đứng ở `PROCESSING`
+
+```powershell
+docker compose ps
+docker compose logs --tail=200 ai-worker ai-ocr redis minio
+```
+
+Xác nhận `ai-worker`, `ai-ocr`, Redis và MinIO đều `Up`.
+
+### Ollama không có model
+
+```powershell
+docker compose exec ollama ollama list
+docker compose exec ollama ollama pull qwen2.5:1.5b
+docker compose exec ollama ollama pull qwen2.5vl:3b
+```
+
+### Lỗi 403 hoặc AI không kết nối
+
+- Kiểm tra `AI_INTERNAL_TOKEN` giống nhau giữa backend và AI.
+- Production phải dùng cùng `MINIO_ROOT_PASSWORD` cho MinIO, backend, AI,
+  worker và OCR.
+- Flutter phải chạy với `USE_MOCK_DATA=false`.
+- `CORS_ALLOWED_ORIGINS` phải khớp chính xác origin của frontend.
+
+## 11. Tài liệu liên quan
+
+- [VPS-8GB.md](VPS-8GB.md): giới hạn RAM và quy tắc vận hành.
+- [ARCHITECTURE.md](ARCHITECTURE.md): kiến trúc tổng thể.
+- [API-CONTRACT.md](API-CONTRACT.md): hợp đồng backend/AI.
+- [FRONTEND.md](FRONTEND.md): cấu hình Flutter.
+- [ERD.md](ERD.md): cơ sở dữ liệu PostgreSQL.

@@ -14,7 +14,7 @@ def ingest(req: IngestRequest) -> IngestAccepted:
     """Nhận yêu cầu ingest, đẩy vào Celery queue và trả 202 ngay.
 
     Celery Worker (`ai-worker` container) sẽ xử lý bất đồng bộ:
-        OCR (via ai-ocr service) → Chunk → Embed → Upsert ChromaDB → Callback BE
+        OCR (via ai-ocr service) → Chunk → Embed → Upsert Qdrant → Callback BE
 
     Trạng thái có thể theo dõi qua:
         - GET /ai/status/{taskId}  — polling trạng thái Celery

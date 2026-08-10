@@ -1,40 +1,59 @@
-"""Quản lý ChromaDB Vector Store dạng Persistent Local DB (thư mục chroma_db/)."""
+"""Qdrant vector store used by the legacy top-level API."""
+
+from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
-from pathlib import Path
 from typing import Any, Dict, List, Optional
+from uuid import NAMESPACE_URL, uuid5
 
-import chromadb
-from chromadb.config import Settings
+from qdrant_client import QdrantClient, models
 
 from src.chunking.chunker import Chunk
 
 logger = logging.getLogger("dcid-ai.vector_store")
-
-COLLECTION_NAME = "dcid_document_chunks"
-LOCAL_DB_DIR = "./chroma_db"
+COLLECTION_NAME = "kcn_chunks"
+VECTOR_SIZE = int(os.getenv("QDRANT_VECTOR_SIZE", "384"))
 
 
 @lru_cache(maxsize=1)
-def get_chroma_client():
-    """Khởi tạo ChromaDB Persistent Client lưu DB vào đĩa ở thư mục ./chroma_db/."""
-    db_path = Path(LOCAL_DB_DIR)
-    db_path.mkdir(parents=True, exist_ok=True)
-    logger.info("Khoi tao ChromaDB Local Persistent Client tai: %s", db_path.resolve())
-    return chromadb.PersistentClient(
-        path=str(db_path),
-        settings=Settings(anonymized_telemetry=False),
+def get_qdrant_client() -> QdrantClient:
+    return QdrantClient(
+        host=os.getenv("QDRANT_HOST", "localhost"),
+        port=int(os.getenv("QDRANT_PORT", "6333")),
+        api_key=os.getenv("QDRANT_API_KEY") or None,
+        timeout=float(os.getenv("QDRANT_TIMEOUT", "30")),
     )
 
 
-def get_collection():
-    """Lấy hoặc tạo collection ChromaDB với không gian khoảng cách cosine."""
-    client = get_chroma_client()
-    return client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
-    )
+def _ensure_collection() -> None:
+    client = get_qdrant_client()
+    if not client.collection_exists(COLLECTION_NAME):
+        client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=models.VectorParams(
+                size=VECTOR_SIZE,
+                distance=models.Distance.COSINE,
+                on_disk=True,
+            ),
+            hnsw_config=models.HnswConfigDiff(on_disk=True),
+            on_disk_payload=True,
+        )
+    for field in ("version_id", "document_id", "machineCode"):
+        try:
+            client.create_payload_index(
+                collection_name=COLLECTION_NAME,
+                field_name=field,
+                field_schema=models.PayloadSchemaType.KEYWORD,
+                wait=True,
+            )
+        except Exception:
+            pass
+
+
+def _id(version_id: str, page_no: int, chunk_index: int) -> str:
+    return str(uuid5(NAMESPACE_URL, f"dcid:{version_id}:{page_no}:{chunk_index}"))
 
 
 def upsert_chunks(
@@ -44,54 +63,35 @@ def upsert_chunks(
     embeddings: List[List[float]],
     extra_metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Upsert các Chunk vào ChromaDB kèm theo Metadata (bao gồm image_path).
-
-    Lưu trữ `image_path` để Frontend UI render đúng tấm ảnh crop!
-    """
     if not chunks:
-        logger.warning("upsert_chunks: Danh sach chunk rong.")
         return
-
     if len(chunks) != len(embeddings):
-        raise ValueError(f"So chunks ({len(chunks)}) khac so embeddings ({len(embeddings)})")
-
-    collection = get_collection()
-    extra_meta = extra_metadata or {}
-
-    ids: List[str] = []
-    documents: List[str] = []
-    metadatas: List[Dict[str, Any]] = []
-
-    for c in chunks:
-        chunk_id = f"{version_id}_p{c.page_no}_c{c.chunk_index}"
-        ids.append(chunk_id)
-        documents.append(c.text)
-
-        meta = {
+        raise ValueError("Chunk and embedding counts differ")
+    _ensure_collection()
+    extra = {key: value for key, value in (extra_metadata or {}).items() if value is not None}
+    if "machine_code" in extra and "machineCode" not in extra:
+        extra["machineCode"] = extra["machine_code"]
+    points = []
+    for chunk, vector in zip(chunks, embeddings):
+        if len(vector) != VECTOR_SIZE:
+            raise ValueError(f"Embedding dimension {len(vector)} != {VECTOR_SIZE}")
+        payload = {
+            **extra,
+            "text": chunk.text,
             "version_id": str(version_id),
             "document_id": str(document_id),
-            "page_no": int(c.page_no),
-            "chunk_index": int(c.chunk_index),
-            "bbox": str(c.bbox or ""),
-            "image_path": str(c.image_path or ""),  # ĐÃ LƯU TRƯỜNG image_path CHO FRONTEND UI
-            "snippet": str(c.snippet or c.text[:200]),
+            "page_no": int(chunk.page_no),
+            "chunk_index": int(chunk.chunk_index),
+            "bbox": str(chunk.bbox or ""),
+            "image_path": str(chunk.image_path or ""),
+            "snippet": str(chunk.snippet or chunk.text[:300]),
         }
-
-        # Merge thêm extra metadata
-        for k, v in extra_meta.items():
-            if v is not None:
-                meta[k] = str(v) if not isinstance(v, (int, float, bool)) else v
-
-        metadatas.append(meta)
-
-    collection.upsert(
-        ids=ids,
-        documents=documents,
-        embeddings=embeddings,
-        metadatas=metadatas,
-    )
-
-    logger.info("ChromaDB upsert OK: version_id=%s chunks=%d", version_id, len(chunks))
+        points.append(models.PointStruct(
+            id=_id(version_id, chunk.page_no, chunk.chunk_index),
+            vector=vector,
+            payload=payload,
+        ))
+    get_qdrant_client().upsert(COLLECTION_NAME, points=points, wait=True)
 
 
 def search_chunks(
@@ -99,39 +99,58 @@ def search_chunks(
     allowed_version_ids: List[str],
     top_k: int = 5,
 ) -> List[Dict[str, Any]]:
-    """Truy vấn top-K chunks tương đồng nhất từ ChromaDB."""
-    collection = get_collection()
-
-    where: Dict[str, Any]
-    if len(allowed_version_ids) == 1:
-        where = {"version_id": str(allowed_version_ids[0])}
-    else:
-        where = {"version_id": {"$in": [str(v) for v in allowed_version_ids]}}
-
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=top_k,
-        where=where,
-        include=["documents", "metadatas", "distances"],
+    if not allowed_version_ids:
+        return []
+    _ensure_collection()
+    result = get_qdrant_client().query_points(
+        collection_name=COLLECTION_NAME,
+        query=query_embedding,
+        query_filter=models.Filter(must=[models.FieldCondition(
+            key="version_id",
+            match=models.MatchAny(any=[str(value) for value in allowed_version_ids]),
+        )]),
+        limit=top_k,
+        with_payload=True,
+        with_vectors=False,
     )
-
-    hits: List[Dict[str, Any]] = []
-    docs = results.get("documents", [[]])[0]
-    metas = results.get("metadatas", [[]])[0]
-    distances = results.get("distances", [[]])[0]
-
-    for doc, meta, dist in zip(docs, metas, distances):
-        similarity = max(0.0, 1.0 - dist)
+    hits = []
+    for point in result.points:
+        payload = point.payload or {}
         hits.append({
-            "text": doc,
-            "page_no": meta.get("page_no"),
-            "version_id": meta.get("version_id"),
-            "document_id": meta.get("document_id"),
-            "chunk_index": meta.get("chunk_index"),
-            "bbox": meta.get("bbox", ""),
-            "image_path": meta.get("image_path", ""),  # FRONTEND UI DÙNG ĐỂ RENDER ẢNH CROP
-            "snippet": meta.get("snippet", ""),
-            "score": round(similarity, 4),
+            "text": payload.get("text", ""),
+            "page_no": payload.get("page_no"),
+            "version_id": payload.get("version_id"),
+            "document_id": payload.get("document_id"),
+            "chunk_index": payload.get("chunk_index"),
+            "bbox": payload.get("bbox", ""),
+            "image_path": payload.get("image_path", ""),
+            "snippet": payload.get("snippet", ""),
+            "score": round(max(0.0, min(1.0, float(point.score))), 4),
         })
-
     return hits
+
+
+def delete_document_chunks(
+    document_id: Optional[str] = None,
+    version_id: Optional[str] = None,
+) -> int:
+    key = "document_id" if document_id else "version_id" if version_id else None
+    value = document_id or version_id
+    if not key or not value:
+        return 0
+    try:
+        _ensure_collection()
+        query_filter = models.Filter(must=[models.FieldCondition(
+            key=key,
+            match=models.MatchValue(value=str(value)),
+        )])
+        count = get_qdrant_client().count(COLLECTION_NAME, count_filter=query_filter, exact=True).count
+        get_qdrant_client().delete(
+            COLLECTION_NAME,
+            points_selector=models.FilterSelector(filter=query_filter),
+            wait=True,
+        )
+        return int(count)
+    except Exception as exc:
+        logger.error("Qdrant delete failed for %s=%s: %s", key, value, exc)
+        return 0

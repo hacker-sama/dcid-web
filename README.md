@@ -8,14 +8,14 @@ Monorepo:
 |---|---|
 | [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, quản lý tài liệu & version, API Xóa tài liệu, audit ISO, storage MinIO, WebSocket STOMP. |
 | [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Web (Kiosk/Admin) + Mobile (Android). Đã có Tra cứu RAG, Upload tài liệu, Xóa tài liệu (AlertDialog xác nhận). |
-| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM. Kiến trúc mô-đun hóa `src/`; Qwen2-VL-2B (Q4_K_M) Visual Bbox Crop & Pure-Text Skip; ChromaDB Persistent Vector DB; Static file server `/uploads`; Celery+Redis; SSE Streaming. |
+| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM, Qdrant vector DB, Celery/Redis và SSE Streaming. |
 
 
 ## Tài liệu
 
 - **[Cài đặt & chạy dự án](docs/SETUP.md)** — hướng dẫn đầy đủ cho người mới clone repo. ← **bắt đầu ở đây**
 - **[Kiến trúc dự án](docs/ARCHITECTURE.md)** — sơ đồ tổng thể, luồng nghiệp vụ, data model, API.
-- **[ERD & Database](docs/ERD.md)** — schema quan hệ, phân tách Postgres/Chroma/MinIO, vòng đời version.
+- **[ERD & Database](docs/ERD.md)** — schema quan hệ, phân tách Postgres/Qdrant/MinIO, vòng đời version.
 - **[API Contract BE↔AI](docs/API-CONTRACT.md)** — nguồn sự thật ranh giới ingest/query/callback.
 - [Work order: dựng khung dcid-ai](docs/PLAN-DCID-AI.md) — plan tự chứa cho agent thực thi. ✅ đã xong
 - [Work order: Flutter màn Tài liệu + Upload](docs/PLAN-FLUTTER-DOCS.md) — plan tự chứa cho agent thực thi. ✅ đã xong
@@ -32,7 +32,7 @@ Hướng dẫn đầy đủ (yêu cầu công cụ, từng bước, kiểm tra, 
 
 ```bash
 # 1. Hạ tầng
-docker-compose up -d postgres minio chroma ai-ocr redis
+docker compose up -d postgres minio qdrant ai-ocr redis
 
 # 2. Backend — terminal riêng
 cd dcid-backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev

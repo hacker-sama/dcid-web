@@ -132,8 +132,28 @@ class DocsRepository implements IDocsRepository {
         }
       }
     } catch (e) {
-      yield SseEvent(type: SseEventType.error, errorMessage: e.toString());
+      yield SseEvent(type: SseEventType.error, errorMessage: _streamErrorMessage(e));
     }
+  }
+
+  String _streamErrorMessage(Object error) {
+    if (error is DioException) {
+      final status = error.response?.statusCode;
+      if (status == 401 || status == 403) {
+        return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+      }
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        return 'Kết nối AI bị gián đoạn. Vui lòng đợi dịch vụ sẵn sàng rồi thử lại.';
+      }
+    }
+    final message = error.toString().toLowerCase();
+    if (message.contains('incomplete_chunked_encoding') ||
+        message.contains('connection closed')) {
+      return 'Luồng trả lời AI bị ngắt. Vui lòng thử lại sau ít phút.';
+    }
+    return 'Không truy vấn được AI. Vui lòng thử lại.';
   }
 
   @override

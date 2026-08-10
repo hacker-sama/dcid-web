@@ -2,9 +2,9 @@
 
 Luồng xử lý (theo contract §2.2):
     1. Embed câu hỏi bằng multilingual-e5-small (prefix "query: ").
-    2. Truy vấn ChromaDB với filter allowedVersionIds.
+    2. Truy vấn Qdrant với filter allowedVersionIds.
     3. Kiểm tra guardrail (cosine threshold + trigger phrase).
-    4. Build system prompt + inject context chunks từ ChromaDB.
+    4. Build system prompt + inject context chunks từ Qdrant.
     5. Gọi LM Studio để sinh câu trả lời (gọi qua llm_client).
     6. Tính confidence từ điểm similarity tốt nhất.
     7. Trả về QueryResponse đúng schema contract.
@@ -28,6 +28,7 @@ from app.pipeline import index as index_pipeline
 from app.pipeline import guardrails
 from app.pipeline import prompts
 from app.schemas import Citation, Guard, QueryRequest, QueryResponse
+from app.services.resource_gate import ResourceBusyError
 
 logger = logging.getLogger("dcid-ai.query_service")
 
@@ -35,7 +36,7 @@ LOCKED_ANSWER = (
     "Không đủ dữ liệu chắc chắn. Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm."
 )
 LOCKED_CONFIDENCE = 0.30
-VISION_IMAGE_MAX_SIDE = 1280
+VISION_IMAGE_MAX_SIDE = 800
 
 
 def _normalize_question(question: str) -> str:
@@ -78,7 +79,6 @@ def _needs_visual_context(question: str) -> bool:
         return False
     normalized = _normalize_question(question)
     visual_terms = (
-        "ban ve",
         "so do",
         "hinh anh",
         "hinh ve",
@@ -91,7 +91,6 @@ def _needs_visual_context(question: str) -> bool:
         "nhan thiet bi",
         "image",
         "diagram",
-        "drawing",
         "vi tri",
         "o dau",
         "hinh dang",
@@ -167,36 +166,45 @@ def run_query(req: QueryRequest) -> QueryResponse:
 
     # ── 0.5. Vision Query: Tải ảnh base64 từ MinIO & OCR (nếu có) ──────────────
     # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
-    try:
-        query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
-    except Exception as exc:
-        logger.error("Embed câu hỏi thất bại: %s", exc)
-        return _locked_response(
-            latency_ms=_elapsed_ms(start_ns),
-            model="error-embed",
-        )
+    low_memory_query = getattr(get_settings(), "low_memory_query_mode", True)
+    query_vec: list[float] = []
+    if not low_memory_query:
+        try:
+            query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
+        except Exception as exc:
+            logger.error("Embed câu hỏi thất bại: %s", exc)
+            return _locked_response(
+                latency_ms=_elapsed_ms(start_ns),
+                model="error-embed",
+            )
 
-    # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
+    # ── 2. Truy vấn Qdrant ───────────────────────────────────────────────────
     try:
-        hits = (
-            index_pipeline.search(
+        if not req.allowedVersionIds:
+            hits = []
+        elif low_memory_query:
+            hits = index_pipeline.search_selected_text(
+                question=req.question,
+                allowed_version_ids=req.allowedVersionIds,
+                top_k=req.topK,
+                machine_code=req.machineCode,
+            )
+        else:
+            hits = index_pipeline.search(
                 query_embedding=query_vec,
                 allowed_version_ids=req.allowedVersionIds,
                 top_k=req.topK,
                 machine_code=req.machineCode,
             )
-            if req.allowedVersionIds
-            else []
-        )
     except Exception as exc:
-        logger.error("ChromaDB search thất bại: %s", exc)
+        logger.error("Qdrant search thất bại: %s", exc)
         return _locked_response(
             latency_ms=_elapsed_ms(start_ns),
-            model="error-chroma",
+            model="error-qdrant",
         )
 
     logger.info(
-        "ChromaDB: %d hits | top_score=%.3f | question=%s",
+        "Qdrant: %d hits | top_score=%.3f | question=%s",
         len(hits),
         hits[0]["score"] if hits else 0.0,
         req.question[:80],
@@ -259,6 +267,16 @@ def run_query(req: QueryRequest) -> QueryResponse:
     try:
         answer_text, model_name = llm_client.generate_answer(
             system_prompt, user_prompt, history=req.history, image_base64=image_base64
+        )
+    except ResourceBusyError as exc:
+        logger.warning("AI resources busy: %s", exc)
+        return QueryResponse(
+            answer="Hệ thống AI đang xử lý một tác vụ nặng. Vui lòng thử lại sau ít phút.",
+            confidence=0.0,
+            guard=Guard(locked=True, numericRule=numeric_rule, reasoningMode=reasoning_mode),
+            citations=_build_citations(hits),
+            latencyMs=_elapsed_ms(start_ns),
+            model="busy-resource-gate",
         )
     except LLMConnectionError as exc:
         logger.error("LLM kết nối thất bại (Ollama không chạy?): %s", exc)
@@ -429,30 +447,39 @@ def run_query_stream(req: QueryRequest):
 
     # ── 0.5. Vision Query: Tải ảnh base64 từ MinIO & OCR (nếu có) ──────────────
     # ── 1. Embed câu hỏi ────────────────────────────────────────────────────
-    try:
-        query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
-    except Exception as exc:
-        logger.error("Embed câu hỏi thất bại (stream): %s", exc)
-        yield _sse("error", message="Lỗi embed câu hỏi.")
-        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-embed")
-        return
+    low_memory_query = getattr(get_settings(), "low_memory_query_mode", True)
+    query_vec: list[float] = []
+    if not low_memory_query:
+        try:
+            query_vec = embed_pipeline.embed_query(req.question) if req.allowedVersionIds else []
+        except Exception as exc:
+            logger.error("Embed câu hỏi thất bại (stream): %s", exc)
+            yield _sse("error", message="Lỗi embed câu hỏi.")
+            yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-embed")
+            return
 
-    # ── 2. Truy vấn ChromaDB ─────────────────────────────────────────────────
+    # ── 2. Truy vấn Qdrant ───────────────────────────────────────────────────
     try:
-        hits = (
-            index_pipeline.search(
+        if not req.allowedVersionIds:
+            hits = []
+        elif low_memory_query:
+            hits = index_pipeline.search_selected_text(
+                question=req.question,
+                allowed_version_ids=req.allowedVersionIds,
+                top_k=req.topK,
+                machine_code=req.machineCode,
+            )
+        else:
+            hits = index_pipeline.search(
                 query_embedding=query_vec,
                 allowed_version_ids=req.allowedVersionIds,
                 top_k=req.topK,
                 machine_code=req.machineCode,
             )
-            if req.allowedVersionIds
-            else []
-        )
     except Exception as exc:
-        logger.error("ChromaDB search thất bại (stream): %s", exc)
+        logger.error("Qdrant search thất bại (stream): %s", exc)
         yield _sse("error", message="Lỗi tìm kiếm tài liệu.")
-        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-chroma")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-qdrant")
         return
 
     # ── 3. Guardrail ─────────────────────────────────────────────────────────
@@ -512,13 +539,16 @@ def run_query_stream(req: QueryRequest):
 
     # ── 5. Stream từ LM Studio ──────────────────────────────────────────────
     try:
-        model_name = get_settings().lm_studio_model
+        model_name = llm_client.get_model_name(image_base64)
         for token in llm_client.generate_answer_stream(
             system_prompt, user_prompt, history=req.history, image_base64=image_base64
         ):
             yield _sse("delta", text=token)
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model=model_name)
 
+    except ResourceBusyError:
+        yield _sse("error", message="Hệ thống AI đang bận. Vui lòng thử lại sau ít phút.")
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="busy-resource-gate")
     except llm_client.LLMConnectionError:
         yield _sse("error", message="Ollama chưa sẵn sàng. Vui lòng liên hệ quản trị viên.")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-connection")
