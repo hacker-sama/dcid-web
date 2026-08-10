@@ -11,6 +11,25 @@ Monorepo:
 | [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM, Qdrant vector DB, Celery/Redis và SSE Streaming. |
 
 
+## Các Phân hệ Hệ thống AI Hỏi đáp Local
+
+Hệ thống được thiết kế theo kiến trúc **Dual-Plane Local RAG** độc lập tuyệt đối:
+
+### Phân hệ A — Tra cứu Kho tài liệu chính thức (Official Document Governance)
+- **Mục tiêu**: Quản lý các tài liệu quy trình SOP, bản vẽ kỹ thuật, nội quy nhà máy theo chuẩn ISO.
+- **Phân quyền RBAC**: So sánh mức độ phân quyền `min_role` (`OPERATOR` < `ENGINEER` < `QA_ADMIN` < `ADMIN`). Tự động lọc bỏ các tài liệu vượt quá cấp bậc người dùng.
+- **Quản lý Vòng đời Version**: Upload phiên bản mới (v2, v3...), duyệt phát hành `ACTIVE` (tự động chuyển version active cũ thành `SUPERSEDED`), và đánh dấu lỗi thời `OBSOLETE`.
+
+### Phân hệ B — Hỏi đáp Tài liệu Công khai Ẩn danh (`/ask`)
+- **Mục tiêu**: Khách chưa đăng nhập có thể dùng thử hỏi đáp riêng với các file PDF cá nhân tải lên.
+- **Bảo mật & Cô lập Dữ liệu**:
+  - Không cần JWT Bearer header. Xác thực qua **Session Token** ngẫu nhiên.
+  - File tạm lưu tại thư mục riêng `sessions/{sessionId}/` trên MinIO.
+  - Vector tạm được cô lập hoàn toàn theo `sessionId` trên Qdrant.
+- **Tự động Tiêu hủy (TTL Cleanup Job)**: Tiến trình `@Scheduled` chạy định kỳ 10 phút/lần tự động xóa sạch Vector Qdrant ➔ File MinIO ➔ DB Record của các phiên quá hạn 2 giờ.
+
+---
+
 ## Tài liệu
 
 - **[Cài đặt & chạy dự án](docs/SETUP.md)** — hướng dẫn đầy đủ cho người mới clone repo. ← **bắt đầu ở đây**
@@ -52,3 +71,4 @@ cd dcid-app && flutter pub get
 flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080   # web (kiosk/admin)
 flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080                             # mobile (Android)
 ```
+

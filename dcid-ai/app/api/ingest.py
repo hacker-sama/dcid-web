@@ -42,3 +42,17 @@ def delete_document_vector(document_id: str):
         "deletedChunks": deleted_count,
     }
 
+
+@router.delete("/guest/sessions/{session_id}")
+def delete_guest_session_vector(session_id: str):
+    """DELETE /ai/guest/sessions/{session_id} — Endpoint cho Backend Spring Boot gọi xóa vector session ẩn danh."""
+    from app.pipeline.index import delete_session_chunks
+    deleted_count = delete_session_chunks(session_id=session_id)
+    return {
+        "status": "SUCCESS",
+        "message": f"Đã xóa vector chunks cho guest session_id={session_id}",
+        "sessionId": session_id,
+        "deletedChunks": deleted_count,
+    }
+
+

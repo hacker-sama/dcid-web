@@ -30,7 +30,7 @@ flowchart TB
     subgraph Edge["🏭 Edge Device / Kiosk (CPU, phân xưởng)"]
         UI["Flutter app (dcid-app)\nKiosk (Windows) + Mobile (Android)\nSnap & Ask, side-by-side"]
         AISVC["AI Service (Python, FastAPI + Celery)\nPaddleOCR · e5-small(ONNX) · Ollama API (Qwen2-VL 2B Q4)\nRAG retrieval + Guardrails"]
-        CHROMA[("ChromaDB\nvector store")]
+        QDRANT[("Qdrant\nvector store")]
     end
 
     subgraph Central["🖥️ Central Server (x86)"]
@@ -46,7 +46,7 @@ flowchart TB
     UI -->|"REST + JWT"| BE
     UI -->|"hỏi đáp (query)"| AISVC
     AISVC -->|"metadata, quyền, log"| BE
-    AISVC --> CHROMA
+    AISVC --> QDRANT
     BE --> PG
     BE --> MINIO
     BE --> REDIS
@@ -62,8 +62,8 @@ flowchart TB
 | Thành phần | Công nghệ | Trách nhiệm chính |
 |---|---|---|
 | **Governance plane** | Spring Boot 3.3, Java 21 | Auth/RBAC, quản lý tài liệu + version, audit ISO, storage MinIO, tích hợp CMMS/MES, điều phối job AI |
-| **AI plane** | Python, FastAPI, Celery | OCR (PaddleOCR), embedding (e5-small ONNX), retrieval (ChromaDB), LLM (Qwen2-VL 2B Instruct Q4_K_M qua Ollama REST API), guardrails |
-| **Vector store** | ChromaDB | Semantic search trên chunk + metadata (trang, ngôn ngữ, version) |
+| **AI plane** | Python, FastAPI, Celery | OCR (PaddleOCR), embedding (e5-small ONNX), retrieval (Qdrant), LLM (Qwen2-VL 2B Instruct Q4_K_M qua Ollama REST API), guardrails |
+| **Vector store** | Qdrant | Semantic search trên chunk + metadata (trang, ngôn ngữ, version) |
 | **Relational DB** | PostgreSQL 16 | users, roles, document/version metadata, query_logs, audit_logs, work_orders |
 | **Object storage** | MinIO | PDF gốc, ảnh trang, **bounding-box crop** (bằng chứng số liệu) |
 | **Cache/Broker** | Redis 7 | cache, rate-limit, (tùy chọn) Celery broker |
@@ -84,7 +84,7 @@ QA/Admin upload PDF (Spring Boot)
   → phát job sang AI Service (REST):
       → PaddleOCR + PyMuPDF bóc tách text + bảng (TSR) + toạ độ không gian (boxes Bbox: [x0,y0,x1,y1])
       → chunk theo cấu trúc Markdown (### [Đoạn kỹ thuật - Trang X | Bbox: ...]) + trích xuất snippet (300 ký tự)
-      → embed (e5-small) → upsert vào ChromaDB (collection kcn_chunks với metadata bbox & snippet)
+      → embed (e5-small) → upsert vào Qdrant (collection kcn_chunks với metadata bbox & snippet)
   → callback báo Spring Boot: status=READY (hoặc FAILED)
   → ghi audit_log
 ```
@@ -92,7 +92,7 @@ QA/Admin upload PDF (Spring Boot)
 ### 4.2. Truy vấn + Guardrail & Trích dẫn Không gian
 ```
 Kỹ sư hỏi (UI) → AI Service:
-  retrieve top-k từ ChromaDB (lọc theo allowedVersionIds + độ tương đồng)
+  retrieve top-k từ Qdrant (lọc theo allowedVersionIds + độ tương đồng)
   IF cosine_similarity < 0.60  → KHÓA câu trả lời sinh tự động,
                                   trả cảnh báo đỏ "Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm"
   IF query chạm 'điện áp/áp suất/nhiệt độ/dung sai'

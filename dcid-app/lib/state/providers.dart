@@ -6,6 +6,7 @@ import '../data/auth_repository.dart';
 import '../data/auth_repository_interface.dart';
 import '../data/docs_repository.dart';
 import '../data/docs_repository_interface.dart';
+import '../data/guest_repository.dart';
 
 import '../data/offline_cache_repository.dart';
 
@@ -37,4 +38,9 @@ final docsRepositoryProvider = Provider<IDocsRepository>(
     DocsRepository(ref.watch(apiClientProvider)),
     ref.watch(secureStorageProvider),
   ),
+);
+
+/// Guest Q&A operations for temporary anonymous sessions (/ask).
+final guestRepositoryProvider = Provider<GuestRepository>(
+  (ref) => GuestRepository(ref.watch(apiClientProvider)),
 );

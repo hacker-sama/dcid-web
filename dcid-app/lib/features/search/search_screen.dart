@@ -356,33 +356,26 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             const SizedBox(height: 8),
 
             // ── Tùy chọn Suy luận & Nút làm mới hội thoại ──
-            Row(
-              children: [
-                Expanded(
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Chế độ Tư vấn / Suy luận quy trình lắp đặt',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13,
-                      ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 520;
+                final switchTile = SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Chế độ Tư vấn / Suy luận quy trình lắp đặt',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
                     ),
-                    subtitle: const Text(
-                      'AI suy luận chi tiết các bước thao tác, tháo lắp từ phân tích cấu tạo bản vẽ',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    value: _reasoningMode,
-                    onChanged: _loading
-                        ? null
-                        : (val) => setState(() => _reasoningMode = val),
                   ),
                   subtitle: const Text(
-                    'AI analyzes drawing structures to reason detailed assembly procedures',
+                    'AI suy luận chi tiết các bước thao tác, tháo lắp từ phân tích cấu tạo bản vẽ',
                     style: TextStyle(fontSize: 12),
                   ),
                   value: _reasoningMode,
-                  onChanged: _loading ? null : (val) => setState(() => _reasoningMode = val ?? false),
+                  onChanged: _loading
+                      ? null
+                      : (val) => setState(() => _reasoningMode = val),
                 );
 
                 final clearBtn = _chatMessages.isNotEmpty

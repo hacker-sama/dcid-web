@@ -285,3 +285,57 @@ Dành riêng cho vai trò `ADMIN`. Phục vụ việc khởi tạo, cấp quyề
   ```
 - **Response `200`**: Tra về `UserProfileDTO` đã cập nhật trạng thái `isActive`.
 
+---
+
+## 7. Phân hệ B — API Hỏi đáp Công khai (Public Anonymous Guest Session APIs)
+
+Các API này phục vụ khách chưa đăng nhập trải nghiệm hỏi đáp với tài liệu tạm. Không yêu cầu JWT Bearer header.
+
+### 7.1. `POST /api/public/sessions` (Tạo phiên tạm mới)
+- **Header**: Không yêu cầu.
+- **Response `201`**:
+  ```json
+  {
+    "data": {
+      "sessionId": "a1b2c3d4-...",
+      "sessionToken": "a3f5b7c89...",
+      "expiresAt": "2026-08-10T18:00:00Z"
+    }
+  }
+  ```
+
+### 7.2. `POST /api/public/sessions/{sessionId}/documents` (Upload PDF tạm)
+- **Header**: `X-Session-Token: <sessionToken>`
+- **Form Data**: `file` (Multipart PDF file, <= 25MB)
+- **Response `201`**: Tra về `GuestDocumentDTO` (trạng thái `PROCESSING`).
+
+### 7.3. `GET /api/public/sessions/{sessionId}/documents/{documentId}/status` (Polling OCR/Index)
+- **Header**: `X-Session-Token: <sessionToken>`
+- **Response `200`**: Tra về `GuestDocumentDTO` (`status`: `PROCESSING|READY|FAILED`, `pageCount`: int).
+
+### 7.4. `POST /api/public/sessions/{sessionId}/query` (Hỏi đáp RAG phiên tạm)
+- **Header**: `X-Session-Token: <sessionToken>`
+- **Request Body**: `{"question": "Nội dung câu hỏi..."}`
+- **Response `200`**: Tra về `AnswerDTO` kèm thông tin trích dẫn (`citations`).
+
+### 7.5. `DELETE /api/public/sessions/{sessionId}` (Khách chủ động hủy phiên)
+- **Header**: `X-Session-Token: <sessionToken>`
+- **Response `200`**: Tiêu hủy toàn bộ File MinIO & Vector Qdrant của phiên ngay lập tức.
+
+---
+
+## 8. API Quản lý Vòng đời Phiên bản Tài liệu Chính thức (Phân hệ A)
+
+Yêu cầu JWT Bearer header với vai trò `QA_ADMIN` hoặc `ADMIN`.
+
+### 8.1. `POST /api/documents/{id}/versions` (Upload phiên bản mới v2, v3...)
+- **Form Data**: `file` (PDF), `lang` (vi/en), `changelog` (nội dung thay đổi).
+- **Response `201`**: Đẩy file vào MinIO `documents/{id}/v{nextVersion}/original.pdf`, tạo bản ghi trạng thái `PROCESSING` và kích hoạt AI Ingest.
+
+### 8.2. `POST /api/documents/{id}/versions/{versionId}/publish` (Phát hành phiên bản ACTIVE)
+- **Response `200`**: Chuyển target version sang `ACTIVE`. Tự động chuyển version active cũ của cùng documentId sang `SUPERSEDED`.
+
+### 8.3. `POST /api/documents/{id}/versions/{versionId}/obsolete` (Đánh dấu lỗi thời OBSOLETE)
+- **Response `200`**: Chuyển target version sang `OBSOLETE`. AI RAG ngừng trích dẫn version này.
+
+

@@ -67,6 +67,19 @@ public class RestAiPipelineClient implements AiPipelineClient {
     }
 
     @Override
+    public void deleteGuestSessionVectors(UUID sessionId) {
+        try {
+            restClient.delete()
+                    .uri("/ai/guest/sessions/{sessionId}", sessionId)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(RestAiPipelineClient.class)
+                    .warn("Lỗi khi thông báo AI service xóa vector guest sessionId={}: {}", sessionId, e.getMessage());
+        }
+    }
+
+    @Override
     public void queryStream(AiQueryRequest request, java.util.function.Consumer<String> tokenConsumer, Runnable onComplete, java.util.function.Consumer<Throwable> onError) {
         try {
             restClient.post()
