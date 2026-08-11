@@ -1,12 +1,14 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme.dart';
+import '../../../state/suggestions_provider.dart';
 
-/// Hero welcome header and suggestion chips shown when chat is empty.
-class SearchEmptyState extends StatefulWidget {
+/// Hero welcome header and dynamic suggestion chips shown when chat is empty.
+class SearchEmptyState extends ConsumerStatefulWidget {
   const SearchEmptyState({
     super.key,
     required this.onUseSuggestion,
@@ -15,10 +17,10 @@ class SearchEmptyState extends StatefulWidget {
   final ValueChanged<String> onUseSuggestion;
 
   @override
-  State<SearchEmptyState> createState() => _SearchEmptyStateState();
+  ConsumerState<SearchEmptyState> createState() => _SearchEmptyStateState();
 }
 
-class _SearchEmptyStateState extends State<SearchEmptyState>
+class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnim;
@@ -46,6 +48,7 @@ class _SearchEmptyStateState extends State<SearchEmptyState>
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = colorScheme.brightness == Brightness.dark;
     final accent = accentFor(context);
+    final suggestions = ref.watch(searchSuggestionsProvider);
 
     return Center(
       child: SingleChildScrollView(
@@ -119,41 +122,19 @@ class _SearchEmptyStateState extends State<SearchEmptyState>
 
             const SizedBox(height: 36),
 
-            // Suggestion chips
+            // Dynamic suggestion chips
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 10,
               runSpacing: 10,
-              children: [
-                SearchSuggestionChip(
-                  icon: Icons.build_circle_outlined,
-                  label: 'Check CNC-01 maintenance steps',
-                  onTap: () =>
-                      widget.onUseSuggestion('Check CNC-01 maintenance steps'),
+              children: suggestions.map((item) {
+                return SearchSuggestionChip(
+                  icon: item.icon,
+                  label: item.label,
+                  onTap: () => widget.onUseSuggestion(item.label),
                   accent: accent,
-                ),
-                SearchSuggestionChip(
-                  icon: Icons.shield_outlined,
-                  label: 'Summarize assembly safety rules',
-                  onTap: () => widget
-                      .onUseSuggestion('Summarize assembly safety rules'),
-                  accent: accent,
-                ),
-                SearchSuggestionChip(
-                  icon: Icons.bolt_outlined,
-                  label: 'Find voltage specs for TRUC-1',
-                  onTap: () =>
-                      widget.onUseSuggestion('Find voltage specs for TRUC-1'),
-                  accent: accent,
-                ),
-                SearchSuggestionChip(
-                  icon: Icons.schema_outlined,
-                  label: 'List all drawings for Module A',
-                  onTap: () =>
-                      widget.onUseSuggestion('List all drawings for Module A'),
-                  accent: accent,
-                ),
-              ],
+                );
+              }).toList(),
             ),
           ],
         ),
