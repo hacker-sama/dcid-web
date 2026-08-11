@@ -174,7 +174,9 @@ class HomeShell extends ConsumerWidget {
           ),
         ],
       ),
-      body: navigationShell,
+      body: SafeArea(
+        child: navigationShell,
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navIndex,
         onDestinationSelected: onSelect,

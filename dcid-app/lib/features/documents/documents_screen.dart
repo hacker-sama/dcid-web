@@ -183,7 +183,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     if (isMobile) {
       // ── Compact dropdown for narrow phone screens ─────────────────────────
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
         child: Row(
           children: [
             Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
@@ -447,10 +447,13 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           ),
           floatingActionButton: (canUpload &&
                   (!isDesktop || docsAsync.value?.isEmpty == true))
-              ? FloatingActionButton.extended(
-                  onPressed: () => _openUploadSheet(context),
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('Upload Document'),
+              ? Padding(
+                  padding: EdgeInsets.only(bottom: isMobile ? 16 : 0),
+                  child: FloatingActionButton.extended(
+                    onPressed: () => _openUploadSheet(context),
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Upload Document'),
+                  ),
                 )
               : null,
         );

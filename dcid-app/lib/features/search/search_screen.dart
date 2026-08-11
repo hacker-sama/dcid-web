@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+
 
 import '../../core/constrained_content.dart';
 import '../../core/theme.dart';
@@ -11,6 +11,7 @@ import '../../data/models/sse_event.dart';
 import '../../state/providers.dart';
 import 'widgets/search_chat_input.dart';
 import 'widgets/search_empty_state.dart';
+import 'answer_view.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model
@@ -246,65 +247,67 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final accent = accentFor(context);
 
-    return ConstrainedContent(
-      maxWidth: 960,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Chat history or welcome hero ──────────────────────────────
-          Expanded(
-            child: _chatMessages.isEmpty
-                ? SearchEmptyState(onUseSuggestion: _useSuggestion)
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+    return SafeArea(
+      child: ConstrainedContent(
+        maxWidth: 960,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Chat history or welcome hero ──────────────────────────────
+            Expanded(
+              child: _chatMessages.isEmpty
+                  ? SearchEmptyState(onUseSuggestion: _useSuggestion)
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      itemCount: _chatMessages.length,
+                      itemBuilder: (context, index) {
+                        final entry = _chatMessages[index];
+                        return _MessageBubble(entry: entry, accent: accent);
+                      },
                     ),
-                    itemCount: _chatMessages.length,
-                    itemBuilder: (context, index) {
-                      final entry = _chatMessages[index];
-                      return _MessageBubble(entry: entry, accent: accent);
-                    },
-                  ),
-          ),
-
-          // Loading bar
-          if (_loading)
-            LinearProgressIndicator(
-              color: accent,
-              backgroundColor: accent.withValues(alpha: 0.12),
             ),
-          if (_error != null)
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Text(
-                _error!,
-                style: TextStyle(color: colorScheme.error, fontSize: 13),
+
+            // Loading bar
+            if (_loading)
+              LinearProgressIndicator(
+                color: accent,
+                backgroundColor: accent.withValues(alpha: 0.12),
               ),
-            ),
+            if (_error != null)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: colorScheme.error, fontSize: 13),
+                ),
+              ),
 
-          // ── Floating chat input container (maxWidth 768) ───────────────
-          SearchChatInput(
-            controller: _controller,
-            focusNode: _focusNode,
-            inputFocused: _inputFocused,
-            loading: _loading,
-            selectedVersionIdsByDocId: _selectedVersionIdsByDocId,
-            availableDocs: _availableDocs,
-            resolvingDocIds: _resolvingDocIds,
-            reasoningMode: _reasoningMode,
-            hasChatMessages: _chatMessages.isNotEmpty,
-            onAsk: _ask,
-            onSetDocumentSelected: _setDocumentSelected,
-            onClearDocSelection: () =>
-                setState(_selectedVersionIdsByDocId.clear),
-            onClearChat: _clearChat,
-            onReasoningModeChanged: (val) =>
-                setState(() => _reasoningMode = val),
-          ),
-        ],
+            // ── Floating chat input container (maxWidth 768) ───────────────
+            SearchChatInput(
+              controller: _controller,
+              focusNode: _focusNode,
+              inputFocused: _inputFocused,
+              loading: _loading,
+              selectedVersionIdsByDocId: _selectedVersionIdsByDocId,
+              availableDocs: _availableDocs,
+              resolvingDocIds: _resolvingDocIds,
+              reasoningMode: _reasoningMode,
+              hasChatMessages: _chatMessages.isNotEmpty,
+              onAsk: _ask,
+              onSetDocumentSelected: _setDocumentSelected,
+              onClearDocSelection: () =>
+                  setState(_selectedVersionIdsByDocId.clear),
+              onClearChat: _clearChat,
+              onReasoningModeChanged: (val) =>
+                  setState(() => _reasoningMode = val),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -327,356 +330,165 @@ class _MessageBubble extends StatelessWidget {
     final isDark = colorScheme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // AI avatar
-          if (!isUser) ...[
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: isUser
+          ? _buildUserBubble()
+          : _buildAiBubble(colorScheme, isDark),
+    );
+  }
+
+  // ── User pill bubble (right-aligned, no avatar) ───────────────────────────
+  Widget _buildUserBubble() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 520),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        decoration: BoxDecoration(
+          color: accent,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomLeft: Radius.circular(18),
+            bottomRight: Radius.circular(4),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.22),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Text(
+          entry.content,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── AI canvas-style response (no circular avatar) ─────────────────────────
+  Widget _buildAiBubble(ColorScheme colorScheme, bool isDark) {
+    final isOffline = entry.result?.isOfflineFallback == true;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Inline header: small icon + "Smart KCN Docs" title
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark ? kDarkCard : Colors.white,
+                color: accent.withValues(alpha: isDark ? 0.2 : 0.1),
                 border: Border.all(
-                  color: accent.withValues(alpha: 0.45),
-                  width: 1.2,
+                  color: accent.withValues(alpha: 0.4),
+                  width: 1,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                  ),
-                ],
               ),
               child: Center(
                 child: Icon(
                   Icons.precision_manufacturing_rounded,
-                  size: 16,
+                  size: 13,
                   color: accent,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-          ],
-
-          // Bubble body
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: isUser
-                    ? LinearGradient(
-                        colors: [
-                          accent,
-                          accent.withValues(alpha: 0.82),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: isUser
-                    ? null
-                    : (isDark ? kDarkCard : Colors.white),
-                borderRadius: BorderRadius.circular(16).copyWith(
-                  bottomRight: isUser
-                      ? const Radius.circular(4)
-                      : const Radius.circular(16),
-                  bottomLeft: !isUser
-                      ? const Radius.circular(4)
-                      : const Radius.circular(16),
-                ),
-                border: !isUser
-                    ? Border.all(
-                        color: isDark
-                            ? kDarkBorder
-                            : colorScheme.outlineVariant
-                                .withValues(alpha: 0.35),
-                      )
-                    : null,
-                boxShadow: [
-                  BoxShadow(
-                    color: isUser
-                        ? accent.withValues(alpha: 0.25)
-                        : Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Offline fallback banner
-                  if (!isUser && entry.result?.isOfflineFallback == true) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.amber.shade400, width: 1.2),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.wifi_off_rounded, size: 18, color: Colors.amber.shade900),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '⚠️ Backend/AI offline — Showing cached results',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amber.shade900,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-
-                  // Main text
-                  Text(
-                    entry.content,
-                    style: TextStyle(
-                      color: isUser ? Colors.white : colorScheme.onSurface,
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
-
-                  // Meta badges & citations
-                  if (!isUser && entry.result != null) ...[
-                    const SizedBox(height: 10),
-                    Divider(
-                      height: 1,
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.35),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        _Badge(
-                          label:
-                              'Confidence: ${(entry.result!.confidence * 100).toStringAsFixed(0)}%',
-                          color: colorScheme.secondaryContainer,
-                          textColor: colorScheme.onSecondaryContainer,
-                        ),
-                        if (entry.result!.numericRule)
-                          _Badge(
-                            label: 'Direct Data Extraction',
-                            color: colorScheme.tertiaryContainer,
-                            textColor: colorScheme.onTertiaryContainer,
-                          ),
-                        if (entry.result!.reasoningMode)
-                          _Badge(
-                            label: 'AI Reasoning',
-                            color: accent.withValues(alpha: 0.15),
-                            textColor: accent,
-                          ),
-                      ],
-                    ),
-                    if (entry.result!.citations.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Citations:',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.outline,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      for (final c in entry.result!.citations)
-                        _CitationChip(citation: c, accent: accent),
-                    ],
-                  ],
-                ],
-              ),
-            ),
-          ),
-
-          // User avatar
-          if (isUser) ...[
-            const SizedBox(width: 10),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: colorScheme.secondaryContainer,
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.person_outline_rounded,
-                  size: 18,
-                  color: colorScheme.onSecondaryContainer,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Citation chip
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CitationChip extends StatelessWidget {
-  const _CitationChip({required this.citation, required this.accent});
-
-  final Citation citation;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (ctx) => _CitationDialog(
-            citation: citation,
-            colorScheme: colorScheme,
-            accent: accent,
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.description_outlined, size: 14, color: accent),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             Text(
-              citation.bboxKey != null
-                  ? 'Page ${citation.pageNo} [Bbox]'
-                  : 'Page ${citation.pageNo} (${citation.versionId.substring(0, 8)}...)',
-              style: TextStyle(fontSize: 12, color: accent),
+              'Smart KCN Docs',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: accent,
+                letterSpacing: 0.1,
+              ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Citation dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CitationDialog extends StatelessWidget {
-  const _CitationDialog({
-    required this.citation,
-    required this.colorScheme,
-    required this.accent,
-  });
-
-  final Citation citation;
-  final ColorScheme colorScheme;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          Icon(Icons.spatial_tracking_outlined, color: accent),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Citation — Page ${citation.pageNo}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (citation.bboxKey != null) ...[
+            if (isOffline) ...[
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.shade400, width: 0.8),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.crop_free, size: 16, color: accent),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Bbox Coords: ${citation.bboxKey}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: accent,
-                        ),
+                    Icon(Icons.wifi_off_rounded,
+                        size: 10, color: Colors.amber.shade800),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Offline',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.amber.shade800,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
             ],
-            Text(
-              'Original Content (with spatial context):',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.outline,
-              ),
+          ],
+        ),
+
+        const SizedBox(height: 10),
+
+        // Response body — subtle border container (no heavy fill)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark
+                ? kDarkCard.withValues(alpha: 0.7)
+                : colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+              width: 1,
             ),
-            const SizedBox(height: 4),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: colorScheme.outlineVariant),
-              ),
-              child: Text(
-                citation.snippet ?? 'No detailed information available.',
-                style: const TextStyle(fontSize: 13, height: 1.4),
+          ),
+          child: entry.result == null
+              ? Text(
+                  entry.content.isEmpty ? '…' : entry.content,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                )
+              : _SearchAnswerInline(entry: entry, accent: accent),
+        ),
+
+        const SizedBox(height: 6),
+
+        // Muted "AI Knowledge Base • Smart KCN" metadata chip
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.auto_awesome_rounded,
+              size: 11,
+              color: colorScheme.onSurface.withValues(alpha: 0.35),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'AI Knowledge Base  •  Smart KCN',
+              style: TextStyle(
+                fontSize: 10.5,
+                color: colorScheme.onSurface.withValues(alpha: 0.35),
+                letterSpacing: 0.2,
               ),
             ),
           ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-        FilledButton.icon(
-          onPressed: () {
-            Navigator.of(context).pop();
-            context.push(
-              '/viewer/${citation.versionId}?page=${citation.pageNo}',
-            );
-          },
-          icon: const Icon(Icons.open_in_new, size: 16),
-          label: const Text('Open Document Viewer'),
-          style: FilledButton.styleFrom(backgroundColor: accent),
         ),
       ],
     );
@@ -684,36 +496,19 @@ class _CitationDialog extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Badge
+// Inline answer renderer for Search chat (reuses AnswerView)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _Badge extends StatelessWidget {
-  const _Badge({
-    required this.label,
-    required this.color,
-    required this.textColor,
-  });
+class _SearchAnswerInline extends StatelessWidget {
+  const _SearchAnswerInline({required this.entry, required this.accent});
 
-  final String label;
-  final Color color;
-  final Color textColor;
+  final _ChatEntry entry;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
-      ),
-    );
+    final result = entry.result!;
+    return AnswerView(result: result, shrinkWrap: true);
   }
 }
+
