@@ -204,30 +204,39 @@ class _SearchSuggestionChipState extends State<SearchSuggestionChip> {
                   ? widget.accent.withValues(alpha: isDark ? 0.1 : 0.06)
                   : Colors.transparent,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.icon != null) ...[
-                  Icon(
-                    widget.icon,
-                    size: 14,
-                    color: _hovered
-                        ? widget.accent
-                        : colorScheme.onSurface.withValues(alpha: 0.45),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width - 64,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.icon != null) ...[
+                    Icon(
+                      widget.icon,
+                      size: 14,
+                      color: _hovered
+                          ? widget.accent
+                          : colorScheme.onSurface.withValues(alpha: 0.45),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Flexible(
+                    child: Text(
+                      widget.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _hovered
+                            ? widget.accent
+                            : colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 6),
                 ],
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: _hovered
-                        ? widget.accent
-                        : colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

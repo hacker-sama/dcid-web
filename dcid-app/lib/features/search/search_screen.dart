@@ -12,18 +12,10 @@ import '../../state/providers.dart';
 import 'widgets/search_chat_input.dart';
 import 'widgets/search_empty_state.dart';
 import 'answer_view.dart';
+import '../../state/chat_sessions_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ChatEntry {
-  final String role; // 'user' or 'assistant'
-  String content;
-  AnswerResult? result;
-
-  _ChatEntry({required this.role, required this.content});
-}
+// SearchScreen
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SearchScreen
@@ -49,7 +41,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   List<DocumentSummary> _availableDocs = [];
   final Map<String, String> _selectedVersionIdsByDocId = {};
   final Set<String> _resolvingDocIds = {};
-  final List<_ChatEntry> _chatMessages = [];
 
   @override
   void initState() {
@@ -149,19 +140,30 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     if (question.isEmpty || _loading) return;
 
     _controller.clear();
-    final assistantEntry = _ChatEntry(role: 'assistant', content: '');
+
+    String? sessionId = ref.read(activeChatSessionIdProvider);
+    if (sessionId == null) {
+      final session = ref.read(chatSessionsProvider.notifier).createSession(question);
+      sessionId = session.id;
+      ref.read(activeChatSessionIdProvider.notifier).setId(sessionId);
+    }
+
+    final userMessage = ChatMessage(role: 'user', content: question);
+    ref.read(chatSessionsProvider.notifier).addMessage(sessionId, userMessage);
+
+    var assistantMessage = ChatMessage(role: 'assistant', content: '');
+    assistantMessage = ref.read(chatSessionsProvider.notifier).addMessage(sessionId, assistantMessage);
 
     setState(() {
       _loading = true;
       _error = null;
-      _chatMessages.add(_ChatEntry(role: 'user', content: question));
-      _chatMessages.add(assistantEntry);
     });
     _scrollToBottom();
 
     try {
-      final history = _chatMessages
-          .take(_chatMessages.length - 2)
+      final session = ref.read(chatSessionsProvider).firstWhere((s) => s.id == sessionId);
+      final history = session.messages
+          .take(session.messages.length - 2)
           .map((m) => {'role': m.role, 'content': m.content})
           .toList();
 
@@ -188,35 +190,42 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           isNumeric = event.numericRule;
           isReasoning = event.reasoningMode;
           confidenceVal = event.confidence;
-          setState(() {
-            assistantEntry.result = AnswerResult(
-              answer: assistantEntry.content,
+          
+          assistantMessage.result = AnswerResult(
+            answer: assistantMessage.content,
+            confidence: confidenceVal,
+            locked: isLocked,
+            numericRule: isNumeric,
+            reasoningMode: isReasoning,
+            citations: currentCitations,
+          );
+          ref.read(chatSessionsProvider.notifier).updateMessage(sessionId, assistantMessage);
+        } else if (event.type == SseEventType.delta) {
+          if (event.textDelta != null) {
+            assistantMessage.content += event.textDelta!;
+            assistantMessage.result = AnswerResult(
+              answer: assistantMessage.content,
               confidence: confidenceVal,
               locked: isLocked,
               numericRule: isNumeric,
               reasoningMode: isReasoning,
               citations: currentCitations,
             );
-          });
-        } else if (event.type == SseEventType.delta) {
-          if (event.textDelta != null) {
-            setState(() {
-              assistantEntry.content += event.textDelta!;
-              assistantEntry.result = AnswerResult(
-                answer: assistantEntry.content,
-                confidence: confidenceVal,
-                locked: isLocked,
-                numericRule: isNumeric,
-                reasoningMode: isReasoning,
-                citations: currentCitations,
-              );
-            });
+            ref.read(chatSessionsProvider.notifier).updateMessage(sessionId, assistantMessage);
             _scrollToBottom();
           }
         } else if (event.type == SseEventType.error) {
-          setState(() {
-            _error = event.errorMessage ?? 'Unable to complete query.';
-          });
+          if (event.errorMessage != null && event.errorMessage!.contains('Phiên đăng nhập')) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Session expired, please sign in again')),
+              );
+            }
+          } else {
+            setState(() {
+              _error = event.errorMessage ?? 'Unable to complete query.';
+            });
+          }
         }
       }
     } catch (_) {
@@ -232,8 +241,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   void _clearChat() {
+    ref.read(activeChatSessionIdProvider.notifier).setId(null);
     setState(() {
-      _chatMessages.clear();
       _error = null;
     });
   }
@@ -246,6 +255,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final accent = accentFor(context);
+    
+    final sessionId = ref.watch(activeChatSessionIdProvider);
+    final sessions = ref.watch(chatSessionsProvider);
+    final session = sessions.where((s) => s.id == sessionId).firstOrNull;
+    final messages = session?.messages ?? [];
 
     return SafeArea(
       child: ConstrainedContent(
@@ -255,7 +269,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           children: [
             // ── Chat history or welcome hero ──────────────────────────────
             Expanded(
-              child: _chatMessages.isEmpty
+              child: messages.isEmpty
                   ? SearchEmptyState(onUseSuggestion: _useSuggestion)
                   : ListView.builder(
                       controller: _scrollController,
@@ -263,9 +277,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         horizontal: 16,
                         vertical: 12,
                       ),
-                      itemCount: _chatMessages.length,
+                      itemCount: messages.length,
                       itemBuilder: (context, index) {
-                        final entry = _chatMessages[index];
+                        final entry = messages[index];
                         return _MessageBubble(entry: entry, accent: accent);
                       },
                     ),
@@ -297,7 +311,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               availableDocs: _availableDocs,
               resolvingDocIds: _resolvingDocIds,
               reasoningMode: _reasoningMode,
-              hasChatMessages: _chatMessages.isNotEmpty,
+              hasChatMessages: messages.isNotEmpty,
               onAsk: _ask,
               onSetDocumentSelected: _setDocumentSelected,
               onClearDocSelection: () =>
@@ -320,7 +334,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({required this.entry, required this.accent});
 
-  final _ChatEntry entry;
+  final ChatMessage entry;
   final Color accent;
 
   @override
@@ -502,7 +516,7 @@ class _MessageBubble extends StatelessWidget {
 class _SearchAnswerInline extends StatelessWidget {
   const _SearchAnswerInline({required this.entry, required this.accent});
 
-  final _ChatEntry entry;
+  final ChatMessage entry;
   final Color accent;
 
   @override

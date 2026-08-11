@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/responsive.dart';
 import '../../state/auth_controller.dart';
 import '../../state/theme_controller.dart';
+import 'widgets/collapsible_sidebar.dart';
 
 class _Dest {
   const _Dest(this.icon, this.label, {this.adminOnly = false});
@@ -91,45 +92,14 @@ class HomeShell extends ConsumerWidget {
       return Scaffold(
         body: Row(
           children: [
-            NavigationRail(
+            CollapsibleSidebar(
               selectedIndex: navIndex,
               onDestinationSelected: onSelect,
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                for (final d in dests)
-                  NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    label: Text(d.label),
-                  ),
-              ],
-              trailing: Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        themeToggleButton,
-                        const SizedBox(height: 4),
-                        if (role != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Chip(
-                              label: Text(role.label),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                        IconButton(
-                          tooltip: 'Logout',
-                          icon: const Icon(Icons.logout_rounded),
-                          onPressed: logout,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              destinations: dests
+                  .map((d) => ShellDestination(d.icon, d.label))
+                  .toList(),
+              themeToggleButton: themeToggleButton,
+              onLogout: logout,
             ),
             const VerticalDivider(width: 1),
             Expanded(child: navigationShell),
@@ -173,6 +143,23 @@ class HomeShell extends ConsumerWidget {
             onPressed: logout,
           ),
         ],
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: CollapsibleSidebar(
+            forceExpanded: true,
+            selectedIndex: navIndex,
+            onDestinationSelected: (i) {
+              onSelect(i);
+              Navigator.of(context).pop(); // Close drawer
+            },
+            destinations: dests
+                .map((d) => ShellDestination(d.icon, d.label))
+                .toList(),
+            themeToggleButton: themeToggleButton,
+            onLogout: logout,
+          ),
+        ),
       ),
       body: SafeArea(
         child: navigationShell,
