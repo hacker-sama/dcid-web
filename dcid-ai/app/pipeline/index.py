@@ -23,6 +23,15 @@ INDEXED_KEYWORD_FIELDS = ("version_id", "document_id", "machineCode")
 SCROLL_BATCH_SIZE = 256
 MAX_LEXICAL_CANDIDATES = 4096
 
+# Common conversational words do not help distinguish one technical chunk
+# from another. Keeping this list small preserves useful terms such as
+# "lap", "dat", "bao tri", while avoiding matches on words like "la/gi".
+LEXICAL_STOP_WORDS = {
+    "ai", "bao", "cac", "cho", "co", "cua", "duoc", "gi", "hay", "la",
+    "mot", "nao", "nhieu", "nhung", "o", "the", "thi", "tren", "va", "voi",
+    "what", "which", "the", "this", "that", "is", "are", "of", "to", "for",
+}
+
 
 @lru_cache(maxsize=1)
 def _get_client():
@@ -244,7 +253,36 @@ def search(
 def _tokens(value: str) -> set[str]:
     normalized = unicodedata.normalize("NFKD", value.lower())
     plain = "".join(char for char in normalized if not unicodedata.combining(char))
-    return {token for token in re.findall(r"\w+", plain) if len(token) > 1}
+    return {
+        token
+        for token in re.findall(r"\w+", plain)
+        if len(token) > 1 and token not in LEXICAL_STOP_WORDS
+    }
+
+
+def _lexical_score(question_tokens: set[str], payload: dict[str, Any]) -> float:
+    """Return a guardrail-compatible relevance score without embeddings.
+
+    The old low-memory path assigned every chunk a base score of 0.65, even
+    with zero shared terms. Since the standard guardrail threshold is 0.60,
+    unrelated documents could reach the LLM. This score is zero for no match
+    and scales with query-term coverage for predictable threshold behaviour.
+    """
+    if not question_tokens:
+        return 0.0
+
+    searchable = " ".join(
+        str(payload.get(field, "") or "")
+        for field in ("text", "title", "category", "machineCode")
+    )
+    matched = question_tokens & _tokens(searchable)
+    if not matched:
+        return 0.0
+
+    coverage = len(matched) / len(question_tokens)
+    # 47% query coverage reaches the normal 0.60 guardrail threshold. A
+    # complete lexical match approaches, but never claims, perfect certainty.
+    return min(0.95, 0.30 + 0.65 * coverage)
 
 
 def _scroll_payloads(query_filter, *, limit: int = MAX_LEXICAL_CANDIDATES) -> list[dict[str, Any]]:
@@ -282,9 +320,9 @@ def search_selected_text(
     question_tokens = _tokens(question)
     hits: list[dict[str, Any]] = []
     for payload in _scroll_payloads(_filter(allowed_version_ids, machine_code)):
-        overlap = len(question_tokens & _tokens(str(payload.get("text", ""))))
-        score = min(0.95, 0.65 + overlap * 0.05)
-        hits.append(_payload_to_hit(payload, score))
+        score = _lexical_score(question_tokens, payload)
+        if score > 0.0:
+            hits.append(_payload_to_hit(payload, score))
 
     hits.sort(key=lambda item: (-item["score"], item.get("page_no") or 0, item.get("chunk_index") or 0))
     return hits[:top_k]

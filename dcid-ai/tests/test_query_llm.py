@@ -124,17 +124,22 @@ class TestBuildSystemPrompt:
     def test_contains_base_instructions(self):
         from app.pipeline.prompts import build_system_prompt
         prompt = build_system_prompt(numeric_rule=False)
-        assert prompt == ""
+        assert prompt.strip()
+        assert "context" in prompt.lower()
 
     def test_numeric_rule_injection(self):
         from app.pipeline.prompts import build_system_prompt
         prompt = build_system_prompt(numeric_rule=True)
-        assert prompt == ""
+        base_prompt = build_system_prompt(numeric_rule=False)
+        assert len(prompt) > len(base_prompt)
+        assert prompt.startswith(base_prompt)
 
     def test_no_numeric_injection_when_false(self):
         from app.pipeline.prompts import build_system_prompt
         prompt = build_system_prompt(numeric_rule=False)
-        assert prompt == ""
+        numeric_prompt = build_system_prompt(numeric_rule=True)
+        assert prompt.strip()
+        assert prompt != numeric_prompt
 
     def test_user_prompt_hits_all_appear(self):
         from app.pipeline.prompts import build_user_prompt
@@ -416,7 +421,8 @@ class TestVisionPrompts:
     def test_build_system_prompt_vision_mode(self):
         from app.pipeline.prompts import build_system_prompt
         sp = build_system_prompt(has_image=True)
-        assert sp == ""
+        assert sp.strip()
+        assert sp != build_system_prompt(has_image=False)
 
     def test_build_user_prompt_vision_mode(self):
         from app.pipeline.prompts import build_user_prompt

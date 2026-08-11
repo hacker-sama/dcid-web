@@ -34,7 +34,7 @@ _MOCK_HITS_NUMERIC = [
 ]
 
 
-def _mock_search_side_effect(query_embedding, allowed_version_ids, top_k=5):
+def _mock_search_side_effect(query_embedding, allowed_version_ids, top_k=5, machine_code=None):
     """Mock ChromaDB search: trả hits giả tùy ngữ cảnh."""
     # Mặc định trả score 0.75 (dùng cho test_default_mock_answer)
     # score 0.90 dùng cho test_numeric_rule_keywords (query embedding không đọ được ở đây, dùng 0.90 nếu allowed rỗng thì mock không cần)
@@ -72,5 +72,12 @@ def auth_headers() -> dict[str, str]:
 @pytest.fixture(autouse=True)
 def mock_chroma_and_llm(monkeypatch):
     """Autouse: Mock ChromaDB search + LLM cho mọi test — không cần service thật."""
+    # Most query-service tests exercise the vector branch with deterministic
+    # mocks. Dedicated low-memory tests cover the lexical branch.
+    monkeypatch.setenv("LOW_MEMORY_QUERY_MODE", "false")
+    get_settings.cache_clear()
+    monkeypatch.setattr("app.pipeline.embed.embed_query", lambda _question: [0.1] * 384)
     monkeypatch.setattr("app.pipeline.index.search", _mock_search_side_effect)
     monkeypatch.setattr("app.clients.llm_client.generate_answer", _mock_generate_answer)
+    yield
+    get_settings.cache_clear()

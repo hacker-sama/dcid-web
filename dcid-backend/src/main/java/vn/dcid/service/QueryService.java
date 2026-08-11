@@ -2,6 +2,7 @@ package vn.dcid.service;
 
 import org.springframework.stereotype.Service;
 import vn.dcid.ai.AiPipelineClient;
+import vn.dcid.ai.AiStreamAuditAccumulator;
 import vn.dcid.ai.dto.AiCitation;
 import vn.dcid.ai.dto.AiQueryRequest;
 import vn.dcid.ai.dto.AiQueryResponse;
@@ -22,6 +23,7 @@ import java.util.UUID;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Hỏi–đáp RAG: BE tính allowedVersionIds theo RBAC (ACTIVE + min_role ≤ vai user),
@@ -185,6 +187,7 @@ public class QueryService {
     }
 
     public SseEmitter askStreaming(QueryRequest request, UUID actorId, UserRole actorRole) {
+        long requestStart = System.nanoTime();
         List<UUID> allowed = resolveAllowedVersionIds(actorRole, request.machineCode());
         if (request.selectedVersionIds() != null && !request.selectedVersionIds().isEmpty()) {
             List<UUID> selected = request.selectedVersionIds();
@@ -198,7 +201,13 @@ public class QueryService {
 
         if (allowed.isEmpty()) {
             try {
-                emitter.send(NO_ACCESS_MESSAGE);
+                saveLog(actorId, request.question(), null, null, false, true,
+                        NO_ACCESS_MESSAGE, elapsedMs(requestStart));
+                emitter.send("{\"event\":\"meta\",\"citations\":[],\"confidence\":0.0,"
+                        + "\"guard\":{\"locked\":true,\"numericRule\":false,\"reasoningMode\":false}}");
+                emitter.send("{\"event\":\"delta\",\"text\":\"" + NO_ACCESS_MESSAGE + "\"}");
+                emitter.send("{\"event\":\"done\",\"latencyMs\":" + elapsedMs(requestStart)
+                        + ",\"model\":\"guardrail-no-access\"}");
                 emitter.complete();
             } catch (Exception e) {
                 emitter.completeWithError(e);
@@ -209,6 +218,26 @@ public class QueryService {
         final List<UUID> finalAllowed = allowed;
         CompletableFuture.runAsync(() -> {
             long start = System.nanoTime();
+            AiStreamAuditAccumulator audit = new AiStreamAuditAccumulator();
+            AtomicBoolean auditSaved = new AtomicBoolean(false);
+            Runnable saveStreamAudit = () -> {
+                if (!auditSaved.compareAndSet(false, true)) {
+                    return;
+                }
+                Double confidence = audit.confidence();
+                saveLog(
+                        actorId,
+                        request.question(),
+                        audit.matchedVersionId(),
+                        confidence != null
+                                ? BigDecimal.valueOf(confidence).setScale(3, RoundingMode.HALF_UP)
+                                : null,
+                        audit.numericRule(),
+                        audit.locked(),
+                        audit.answerPreview(),
+                        elapsedMs(start)
+                );
+            };
             aiPipelineClient.queryStream(
                 new AiQueryRequest(
                     request.question(),
@@ -221,17 +250,19 @@ public class QueryService {
                 ),
                 token -> {
                     try {
+                        audit.accept(token);
                         emitter.send(token);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 },
                 () -> {
-                    int latencyMs = elapsedMs(start);
-                    saveLog(actorId, request.question(), null, null, false, false, "[Streaming Response]", latencyMs);
+                    saveStreamAudit.run();
                     emitter.complete();
                 },
                 e -> {
+                    audit.markTransportError(e);
+                    saveStreamAudit.run();
                     emitter.completeWithError(e);
                 }
             );
