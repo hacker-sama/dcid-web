@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/responsive.dart';
 import '../../state/auth_controller.dart';
+import '../../state/theme_controller.dart';
 
 class _Dest {
   const _Dest(this.icon, this.label, {this.adminOnly = false});
@@ -15,10 +16,10 @@ class _Dest {
 /// Branch ordering must stay in sync with [routerProvider] in router.dart:
 ///   index 0 = /search, 1 = /snap, 2 = /documents, 3 = /admin
 const _allDestinations = <_Dest>[
-  _Dest(Icons.search, 'Search'),
-  _Dest(Icons.camera_alt, 'Snap & Ask'),
-  _Dest(Icons.folder, 'Documents'),
-  _Dest(Icons.admin_panel_settings, 'Admin', adminOnly: true),
+  _Dest(Icons.search_rounded, 'Search'),
+  _Dest(Icons.camera_alt_rounded, 'Snap & Ask'),
+  _Dest(Icons.folder_rounded, 'Documents'),
+  _Dest(Icons.admin_panel_settings_rounded, 'Admin', adminOnly: true),
 ];
 
 /// Adaptive shell: NavigationRail on wide (kiosk/desktop), NavigationBar on
@@ -38,9 +39,12 @@ class HomeShell extends ConsumerWidget {
     final isAdmin = role?.isAdminLevel ?? false;
     final isWide = Responsive.isWide(context);
 
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+
     // Build parallel lists: visible destinations and their true branch indices.
-    // Admin is always last in _allDestinations, so filtering preserves order
-    // for all non-admin tabs. branchIndices[i] maps nav-item i → branch i.
     final dests = <_Dest>[];
     final branchIndices = <int>[];
     for (var i = 0; i < _allDestinations.length; i++) {
@@ -51,24 +55,38 @@ class HomeShell extends ConsumerWidget {
       }
     }
 
-    // Find which nav-item corresponds to the current active branch.
-    // Falls back to 0 if the current branch is not in the visible list
-    // (e.g. a non-admin somehow landed on branch 3 before the redirect fires).
     final currentBranch = navigationShell.currentIndex;
     final navIndex = branchIndices.contains(currentBranch)
         ? branchIndices.indexOf(currentBranch)
         : 0;
 
-    // Tapping the active tab again resets to the branch root; tapping a
-    // different tab resumes where the user left off (IndexedStack keeps state).
     void onSelect(int i) => navigationShell.goBranch(
           branchIndices[i],
           initialLocation: currentBranch == branchIndices[i],
         );
 
-    void logout() =>
-        ref.read(authControllerProvider.notifier).logout();
+    void logout() => ref.read(authControllerProvider.notifier).logout();
 
+    void toggleTheme() =>
+        ref.read(themeModeProvider.notifier).toggle();
+
+    final themeToggleButton = IconButton(
+      tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        transitionBuilder: (child, anim) => RotationTransition(
+          turns: anim,
+          child: FadeTransition(opacity: anim, child: child),
+        ),
+        child: Icon(
+          isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          key: ValueKey(isDark),
+        ),
+      ),
+      onPressed: toggleTheme,
+    );
+
+    // ── Wide layout: NavigationRail + content ─────────────────────────────
     if (isWide) {
       return Scaffold(
         body: Row(
@@ -92,6 +110,8 @@ class HomeShell extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        themeToggleButton,
+                        const SizedBox(height: 4),
                         if (role != null)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8),
@@ -102,7 +122,7 @@ class HomeShell extends ConsumerWidget {
                           ),
                         IconButton(
                           tooltip: 'Logout',
-                          icon: const Icon(Icons.logout),
+                          icon: const Icon(Icons.logout_rounded),
                           onPressed: logout,
                         ),
                       ],
@@ -112,20 +132,31 @@ class HomeShell extends ConsumerWidget {
               ),
             ),
             const VerticalDivider(width: 1),
-            // navigationShell IS the IndexedStack body — all branches alive.
             Expanded(child: navigationShell),
           ],
         ),
       );
     }
 
+    // ── Narrow layout: AppBar + BottomNavigationBar ───────────────────────
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Smart KCN Docs',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.precision_manufacturing_rounded,
+                size: 20, color: colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text(
+              'Smart KCN Docs',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+          ],
         ),
         actions: [
+          themeToggleButton,
           if (role != null)
             Padding(
               padding: const EdgeInsets.only(right: 4),
@@ -138,7 +169,7 @@ class HomeShell extends ConsumerWidget {
             ),
           IconButton(
             tooltip: 'Logout',
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
             onPressed: logout,
           ),
         ],
@@ -149,10 +180,12 @@ class HomeShell extends ConsumerWidget {
         onDestinationSelected: onSelect,
         destinations: [
           for (final d in dests)
-            NavigationDestination(icon: Icon(d.icon), label: d.label),
+            NavigationDestination(
+              icon: Icon(d.icon),
+              label: d.label,
+            ),
         ],
       ),
     );
   }
 }
-
