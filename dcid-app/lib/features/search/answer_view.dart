@@ -43,8 +43,8 @@ class AnswerView extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '⚠ Không đủ dữ liệu chắc chắn.\n'
-                  'Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm.',
+                  '⚠ Insufficient data confidence.\n'
+                  'Engineer verification required from attached drawing.',
                   style: textTheme.bodyMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -72,13 +72,13 @@ class AnswerView extends StatelessWidget {
         children: [
           _MetaBadge(
             icon: Icons.analytics_outlined,
-            label: 'Tin cậy: ${(result.confidence * 100).toStringAsFixed(0)}%',
+            label: 'Confidence: ${(result.confidence * 100).toStringAsFixed(0)}%',
             scheme: scheme,
           ),
           if (result.numericRule)
             _MetaBadge(
               icon: Icons.pin_outlined,
-              label: 'Trích số liệu trực tiếp',
+              label: 'Direct Data Extraction',
               scheme: scheme,
               color: scheme.tertiaryContainer,
               onColor: scheme.onTertiaryContainer,
@@ -98,7 +98,7 @@ class AnswerView extends StatelessWidget {
       if (result.citations.isNotEmpty) ...[
         const SizedBox(height: 14),
         Text(
-          'Nguồn tham chiếu',
+          'Reference Sources',
           style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
@@ -291,7 +291,7 @@ class _CitationCard extends StatelessWidget {
             ),
           ),
         ),
-        title: Text('Trang ${citation.pageNo}', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+        title: Text('Page ${citation.pageNo}', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
         subtitle: citation.snippet != null
             ? Text(
                 citation.snippet!,

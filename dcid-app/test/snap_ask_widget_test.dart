@@ -56,8 +56,8 @@ void main() {
       );
 
       expect(find.textContaining('Phân tích kỹ thuật'), findsOneWidget);
-      expect(find.textContaining('Tin cậy: 95%'), findsOneWidget);
-      expect(find.textContaining('Trích số liệu trực tiếp'), findsOneWidget);
+      expect(find.textContaining('Confidence: 95%'), findsOneWidget);
+      expect(find.textContaining('Direct Data Extraction'), findsOneWidget);
       expect(find.textContaining('Reasoning mode'), findsOneWidget);
     });
 
@@ -81,7 +81,7 @@ void main() {
         ),
       );
 
-      expect(find.textContaining('Không đủ dữ liệu chắc chắn'), findsOneWidget);
+      expect(find.textContaining('Insufficient data confidence'), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
     });
   });

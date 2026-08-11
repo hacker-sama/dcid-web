@@ -246,7 +246,7 @@ class _GuestAskScreenState extends ConsumerState<GuestAskScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor.withOpacity(0.06),
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.06),
         border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
       ),
       child: Row(
@@ -478,7 +478,7 @@ class _GuestAskScreenState extends ConsumerState<GuestAskScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),
