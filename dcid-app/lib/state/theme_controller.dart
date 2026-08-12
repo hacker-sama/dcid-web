@@ -10,13 +10,16 @@ class ThemeController extends Notifier<ThemeMode> {
   @override
   ThemeMode build() => ThemeMode.system;
 
-  /// Cycle: system → dark → light → dark → light …
+  /// Cycle accurately from System -> Light/Dark based on current platform brightness
   void toggle() {
-    state = switch (state) {
-      ThemeMode.system => ThemeMode.dark,
-      ThemeMode.dark => ThemeMode.light,
-      ThemeMode.light => ThemeMode.dark,
-    };
+    final isPlatformDark =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+            Brightness.dark;
+    
+    state = (state == ThemeMode.dark ||
+            (state == ThemeMode.system && isPlatformDark))
+        ? ThemeMode.light
+        : ThemeMode.dark;
   }
 
   /// Force a specific mode.

@@ -75,10 +75,6 @@ class HomeShell extends ConsumerWidget {
       tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
       icon: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
-        transitionBuilder: (child, anim) => RotationTransition(
-          turns: anim,
-          child: FadeTransition(opacity: anim, child: child),
-        ),
         child: Icon(
           isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
           key: ValueKey(isDark),
