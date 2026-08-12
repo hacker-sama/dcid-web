@@ -34,8 +34,8 @@ class CollapsibleSidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bool isExpanded = forceExpanded ?? ref.watch(isSidebarExpandedProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    final auth = ref.watch(authControllerProvider);
-    final role = auth.user?.role;
+    // Narrowly watch only the user's role — avoids rebuilds on token refresh
+    final role = ref.watch(authControllerProvider.select((a) => a.user?.role));
     final sessions = ref.watch(chatSessionsProvider);
     final activeSessionId = ref.watch(activeChatSessionIdProvider);
 
@@ -166,15 +166,17 @@ class CollapsibleSidebar extends ConsumerWidget {
                 ),
               ),
             ),
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: sessions.length,
-                itemBuilder: (context, index) {
-                  final session = sessions[index];
-                  final isActive = session.id == activeSessionId;
-                  return RepaintBoundary(
-                    child: ListTile(
+            RepaintBoundary(
+              child: Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  // itemExtent enables O(1) scroll position calc
+                  itemExtent: 44.0,
+                  itemCount: sessions.length,
+                  itemBuilder: (context, index) {
+                    final session = sessions[index];
+                    final isActive = session.id == activeSessionId;
+                    return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                       dense: true,
                       title: Text(
@@ -195,9 +197,9 @@ class CollapsibleSidebar extends ConsumerWidget {
                           onDestinationSelected(0);
                         }
                       },
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ] else if (isExpanded)
@@ -206,42 +208,44 @@ class CollapsibleSidebar extends ConsumerWidget {
             const Spacer(),
 
           // Navigation Items (Middle-bottom)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(
-              children: List.generate(destinations.length, (index) {
-                final dest = destinations[index];
-                final isSelected = selectedIndex == index;
-                if (!isExpanded) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: IconButton(
-                      onPressed: () => onDestinationSelected(index),
-                      icon: Icon(dest.icon),
+          RepaintBoundary(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                children: List.generate(destinations.length, (index) {
+                  final dest = destinations[index];
+                  final isSelected = selectedIndex == index;
+                  if (!isExpanded) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: IconButton(
+                        onPressed: () => onDestinationSelected(index),
+                        icon: Icon(dest.icon),
+                        color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                        tooltip: dest.label,
+                      ),
+                    );
+                  }
+                  return ListTile(
+                    leading: Icon(
+                      dest.icon,
                       color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                      tooltip: dest.label,
                     ),
+                    title: Text(
+                      dest.label,
+                      style: TextStyle(
+                        color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    onTap: () => onDestinationSelected(index),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    horizontalTitleGap: 8,
                   );
-                }
-                return ListTile(
-                  leading: Icon(
-                    dest.icon,
-                    color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                  ),
-                  title: Text(
-                    dest.label,
-                    style: TextStyle(
-                      color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                  ),
-                  selected: isSelected,
-                  selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.3),
-                  onTap: () => onDestinationSelected(index),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                  horizontalTitleGap: 8,
-                );
-              }),
+                }),
+              ),
             ),
           ),
 
