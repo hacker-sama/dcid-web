@@ -8,10 +8,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import vn.dcid.domain.enums.QueryScope;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -28,13 +24,6 @@ public class QueryLog {
 
     @Column(name = "actor_id")
     private UUID actorId;
-
-    @Column(name = "session_id")
-    private UUID sessionId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "query_scope", nullable = false, length = 20)
-    private QueryScope queryScope = QueryScope.OFFICIAL;
 
     @Column(name = "question", nullable = false, columnDefinition = "TEXT")
     private String question;
@@ -82,22 +71,6 @@ public class QueryLog {
 
     public void setActorId(UUID actorId) {
         this.actorId = actorId;
-    }
-
-    public UUID getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(UUID sessionId) {
-        this.sessionId = sessionId;
-    }
-
-    public QueryScope getQueryScope() {
-        return queryScope;
-    }
-
-    public void setQueryScope(QueryScope queryScope) {
-        this.queryScope = queryScope;
     }
 
     public String getQuestion() {

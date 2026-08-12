@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../state/auth_controller.dart';
 
@@ -205,12 +204,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () => context.go('/ask'),
-                      icon: const Icon(Icons.forum_outlined),
-                      label: const Text('Dùng thử Hỏi đáp Công khai (/ask)'),
                     ),
                   ],
                 ),

@@ -371,33 +371,3 @@ def delete_document_chunks(
         logger.error("Failed to delete Qdrant chunks for %s=%s: %s", key, value, exc)
         return 0
 
-
-def delete_session_chunks(session_id: str) -> int:
-    """Delete all indexed chunks for a guest session."""
-    from qdrant_client import models
-
-    if not session_id:
-        return 0
-
-    try:
-        _ensure_collection()
-        query_filter = models.Filter(
-            must=[models.FieldCondition(key="sessionId", match=models.MatchValue(value=str(session_id)))]
-        )
-        count = _get_client().count(
-            collection_name=COLLECTION_NAME,
-            count_filter=query_filter,
-            exact=True,
-        ).count
-
-        _get_client().delete(
-            collection_name=COLLECTION_NAME,
-            points_selector=models.FilterSelector(filter=query_filter),
-            wait=True,
-        )
-        logger.info("Deleted %d Qdrant session chunks for sessionId=%s", count, session_id)
-        return int(count)
-    except Exception as exc:
-        logger.error("Failed to delete Qdrant session chunks for sessionId=%s: %s", session_id, exc)
-        return 0
-

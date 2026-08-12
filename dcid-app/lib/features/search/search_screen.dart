@@ -29,7 +29,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final ScrollController _scrollController = ScrollController();
 
   bool _loading = false;
-  bool _reasoningMode = false;
   String? _error;
 
   List<DocumentSummary> _availableDocs = [];
@@ -147,7 +146,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           .read(docsRepositoryProvider)
           .askStream(
             question,
-            reasoningMode: _reasoningMode,
+            reasoningMode: true,
             selectedVersionIds: _selectedVersionIdsByDocId.isEmpty
                 ? null
                 : _selectedVersionIdsByDocId.values.toList(),
@@ -157,7 +156,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       List<Citation> currentCitations = [];
       bool isLocked = false;
       bool isNumeric = false;
-      bool isReasoning = _reasoningMode;
+      const bool isReasoning = true;
       double confidenceVal = 0.0;
 
       await for (final event in stream) {
@@ -166,7 +165,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           currentCitations = event.citations;
           isLocked = event.locked;
           isNumeric = event.numericRule;
-          isReasoning = event.reasoningMode;
           confidenceVal = event.confidence;
           setState(() {
             assistantEntry.result = AnswerResult(
@@ -355,55 +353,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             const SizedBox(height: 8),
 
-            // ── Tùy chọn Suy luận & Nút làm mới hội thoại ──
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 520;
-                final switchTile = SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Chế độ Tư vấn / Suy luận quy trình lắp đặt',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 13,
-                    ),
-                  ),
-                  subtitle: const Text(
-                    'AI suy luận chi tiết các bước thao tác, tháo lắp từ phân tích cấu tạo bản vẽ',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  value: _reasoningMode,
-                  onChanged: _loading
-                      ? null
-                      : (val) => setState(() => _reasoningMode = val),
-                );
-
-                final clearBtn = _chatMessages.isNotEmpty
-                    ? OutlinedButton.icon(
-                        onPressed: _loading ? null : _clearChat,
-                        icon: const Icon(Icons.delete_outline, size: 18),
-                        label: const Text('Clear Chat'),
-                      )
-                    : null;
-
-                if (isNarrow && clearBtn != null) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      switchTile,
-                      Align(alignment: Alignment.centerRight, child: clearBtn),
-                    ],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    Expanded(child: switchTile),
-                    if (clearBtn != null) clearBtn,
-                  ],
-                );
-              },
-            ),
+            if (_chatMessages.isNotEmpty)
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _clearChat,
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('Clear Chat'),
+                ),
+              ),
             const Divider(height: 16),
 
             // ── Khung lịch sử tin nhắn NotebookLM ──
