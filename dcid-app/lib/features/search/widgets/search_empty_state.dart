@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme.dart';
 import '../../../state/suggestions_provider.dart';
@@ -56,39 +55,45 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Pulsing AI icon with radial glow
-            AnimatedBuilder(
-              animation: _pulseAnim,
-              builder: (context, child) => Transform.rotate(
-                angle: math.sin(_pulseController.value * math.pi) * 0.05,
-                child: Opacity(
-                  opacity: 0.7 + (_pulseAnim.value * 0.3),
-                  child: child,
-                ),
-              ),
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isDark ? kDarkCard : Colors.white,
-                  border: Border.all(
-                    color: accent.withValues(alpha: 0.4),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.25),
-                      blurRadius: 24,
-                      spreadRadius: 2,
+            // Pulsing AI icon with radial glow isolated by RepaintBoundary
+            RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _pulseAnim,
+                builder: (context, child) {
+                  final scale = 0.96 + (_pulseAnim.value * 0.08);
+                  final angle = math.sin(_pulseController.value * math.pi) * 0.04;
+                  return Transform(
+                    transform: Matrix4.identity()
+                      ..rotateZ(angle)
+                      ..scale(scale, scale, 1.0),
+                    alignment: Alignment.center,
+                    child: child,
+                  );
+                },
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark ? kDarkCard : Colors.white,
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.4),
+                      width: 1.5,
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.precision_manufacturing_rounded,
-                    size: 36,
-                    color: accent,
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.precision_manufacturing_rounded,
+                      size: 36,
+                      color: accent,
+                    ),
                   ),
                 ),
               ),
@@ -100,12 +105,11 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
             Text(
               'Smart KCN Docs',
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 34,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                letterSpacing: -0.5,
-              ),
+              style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    letterSpacing: -0.5,
+                  ),
             ),
 
             const SizedBox(height: 8),
@@ -113,11 +117,9 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
             Text(
               'AI-powered industrial knowledge assistant',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                color: colorScheme.onSurface.withValues(alpha: 0.5),
-                height: 1.5,
-              ),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
             ),
 
             const SizedBox(height: 36),
@@ -172,70 +174,72 @@ class _SearchSuggestionChipState extends State<SearchSuggestionChip> {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = colorScheme.brightness == Brightness.dark;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() {
-        _hovered = false;
-        _pressed = false;
-      }),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          widget.onTap();
-        },
-        onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _scale,
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(50),
-              border: Border.all(
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() {
+          _hovered = false;
+          _pressed = false;
+        }),
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) {
+            setState(() => _pressed = false);
+            widget.onTap();
+          },
+          onTapCancel: () => setState(() => _pressed = false),
+          child: AnimatedScale(
+            scale: _scale,
+            duration: const Duration(milliseconds: 140),
+            curve: Curves.easeOut,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(50),
+                border: Border.all(
+                  color: _hovered
+                      ? widget.accent.withValues(alpha: 0.75)
+                      : colorScheme.outlineVariant.withValues(alpha: 0.55),
+                  width: 1.2,
+                ),
                 color: _hovered
-                    ? widget.accent.withValues(alpha: 0.75)
-                    : colorScheme.outlineVariant.withValues(alpha: 0.55),
-                width: 1.2,
+                    ? widget.accent.withValues(alpha: isDark ? 0.1 : 0.06)
+                    : Colors.transparent,
               ),
-              color: _hovered
-                  ? widget.accent.withValues(alpha: isDark ? 0.1 : 0.06)
-                  : Colors.transparent,
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width - 64,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.icon != null) ...[
-                    Icon(
-                      widget.icon,
-                      size: 14,
-                      color: _hovered
-                          ? widget.accent
-                          : colorScheme.onSurface.withValues(alpha: 0.45),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Flexible(
-                    child: Text(
-                      widget.label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width - 64,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.icon != null) ...[
+                      Icon(
+                        widget.icon,
+                        size: 14,
                         color: _hovered
                             ? widget.accent
-                            : colorScheme.onSurface.withValues(alpha: 0.7),
+                            : colorScheme.onSurface.withValues(alpha: 0.45),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Flexible(
+                      child: Text(
+                        widget.label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: _hovered
+                              ? widget.accent
+                              : colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

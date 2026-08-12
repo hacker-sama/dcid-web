@@ -387,10 +387,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                 doc.updatedAt!.isNotEmpty)
                               'Updated: ${_formatRelative(doc.updatedAt)}',
                           ];
-                          return Card(
-                            margin: EdgeInsets.zero,
-                            child: ListTile(
-                              dense: isTablet,
+                          return RepaintBoundary(
+                            child: Card(
+                              margin: EdgeInsets.zero,
+                              child: ListTile(
                               minVerticalPadding: isTablet ? 10 : 14,
                               leading:
                                   const Icon(Icons.description_outlined),
@@ -423,7 +423,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               onTap: () =>
                                   context.push('/documents/${doc.id}'),
                             ),
-                          );
+                          ),
+                        );
                         },
                       ),
                     ),

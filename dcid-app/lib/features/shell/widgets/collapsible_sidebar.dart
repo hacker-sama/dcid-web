@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/responsive.dart';
 import '../../../state/auth_controller.dart';
@@ -96,16 +95,17 @@ class CollapsibleSidebar extends ConsumerWidget {
                         children: [
                           Text(
                             'Smart KCN',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 18,
                               height: 1.1,
+                              color: colorScheme.onSurface,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             'Docs',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                               color: colorScheme.primary,
@@ -134,7 +134,7 @@ class CollapsibleSidebar extends ConsumerWidget {
                   }
                 },
                 icon: const Icon(Icons.add_rounded, size: 20),
-                label: Text('New Chat', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+                label: const Text('New Chat', style: TextStyle(fontWeight: FontWeight.w600)),
                 style: FilledButton.styleFrom(
                   alignment: Alignment.centerLeft,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -159,7 +159,7 @@ class CollapsibleSidebar extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
               child: Text(
                 'Recents',
-                style: GoogleFonts.plusJakartaSans(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: colorScheme.onSurface.withValues(alpha: 0.5),
@@ -173,27 +173,29 @@ class CollapsibleSidebar extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final session = sessions[index];
                   final isActive = session.id == activeSessionId;
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    dense: true,
-                    title: Text(
-                      session.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                        color: isActive ? colorScheme.primary : colorScheme.onSurface,
+                  return RepaintBoundary(
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      dense: true,
+                      title: Text(
+                        session.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                          color: isActive ? colorScheme.primary : colorScheme.onSurface,
+                        ),
                       ),
+                      selected: isActive,
+                      selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                      onTap: () {
+                        ref.read(activeChatSessionIdProvider.notifier).setId(session.id);
+                        if (selectedIndex != 0) {
+                          onDestinationSelected(0);
+                        }
+                      },
                     ),
-                    selected: isActive,
-                    selectedTileColor: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    onTap: () {
-                      ref.read(activeChatSessionIdProvider.notifier).setId(session.id);
-                      if (selectedIndex != 0) {
-                        onDestinationSelected(0);
-                      }
-                    },
                   );
                 },
               ),
@@ -228,7 +230,7 @@ class CollapsibleSidebar extends ConsumerWidget {
                   ),
                   title: Text(
                     dest.label,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: TextStyle(
                       color: isSelected ? colorScheme.primary : colorScheme.onSurface,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     ),
@@ -259,7 +261,7 @@ class CollapsibleSidebar extends ConsumerWidget {
                         Chip(
                           label: Text(
                             role.label,
-                            style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600),
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                           visualDensity: VisualDensity.compact,
                         ),

@@ -92,17 +92,23 @@ class HomeShell extends ConsumerWidget {
       return Scaffold(
         body: Row(
           children: [
-            CollapsibleSidebar(
-              selectedIndex: navIndex,
-              onDestinationSelected: onSelect,
-              destinations: dests
-                  .map((d) => ShellDestination(d.icon, d.label))
-                  .toList(),
-              themeToggleButton: themeToggleButton,
-              onLogout: logout,
+            RepaintBoundary(
+              child: CollapsibleSidebar(
+                selectedIndex: navIndex,
+                onDestinationSelected: onSelect,
+                destinations: dests
+                    .map((d) => ShellDestination(d.icon, d.label))
+                    .toList(),
+                themeToggleButton: themeToggleButton,
+                onLogout: logout,
+              ),
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: navigationShell),
+            Expanded(
+              child: RepaintBoundary(
+                child: navigationShell,
+              ),
+            ),
           ],
         ),
       );
@@ -162,7 +168,9 @@ class HomeShell extends ConsumerWidget {
         ),
       ),
       body: SafeArea(
-        child: navigationShell,
+        child: RepaintBoundary(
+          child: navigationShell,
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navIndex,

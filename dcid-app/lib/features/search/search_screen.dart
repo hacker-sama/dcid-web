@@ -280,7 +280,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       itemCount: messages.length,
                       itemBuilder: (context, index) {
                         final entry = messages[index];
-                        return _MessageBubble(entry: entry, accent: accent);
+                        return RepaintBoundary(
+                          child: _MessageBubble(entry: entry, accent: accent),
+                        );
                       },
                     ),
             ),
@@ -302,23 +304,25 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
 
             // ── Floating chat input container (maxWidth 768) ───────────────
-            SearchChatInput(
-              controller: _controller,
-              focusNode: _focusNode,
-              inputFocused: _inputFocused,
-              loading: _loading,
-              selectedVersionIdsByDocId: _selectedVersionIdsByDocId,
-              availableDocs: _availableDocs,
-              resolvingDocIds: _resolvingDocIds,
-              reasoningMode: _reasoningMode,
-              hasChatMessages: messages.isNotEmpty,
-              onAsk: _ask,
-              onSetDocumentSelected: _setDocumentSelected,
-              onClearDocSelection: () =>
-                  setState(_selectedVersionIdsByDocId.clear),
-              onClearChat: _clearChat,
-              onReasoningModeChanged: (val) =>
-                  setState(() => _reasoningMode = val),
+            RepaintBoundary(
+              child: SearchChatInput(
+                controller: _controller,
+                focusNode: _focusNode,
+                inputFocused: _inputFocused,
+                loading: _loading,
+                selectedVersionIdsByDocId: _selectedVersionIdsByDocId,
+                availableDocs: _availableDocs,
+                resolvingDocIds: _resolvingDocIds,
+                reasoningMode: _reasoningMode,
+                hasChatMessages: messages.isNotEmpty,
+                onAsk: _ask,
+                onSetDocumentSelected: _setDocumentSelected,
+                onClearDocSelection: () =>
+                    setState(_selectedVersionIdsByDocId.clear),
+                onClearChat: _clearChat,
+                onReasoningModeChanged: (val) =>
+                    setState(() => _reasoningMode = val),
+              ),
             ),
           ],
         ),

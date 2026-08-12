@@ -64,7 +64,22 @@ TextTheme _buildTextTheme(ColorScheme scheme) {
 // Light theme — Soft Slate + Cobalt Blue accent
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Cached ThemeData instances for high-performance builds
+// ─────────────────────────────────────────────────────────────────────────────
+
+ThemeData? _cachedLightTheme;
+ThemeData? _cachedDarkTheme;
+
 ThemeData buildAppTheme() {
+  return _cachedLightTheme ??= _buildAppThemeInternal();
+}
+
+ThemeData buildDarkAppTheme() {
+  return _cachedDarkTheme ??= _buildDarkAppThemeInternal();
+}
+
+ThemeData _buildAppThemeInternal() {
   final scheme = ColorScheme.fromSeed(
     seedColor: kCobalt,
     brightness: Brightness.light,
@@ -147,11 +162,7 @@ ThemeData buildAppTheme() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Dark theme — Deep Slate + Electric Cyan accent
-// ─────────────────────────────────────────────────────────────────────────────
-
-ThemeData buildDarkAppTheme() {
+ThemeData _buildDarkAppThemeInternal() {
   final scheme = ColorScheme.fromSeed(
     seedColor: kCyan,
     brightness: Brightness.dark,
