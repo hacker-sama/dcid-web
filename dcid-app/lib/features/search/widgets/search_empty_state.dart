@@ -51,6 +51,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
 
     return Center(
       child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -218,7 +219,7 @@ class _SearchSuggestionChipState extends State<SearchSuggestionChip> {
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width - 64,
+                  maxWidth: math.max(0.0, MediaQuery.of(context).size.width - 64),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
