@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/app_user.dart';
 import '../../data/models/user_role.dart';
-import '../../state/auth_controller.dart';
 import '../../state/providers.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
@@ -120,7 +119,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<UserRole>(
-                      value: selectedRole,
+                      initialValue: selectedRole,
                       decoration: const InputDecoration(
                         labelText: 'Role *',
                         prefixIcon: Icon(Icons.admin_panel_settings),
@@ -337,7 +336,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     final totalUsers = _users.length;
-    final activeUsers = _users.where((u) => u.isActive).length;
+    final operators = _users.where((u) => u.role == UserRole.operatorRole).length;
     final engineers = _users.where((u) => u.role == UserRole.engineer).length;
     final admins = _users
         .where((u) => u.role == UserRole.admin || u.role == UserRole.qaAdmin)
@@ -354,9 +353,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── 1. Overview Stat Cards Row ──────────────────────────────
@@ -372,10 +372,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                     scheme: scheme,
                   ),
                   _buildStatCard(
-                    title: 'Active Accounts',
-                    value: '$activeUsers',
-                    icon: Icons.check_circle_rounded,
-                    color: Colors.green.shade700,
+                    title: 'Operators',
+                    value: '$operators',
+                    icon: Icons.precision_manufacturing_rounded,
+                    color: Colors.teal.shade700,
                     scheme: scheme,
                   ),
                   _buildStatCard(
@@ -396,22 +396,20 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
 
                 if (isWide) {
                   return Row(
-                    children: cards
-                        .map((c) => Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: c,
-                              ),
-                            ))
-                        .toList(),
+                    children: [
+                      for (int i = 0; i < cards.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        Expanded(child: cards[i]),
+                      ],
+                    ],
                   );
                 }
 
                 return GridView.count(
-                  crossAxisCount: constraints.maxWidth < 400 ? 1 : 2,
+                  crossAxisCount: 2,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
-                  childAspectRatio: constraints.maxWidth < 400 ? 2.8 : 2.2,
+                  childAspectRatio: 2.2,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: cards,
@@ -420,7 +418,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── 2. Toolbar Row (Expanded search, no filter button) ──────
+            // ── 2. Toolbar Row (Equalized 1/3 widths for all 3 controls) ──
             Card(
               elevation: 1,
               shape: RoundedRectangleBorder(
@@ -437,17 +435,27 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                       height: 44,
                       child: TextField(
                         controller: _searchController,
-                        style: const TextStyle(fontSize: 13),
+                        style: TextStyle(fontSize: 13, color: scheme.onSurface),
+                        textAlignVertical: TextAlignVertical.center,
                         onChanged: (_) => _fetchUsers(),
                         onSubmitted: (_) => _fetchUsers(),
                         decoration: InputDecoration(
                           hintText: 'Search by name, username, email...',
                           hintStyle: TextStyle(fontSize: 13, color: scheme.outline),
-                          prefixIcon: const Icon(Icons.search, size: 18),
+                          prefixIcon: Icon(Icons.search, size: 18, color: scheme.outline),
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: scheme.outlineVariant),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: scheme.outlineVariant),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: scheme.primary, width: 1.5),
                           ),
                         ),
                       ),
@@ -458,17 +466,33 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                       height: 44,
                       child: DropdownButtonFormField<UserRole?>(
                         initialValue: _selectedRoleFilter,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         menuMaxHeight: 300,
+                        isExpanded: true,
                         style: TextStyle(fontSize: 13, color: scheme.onSurface),
+                        icon: Icon(Icons.arrow_drop_down, color: scheme.outline),
                         decoration: InputDecoration(
                           isDense: true,
                           labelText: 'Filter Role',
-                          labelStyle: const TextStyle(fontSize: 13),
+                          labelStyle: TextStyle(fontSize: 13, color: scheme.outline),
+                          floatingLabelStyle: TextStyle(
+                            fontSize: 12,
+                            color: scheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
                           contentPadding:
                               const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: scheme.outlineVariant),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: scheme.outlineVariant),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: scheme.primary, width: 1.5),
                           ),
                         ),
                         items: [
@@ -494,13 +518,17 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                       height: 44,
                       child: FilledButton.icon(
                         style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         onPressed: _showCreateUserDialog,
                         icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                        label: const Text('Create New Account'),
+                        label: const Text(
+                          'Create New Account',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     );
 
@@ -703,7 +731,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                                 value: user.isActive,
                                                 onChanged: (val) =>
                                                     _toggleUserStatus(
-                                                        user, val ?? false),
+                                                        user, val),
                                               ),
                                             ),
                                             const SizedBox(width: 4),
@@ -782,8 +810,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 

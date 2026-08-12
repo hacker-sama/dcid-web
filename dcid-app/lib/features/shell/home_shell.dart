@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/responsive.dart';
 import '../../state/auth_controller.dart';
+import '../../state/theme_controller.dart';
+import 'widgets/collapsible_sidebar.dart';
 
 class _Dest {
   const _Dest(this.icon, this.label, {this.adminOnly = false});
@@ -15,10 +17,10 @@ class _Dest {
 /// Branch ordering must stay in sync with [routerProvider] in router.dart:
 ///   index 0 = /search, 1 = /snap, 2 = /documents, 3 = /admin
 const _allDestinations = <_Dest>[
-  _Dest(Icons.search, 'Search'),
-  _Dest(Icons.camera_alt, 'Snap & Ask'),
-  _Dest(Icons.folder, 'Documents'),
-  _Dest(Icons.admin_panel_settings, 'Admin', adminOnly: true),
+  _Dest(Icons.search_rounded, 'Search'),
+  _Dest(Icons.camera_alt_rounded, 'Snap & Ask'),
+  _Dest(Icons.folder_rounded, 'Documents'),
+  _Dest(Icons.admin_panel_settings_rounded, 'Admin', adminOnly: true),
 ];
 
 /// Adaptive shell: NavigationRail on wide (kiosk/desktop), NavigationBar on
@@ -38,84 +40,99 @@ class HomeShell extends ConsumerWidget {
     final isAdmin = role?.isAdminLevel ?? false;
     final isWide = Responsive.isWide(context);
 
-    // Filter destinations by role. Indices stay aligned with branch indices
-    // because admin is always the last entry in _allDestinations.
-    final dests = _allDestinations
-        .where((d) => !(d.adminOnly && !isAdmin))
-        .toList();
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
-    // Branch index (navigationShell.currentIndex) equals nav item index
-    // because the filtered list preserves order and admin is last.
-    final navIndex =
-        navigationShell.currentIndex.clamp(0, dests.length - 1);
+    // Build parallel lists: visible destinations and their true branch indices.
+    final dests = <_Dest>[];
+    final branchIndices = <int>[];
+    for (var i = 0; i < _allDestinations.length; i++) {
+      final d = _allDestinations[i];
+      if (!(d.adminOnly && !isAdmin)) {
+        dests.add(d);
+        branchIndices.add(i);
+      }
+    }
 
-    // Tapping the active tab again resets to the branch root; tapping a
-    // different tab resumes where the user left off.
+    final currentBranch = navigationShell.currentIndex;
+    final navIndex = branchIndices.contains(currentBranch)
+        ? branchIndices.indexOf(currentBranch)
+        : 0;
+
     void onSelect(int i) => navigationShell.goBranch(
-          i,
-          initialLocation: navigationShell.currentIndex == i,
+          branchIndices[i],
+          initialLocation: currentBranch == branchIndices[i],
         );
 
-    void logout() =>
-        ref.read(authControllerProvider.notifier).logout();
+    void logout() => ref.read(authControllerProvider.notifier).logout();
 
+    void toggleTheme() =>
+        ref.read(themeModeProvider.notifier).toggle();
+
+    final themeToggleButton = IconButton(
+      tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        transitionBuilder: (child, anim) => RotationTransition(
+          turns: anim,
+          child: FadeTransition(opacity: anim, child: child),
+        ),
+        child: Icon(
+          isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          key: ValueKey(isDark),
+        ),
+      ),
+      onPressed: toggleTheme,
+    );
+
+    // ── Wide layout: NavigationRail + content ─────────────────────────────
     if (isWide) {
       return Scaffold(
         body: Row(
           children: [
-            NavigationRail(
-              selectedIndex: navIndex,
-              onDestinationSelected: onSelect,
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                for (final d in dests)
-                  NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    label: Text(d.label),
-                  ),
-              ],
-              trailing: Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (role != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Chip(
-                              label: Text(role.label),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                        IconButton(
-                          tooltip: 'Logout',
-                          icon: const Icon(Icons.logout),
-                          onPressed: logout,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+            RepaintBoundary(
+              child: CollapsibleSidebar(
+                selectedIndex: navIndex,
+                onDestinationSelected: onSelect,
+                destinations: dests
+                    .map((d) => ShellDestination(d.icon, d.label))
+                    .toList(),
+                themeToggleButton: themeToggleButton,
+                onLogout: logout,
               ),
             ),
             const VerticalDivider(width: 1),
-            // navigationShell IS the IndexedStack body — all branches alive.
-            Expanded(child: navigationShell),
+            Expanded(
+              child: RepaintBoundary(
+                child: navigationShell,
+              ),
+            ),
           ],
         ),
       );
     }
 
+    // ── Narrow layout: AppBar + BottomNavigationBar ───────────────────────
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Smart KCN Docs',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.precision_manufacturing_rounded,
+                size: 20, color: colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text(
+              'Smart KCN Docs',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+          ],
         ),
         actions: [
+          themeToggleButton,
           if (role != null)
             Padding(
               padding: const EdgeInsets.only(right: 4),
@@ -128,21 +145,44 @@ class HomeShell extends ConsumerWidget {
             ),
           IconButton(
             tooltip: 'Logout',
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
             onPressed: logout,
           ),
         ],
       ),
-      body: navigationShell,
+      drawer: Drawer(
+        child: SafeArea(
+          child: CollapsibleSidebar(
+            forceExpanded: true,
+            selectedIndex: navIndex,
+            onDestinationSelected: (i) {
+              onSelect(i);
+              Navigator.of(context).pop(); // Close drawer
+            },
+            destinations: dests
+                .map((d) => ShellDestination(d.icon, d.label))
+                .toList(),
+            themeToggleButton: themeToggleButton,
+            onLogout: logout,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: RepaintBoundary(
+          child: navigationShell,
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navIndex,
         onDestinationSelected: onSelect,
         destinations: [
           for (final d in dests)
-            NavigationDestination(icon: Icon(d.icon), label: d.label),
+            NavigationDestination(
+              icon: Icon(d.icon),
+              label: d.label,
+            ),
         ],
       ),
     );
   }
 }
-

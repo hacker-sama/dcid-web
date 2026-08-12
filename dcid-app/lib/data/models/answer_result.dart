@@ -13,6 +13,13 @@ class Citation {
         bboxKey: json['bboxKey'] as String?,
         snippet: json['snippet'] as String?,
       );
+
+  Map<String, dynamic> toJson() => {
+        'versionId': versionId,
+        'pageNo': pageNo,
+        'bboxKey': bboxKey,
+        'snippet': snippet,
+      };
 }
 
 /// Result of `POST /api/query` (RAG + guardrails).
@@ -66,4 +73,16 @@ class AnswerResult {
       citations: citations,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'answer': answer,
+        'confidence': confidence,
+        'citations': citations.map((c) => c.toJson()).toList(),
+        'guard': {
+          'locked': locked,
+          'numericRule': numericRule,
+          'reasoningMode': reasoningMode,
+        },
+        'isOfflineFallback': isOfflineFallback,
+      };
 }

@@ -120,11 +120,11 @@ services:
       AI_RESOURCE_LOCK_WAIT_SECONDS: "330"
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
       LM_STUDIO_API_KEY: ollama
-      OMP_NUM_THREADS: "2"
-      MKL_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "8"
+      MKL_NUM_THREADS: "8"
       TOKENIZERS_PARALLELISM: "false"
-      HF_HUB_OFFLINE: "1"
-      TRANSFORMERS_OFFLINE: "1"
+      HF_HUB_OFFLINE: "0"
+      TRANSFORMERS_OFFLINE: "0"
       LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
       VISION_MODEL: ${VISION_MODEL:-qwen2.5vl:3b}
       LLM_CONTEXT_WINDOW: "4096"
@@ -172,11 +172,11 @@ services:
       AI_RESOURCE_LOCK_WAIT_SECONDS: "330"
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
       LM_STUDIO_API_KEY: ollama
-      OMP_NUM_THREADS: "2"
-      MKL_NUM_THREADS: "2"
+      OMP_NUM_THREADS: "8"
+      MKL_NUM_THREADS: "8"
       TOKENIZERS_PARALLELISM: "false"
-      HF_HUB_OFFLINE: "1"
-      TRANSFORMERS_OFFLINE: "1"
+      HF_HUB_OFFLINE: "0"
+      TRANSFORMERS_OFFLINE: "0"
       LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
       VISION_MODEL: ${VISION_MODEL:-qwen2.5vl:3b}
       LLM_CONTEXT_WINDOW: "4096"
@@ -201,10 +201,10 @@ services:
     environment:
       AI_INTERNAL_TOKEN: change-me-internal-token
       PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
-      OMP_NUM_THREADS: "1"
-      MKL_NUM_THREADS: "1"
-      OPENBLAS_NUM_THREADS: "1"
-      NUMEXPR_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+      OPENBLAS_NUM_THREADS: "4"
+      NUMEXPR_NUM_THREADS: "4"
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
@@ -218,7 +218,6 @@ services:
       - minio
     ports:
       - "8002:8001"
-    cpus: 2.0
     mem_limit: 640m
     restart: unless-stopped
 
@@ -244,6 +243,7 @@ services:
       OLLAMA_KEEP_ALIVE: "2m"
       OLLAMA_FLASH_ATTENTION: "1"
       OLLAMA_KV_CACHE_TYPE: "q8_0"
+      OLLAMA_ORIGINS: "*"
     volumes:
       - ollama_data:/root/.ollama
     ports:
@@ -254,6 +254,5 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
-    cpus: 3.0
     mem_limit: 4224m
     restart: unless-stopped

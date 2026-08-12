@@ -3,19 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'state/theme_controller.dart';
 
 /// Root widget. Wires the go_router instance (which reacts to auth state)
-/// into a Material 3 app themed for shop-floor (touch/glove) use.
+/// into a Material 3 app with the Smart Industrial dual theme.
 class DcidApp extends ConsumerWidget {
   const DcidApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
       title: 'Smart KCN Docs',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      darkTheme: buildDarkAppTheme(),
+      themeMode: themeMode,
       routerConfig: router,
     );
   }
