@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../state/auth_controller.dart';
 import '../../state/theme_controller.dart';
@@ -37,7 +36,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     final themeMode = ref.watch(themeModeProvider);
-    final isDark = themeMode == ThemeMode.dark ||
+    final isDark =
+        themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
@@ -51,8 +51,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               top: 12,
               right: 16,
               child: IconButton(
-                tooltip:
-                    isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+                tooltip: isDark
+                    ? 'Switch to Light Mode'
+                    : 'Switch to Dark Mode',
                 icon: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
                   child: Icon(
@@ -61,8 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
-                onPressed: () =>
-                    ref.read(themeModeProvider.notifier).toggle(),
+                onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
               ),
             ),
 
@@ -83,7 +83,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 28, vertical: 32),
+                        horizontal: 28,
+                        vertical: 32,
+                      ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -94,8 +96,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               width: 64,
                               height: 64,
                               decoration: BoxDecoration(
-                                color: scheme.primaryContainer
-                                    .withValues(alpha: 0.5),
+                                color: scheme.primaryContainer.withValues(
+                                  alpha: 0.5,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -111,9 +114,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Text(
                             'Smart KCN Docs',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
+                            style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: scheme.onSurface,
@@ -184,10 +185,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(height: 16),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
-                                color: scheme.errorContainer
-                                    .withValues(alpha: 0.4),
+                                color: scheme.errorContainer.withValues(
+                                  alpha: 0.4,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color: scheme.error.withValues(alpha: 0.5),
@@ -195,8 +199,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.error_outline,
-                                      size: 18, color: scheme.error),
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 18,
+                                    color: scheme.error,
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -242,12 +249,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          OutlinedButton.icon(
-                            onPressed: () => context.go('/ask'),
-                            icon: const Icon(Icons.forum_outlined),
-                            label: const Text('Try Public Q&A (/ask)'),
-                          ),
                         ],
                       ),
                     ),
@@ -261,4 +262,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
-

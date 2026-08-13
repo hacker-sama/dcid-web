@@ -7,7 +7,6 @@ import '../features/auth/login_screen.dart';
 import '../features/common/forbidden_screen.dart';
 import '../features/documents/document_detail_screen.dart';
 import '../features/documents/documents_screen.dart';
-import '../features/guest_ask/guest_ask_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/shell/home_shell.dart';
 import '../features/snap_ask/snap_ask_screen.dart';
@@ -35,7 +34,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           auth.status == AuthStatus.loading) {
         return null;
       }
-      final isPublicRoute = state.matchedLocation == '/login' || state.matchedLocation == '/ask';
+      final isPublicRoute = state.matchedLocation == '/login';
       if (!auth.isAuthenticated) return isPublicRoute ? null : '/login';
       if (state.matchedLocation == '/login') return '/search';
       if (state.matchedLocation.startsWith('/admin') &&
@@ -46,7 +45,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
-      GoRoute(path: '/ask', builder: (_, _) => const GuestAskScreen()),
       GoRoute(path: '/403', builder: (_, _) => const ForbiddenScreen()),
 
       // Viewer is outside the shell — shows full-screen without nav rail/bar.

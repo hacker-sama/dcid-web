@@ -63,12 +63,12 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
                 builder: (context, child) {
                   final scaleFactor = 0.96 + (_pulseAnim.value * 0.08);
                   final angle = math.sin(_pulseController.value * math.pi) * 0.04;
-                  return Transform.rotate(
-                    angle: angle,
-                    child: Transform.scale(
-                      scale: scaleFactor,
-                      child: child,
-                    ),
+                  return Transform(
+                    transform: Matrix4.identity()
+                      ..rotateZ(angle)
+                      ..scaleByDouble(scale, scale, 1.0, 1.0),
+                    alignment: Alignment.center,
+                    child: child,
                   );
                 },
                 child: Container(

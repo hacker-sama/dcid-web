@@ -8,10 +8,10 @@ import vn.dcid.ai.dto.AiIngestRequest;
 import vn.dcid.ai.dto.AiQueryRequest;
 import vn.dcid.ai.dto.AiQueryResponse;
 import vn.dcid.exception.ServiceUnavailableException;
+
 import java.util.UUID;
 
 @Component
-
 public class RestAiPipelineClient implements AiPipelineClient {
 
     private final RestClient restClient;
@@ -60,27 +60,18 @@ public class RestAiPipelineClient implements AiPipelineClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (Exception e) {
-            // Log warning nhưng không throw exception để tránh block luồng xóa DB
+            // Vector cleanup must not block deletion of the primary database record.
             org.slf4j.LoggerFactory.getLogger(RestAiPipelineClient.class)
-                    .warn("Lỗi khi thông báo AI service xóa vector documentId={}: {}", documentId, e.getMessage());
+                    .warn("Không thể xóa vector documentId={}: {}", documentId, e.getMessage());
         }
     }
 
     @Override
-    public void deleteGuestSessionVectors(UUID sessionId) {
-        try {
-            restClient.delete()
-                    .uri("/ai/guest/sessions/{sessionId}", sessionId)
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(RestAiPipelineClient.class)
-                    .warn("Lỗi khi thông báo AI service xóa vector guest sessionId={}: {}", sessionId, e.getMessage());
-        }
-    }
-
-    @Override
-    public void queryStream(AiQueryRequest request, java.util.function.Consumer<String> tokenConsumer, Runnable onComplete, java.util.function.Consumer<Throwable> onError) {
+    public void queryStream(
+            AiQueryRequest request,
+            java.util.function.Consumer<String> tokenConsumer,
+            Runnable onComplete,
+            java.util.function.Consumer<Throwable> onError) {
         try {
             restClient.post()
                     .uri("/ai/query/stream")
@@ -88,7 +79,8 @@ public class RestAiPipelineClient implements AiPipelineClient {
                     .body(request)
                     .accept(MediaType.TEXT_EVENT_STREAM)
                     .exchange((req, res) -> {
-                        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(res.getBody()))) {
+                        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                                new java.io.InputStreamReader(res.getBody()))) {
                             String line;
                             while ((line = reader.readLine()) != null) {
                                 if (line.startsWith("data:")) {
@@ -106,5 +98,3 @@ public class RestAiPipelineClient implements AiPipelineClient {
         }
     }
 }
-
-

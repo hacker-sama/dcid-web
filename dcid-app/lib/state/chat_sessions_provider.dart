@@ -22,20 +22,20 @@ class ChatMessage {
   }) : id = id ?? _uuid.v4();
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        id: json['id'] as String?,
-        role: json['role'] as String? ?? 'user',
-        content: json['content'] as String? ?? '',
-        result: json['result'] != null
-            ? AnswerResult.fromJson(json['result'] as Map<String, dynamic>)
-            : null,
-      );
+    id: json['id'] as String?,
+    role: json['role'] as String? ?? 'user',
+    content: json['content'] as String? ?? '',
+    result: json['result'] != null
+        ? AnswerResult.fromJson(json['result'] as Map<String, dynamic>)
+        : null,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'role': role,
-        'content': content,
-        'result': result?.toJson(),
-      };
+    'id': id,
+    'role': role,
+    'content': content,
+    'result': result?.toJson(),
+  };
 }
 
 /// Represents an entire chat session.
@@ -50,54 +50,56 @@ class ChatSession {
     required this.title,
     List<ChatMessage>? messages,
     DateTime? updatedAt,
-  })  : id = id ?? _uuid.v4(),
-        messages = messages ?? [],
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : id = id ?? _uuid.v4(),
+       messages = messages ?? [],
+       updatedAt = updatedAt ?? DateTime.now();
 
   factory ChatSession.fromJson(Map<String, dynamic> json) => ChatSession(
-        id: json['id'] as String?,
-        title: json['title'] as String? ?? '',
-        messages: (json['messages'] as List<dynamic>? ?? [])
-            .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        updatedAt: json['updatedAt'] != null
-            ? DateTime.tryParse(json['updatedAt'] as String)
-            : null,
-      );
+    id: json['id'] as String?,
+    title: json['title'] as String? ?? '',
+    messages: (json['messages'] as List<dynamic>? ?? [])
+        .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    updatedAt: json['updatedAt'] != null
+        ? DateTime.tryParse(json['updatedAt'] as String)
+        : null,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'messages': messages.map((m) => m.toJson()).toList(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'title': title,
+    'messages': messages.map((m) => m.toJson()).toList(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 }
 
 class ActiveChatSessionNotifier extends Notifier<String?> {
   @override
   String? build() => null;
-  
+
   void setId(String? id) => state = id;
 }
 
 /// Global state provider for tracking the currently active chat session.
 /// If null, it means we are in the "New Chat" empty state.
-final activeChatSessionIdProvider = NotifierProvider<ActiveChatSessionNotifier, String?>(
-  ActiveChatSessionNotifier.new,
-);
+final activeChatSessionIdProvider =
+    NotifierProvider<ActiveChatSessionNotifier, String?>(
+      ActiveChatSessionNotifier.new,
+    );
 
 class IsSidebarExpandedNotifier extends Notifier<bool> {
   @override
   bool build() => false;
-  
+
   void toggle() => state = !state;
   void setExpanded(bool expanded) => state = expanded;
 }
 
 /// Global state provider for persisting whether the sidebar is expanded or collapsed.
-final isSidebarExpandedProvider = NotifierProvider<IsSidebarExpandedNotifier, bool>(
-  IsSidebarExpandedNotifier.new,
-);
+final isSidebarExpandedProvider =
+    NotifierProvider<IsSidebarExpandedNotifier, bool>(
+      IsSidebarExpandedNotifier.new,
+    );
 
 /// Notifier that manages the list of all chat sessions.
 class ChatSessionsNotifier extends Notifier<List<ChatSession>> {
@@ -118,7 +120,9 @@ class ChatSessionsNotifier extends Notifier<List<ChatSession>> {
     if (jsonStr != null) {
       try {
         final list = jsonDecode(jsonStr) as List<dynamic>;
-        state = list.map((e) => ChatSession.fromJson(e as Map<String, dynamic>)).toList();
+        state = list
+            .map((e) => ChatSession.fromJson(e as Map<String, dynamic>))
+            .toList();
       } catch (_) {}
     }
   }
@@ -153,12 +157,12 @@ class ChatSessionsNotifier extends Notifier<List<ChatSession>> {
     final session = sessions[index];
     session.messages.add(message);
     session.updatedAt = DateTime.now();
-    
+
     // Bubble to top
     sessions.removeAt(index);
     sessions.insert(0, session);
     state = sessions;
-    
+
     _saveHistory();
     return message;
   }
@@ -179,13 +183,14 @@ class ChatSessionsNotifier extends Notifier<List<ChatSession>> {
       _saveHistory();
     }
   }
-  
+
   void deleteSession(String sessionId) {
     state = state.where((s) => s.id != sessionId).toList();
     _saveHistory();
   }
 }
 
-final chatSessionsProvider = NotifierProvider<ChatSessionsNotifier, List<ChatSession>>(
-  ChatSessionsNotifier.new,
-);
+final chatSessionsProvider =
+    NotifierProvider<ChatSessionsNotifier, List<ChatSession>>(
+      ChatSessionsNotifier.new,
+    );

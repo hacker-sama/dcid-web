@@ -1,4 +1,4 @@
-"""POST /ai/ingest — nhận job, trả 202 ngay kèm taskId, xử lý nền bằng Celery (contract §1.1)."""
+"""Document ingestion endpoints."""
 
 from fastapi import APIRouter, Depends, status
 
@@ -11,15 +11,7 @@ router = APIRouter(prefix="/ai", tags=["ingest"], dependencies=[Depends(require_
 
 @router.post("/ingest", response_model=IngestAccepted, status_code=status.HTTP_202_ACCEPTED)
 def ingest(req: IngestRequest) -> IngestAccepted:
-    """Nhận yêu cầu ingest, đẩy vào Celery queue và trả 202 ngay.
-
-    Celery Worker (`ai-worker` container) sẽ xử lý bất đồng bộ:
-        OCR (via ai-ocr service) → Chunk → Embed → Upsert Qdrant → Callback BE
-
-    Trạng thái có thể theo dõi qua:
-        - GET /ai/status/{taskId}  — polling trạng thái Celery
-        - POST /api/internal/ingest-status (BE) — push callback tại mỗi bước
-    """
+    """Queue OCR, chunking, embedding and indexing, then return immediately."""
     task = run_ingest_task.delay(
         version_id=str(req.versionId),
         document_id=str(req.documentId),
@@ -32,8 +24,9 @@ def ingest(req: IngestRequest) -> IngestAccepted:
 
 @router.delete("/documents/{document_id}")
 def delete_document_vector(document_id: str):
-    """DELETE /ai/documents/{document_id} — Endpoint cho Backend Spring Boot gọi xóa vector."""
+    """Delete all indexed vectors that belong to a document."""
     from src.vectordb import vector_store
+
     deleted_count = vector_store.delete_document_chunks(document_id=document_id)
     return {
         "status": "SUCCESS",
@@ -41,18 +34,3 @@ def delete_document_vector(document_id: str):
         "documentId": document_id,
         "deletedChunks": deleted_count,
     }
-
-
-@router.delete("/guest/sessions/{session_id}")
-def delete_guest_session_vector(session_id: str):
-    """DELETE /ai/guest/sessions/{session_id} — Endpoint cho Backend Spring Boot gọi xóa vector session ẩn danh."""
-    from app.pipeline.index import delete_session_chunks
-    deleted_count = delete_session_chunks(session_id=session_id)
-    return {
-        "status": "SUCCESS",
-        "message": f"Đã xóa vector chunks cho guest session_id={session_id}",
-        "sessionId": session_id,
-        "deletedChunks": deleted_count,
-    }
-
-
