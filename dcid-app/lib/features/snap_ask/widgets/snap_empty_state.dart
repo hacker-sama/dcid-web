@@ -14,8 +14,11 @@ class SnapEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.camera_roll_outlined, size: 64, color: scheme.outlineVariant),
           const SizedBox(height: 16),
@@ -34,6 +37,7 @@ class SnapEmptyState extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: scheme.outline),
           ),
         ],
+      ),
       ),
     );
   }

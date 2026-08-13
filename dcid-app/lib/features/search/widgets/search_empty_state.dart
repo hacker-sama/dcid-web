@@ -51,6 +51,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
 
     return Center(
       child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -60,14 +61,14 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
               child: AnimatedBuilder(
                 animation: _pulseAnim,
                 builder: (context, child) {
-                  final scale = 0.96 + (_pulseAnim.value * 0.08);
+                  final scaleFactor = 0.96 + (_pulseAnim.value * 0.08);
                   final angle = math.sin(_pulseController.value * math.pi) * 0.04;
-                  return Transform(
-                    transform: Matrix4.identity()
-                      ..rotateZ(angle)
-                      ..scale(scale, scale, 1.0),
-                    alignment: Alignment.center,
-                    child: child,
+                  return Transform.rotate(
+                    angle: angle,
+                    child: Transform.scale(
+                      scale: scaleFactor,
+                      child: child,
+                    ),
                   );
                 },
                 child: Container(
@@ -83,8 +84,9 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
                     boxShadow: [
                       BoxShadow(
                         color: accent.withValues(alpha: 0.2),
-                        blurRadius: 20,
-                        spreadRadius: 1,
+                        // Reduced from 20 to 12 — cheaper GPU paint, still glows
+                        blurRadius: 12,
+                        spreadRadius: 0,
                       ),
                     ],
                   ),
@@ -101,42 +103,50 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
 
             const SizedBox(height: 24),
 
-            // Bold title
-            Text(
-              'Smart KCN Docs',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    letterSpacing: -0.5,
+            // Static content isolated in its own repaint boundary so it is
+            // not repainted each frame by the icon pulse animation above.
+            RepaintBoundary(
+              child: Column(
+                children: [
+                  // Bold title
+                  Text(
+                    'Smart KCN Docs',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          letterSpacing: -0.5,
+                        ),
                   ),
-            ),
 
-            const SizedBox(height: 8),
+                  const SizedBox(height: 8),
 
-            Text(
-              'AI-powered industrial knowledge assistant',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  Text(
+                    'AI-powered industrial knowledge assistant',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
                   ),
-            ),
 
-            const SizedBox(height: 36),
+                  const SizedBox(height: 36),
 
-            // Dynamic suggestion chips
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 10,
-              runSpacing: 10,
-              children: suggestions.map((item) {
-                return SearchSuggestionChip(
-                  icon: item.icon,
-                  label: item.label,
-                  onTap: () => widget.onUseSuggestion(item.label),
-                  accent: accent,
-                );
-              }).toList(),
+                  // Dynamic suggestion chips
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: suggestions.map((item) {
+                      return SearchSuggestionChip(
+                        icon: item.icon,
+                        label: item.label,
+                        onTap: () => widget.onUseSuggestion(item.label),
+                        accent: accent,
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -209,7 +219,7 @@ class _SearchSuggestionChipState extends State<SearchSuggestionChip> {
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width - 64,
+                  maxWidth: math.max(0.0, MediaQuery.of(context).size.width - 64),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

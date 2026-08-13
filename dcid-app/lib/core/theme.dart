@@ -27,7 +27,7 @@ const Color kDarkCard = Color(0xFF1E293B);
 const Color kDarkBorder = Color(0xFF334155);
 
 /// Light mode: soft slate background.
-const Color kLightBg = Color(0xFFF8FAFC);
+const Color kLightBg = Color(0xFFF3F4F6);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Text themes — Plus Jakarta Sans → Inter fallback (both from Google Fonts)
@@ -84,7 +84,7 @@ ThemeData _buildAppThemeInternal() {
     seedColor: kCobalt,
     brightness: Brightness.light,
   ).copyWith(
-    surface: kLightBg,
+    surface: Colors.white,
     surfaceContainerLowest: const Color(0xFFF1F5F9),
     surfaceContainerLow: const Color(0xFFE2E8F0),
     surfaceContainer: const Color(0xFFCBD5E1),

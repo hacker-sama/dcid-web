@@ -75,10 +75,6 @@ class HomeShell extends ConsumerWidget {
       tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
       icon: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
-        transitionBuilder: (child, anim) => RotationTransition(
-          turns: anim,
-          child: FadeTransition(opacity: anim, child: child),
-        ),
         child: Icon(
           isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
           key: ValueKey(isDark),
@@ -90,6 +86,7 @@ class HomeShell extends ConsumerWidget {
     // ── Wide layout: NavigationRail + content ─────────────────────────────
     if (isWide) {
       return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Row(
           children: [
             RepaintBoundary(
@@ -103,7 +100,6 @@ class HomeShell extends ConsumerWidget {
                 onLogout: logout,
               ),
             ),
-            const VerticalDivider(width: 1),
             Expanded(
               child: RepaintBoundary(
                 child: navigationShell,
@@ -118,39 +114,28 @@ class HomeShell extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.precision_manufacturing_rounded,
-                size: 20, color: colorScheme.primary),
-            const SizedBox(width: 8),
-            const Text(
-              'Smart KCN Docs',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-            ),
-          ],
-        ),
-        actions: [
-          themeToggleButton,
-          if (role != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Center(
-                child: Chip(
-                  label: Text(role.label, style: const TextStyle(fontSize: 11)),
-                  visualDensity: VisualDensity.compact,
-                ),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.precision_manufacturing_rounded,
+                  size: 20, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'Smart KCN Docs',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
-            ),
-          IconButton(
-            tooltip: 'Logout',
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: logout,
+            ],
           ),
-        ],
+        ),
       ),
       drawer: Drawer(
+        width: 280,
+        elevation: 16,
+        backgroundColor: colorScheme.surface,
         child: SafeArea(
           child: CollapsibleSidebar(
             forceExpanded: true,
@@ -171,17 +156,6 @@ class HomeShell extends ConsumerWidget {
         child: RepaintBoundary(
           child: navigationShell,
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navIndex,
-        onDestinationSelected: onSelect,
-        destinations: [
-          for (final d in dests)
-            NavigationDestination(
-              icon: Icon(d.icon),
-              label: d.label,
-            ),
-        ],
       ),
     );
   }
