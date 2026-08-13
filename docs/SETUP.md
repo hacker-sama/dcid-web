@@ -143,10 +143,15 @@ Không sử dụng tài khoản/mật khẩu mặc định này trong production
 ```powershell
 cd dcid-app
 flutter pub get
-flutter run -d chrome --web-port=3000 `
-  --dart-define=USE_MOCK_DATA=false `
-  --dart-define=API_BASE_URL=http://localhost:8080
+
+
+
+flutter build web --release --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=https://160-250-132-20.sslip.io
 ```
+VPS:
+cd C:\project\new\dcid-web\dcid-app
+flutter build web --release --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=https://160.250.132.20.sslip.io
+scp -r .\build\web\* dcid@160.250.132.20:/var/www/dcid-web/
 
 PowerShell dùng dấu backtick `` ` `` để xuống dòng. Có thể viết thành một dòng.
 
