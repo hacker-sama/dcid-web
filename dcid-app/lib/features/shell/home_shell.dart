@@ -115,17 +115,20 @@ class HomeShell extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.precision_manufacturing_rounded,
-                size: 20, color: colorScheme.primary),
-            const SizedBox(width: 8),
-            const Text(
-              'Smart KCN Docs',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-            ),
-          ],
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.precision_manufacturing_rounded,
+                  size: 20, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'Smart KCN Docs',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+              ),
+            ],
+          ),
         ),
         actions: [
           themeToggleButton,
