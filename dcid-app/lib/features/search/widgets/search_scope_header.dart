@@ -48,7 +48,7 @@ class SearchScopeHeader extends StatelessWidget {
     Color accent,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Icon(
@@ -96,10 +96,10 @@ class SearchScopeHeader extends StatelessWidget {
     Color accent,
   ) {
     return SizedBox(
-      height: 42,
+      height: 56, // increased height to accommodate vertical padding
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         itemCount: availableDocs.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {

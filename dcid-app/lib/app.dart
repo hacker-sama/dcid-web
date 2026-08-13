@@ -10,6 +10,9 @@ import 'state/theme_controller.dart';
 class DcidApp extends ConsumerWidget {
   const DcidApp({super.key});
 
+  static final _lightTheme = buildAppTheme();
+  static final _darkTheme = buildDarkAppTheme();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
@@ -18,9 +21,11 @@ class DcidApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Smart KCN Docs',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
-      darkTheme: buildDarkAppTheme(),
+      theme: _lightTheme,
+      darkTheme: _darkTheme,
       themeMode: themeMode,
+      // Instant theme toggle to eliminate GPU lag
+      themeAnimationDuration: Duration.zero,
       routerConfig: router,
     );
   }
