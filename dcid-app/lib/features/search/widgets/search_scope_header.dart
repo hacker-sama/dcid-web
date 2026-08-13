@@ -3,29 +3,33 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/document_summary.dart';
 
-/// Scope selection banner, document filter chips, and chat actions.
+/// Scope selection banner, document filter chips, and reasoning mode toggle row.
 class SearchScopeHeader extends StatelessWidget {
   const SearchScopeHeader({
     super.key,
     required this.selectedVersionIdsByDocId,
     required this.availableDocs,
     required this.resolvingDocIds,
+    required this.reasoningMode,
     required this.loading,
     required this.hasChatMessages,
     required this.onSetDocumentSelected,
     required this.onClearDocSelection,
     required this.onClearChat,
+    required this.onReasoningModeChanged,
   });
 
   final Map<String, String> selectedVersionIdsByDocId;
   final List<DocumentSummary> availableDocs;
   final Set<String> resolvingDocIds;
+  final bool reasoningMode;
   final bool loading;
   final bool hasChatMessages;
   final Future<void> Function(DocumentSummary document, bool selected)
-  onSetDocumentSelected;
+      onSetDocumentSelected;
   final VoidCallback onClearDocSelection;
   final VoidCallback onClearChat;
+  final ValueChanged<bool> onReasoningModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +42,7 @@ class SearchScopeHeader extends StatelessWidget {
         _buildScopeBar(context, colorScheme, accent),
         if (availableDocs.isNotEmpty)
           _buildDocChips(context, colorScheme, accent),
+        _buildReasoningRow(context, colorScheme, accent),
       ],
     );
   }
@@ -48,7 +53,7 @@ class SearchScopeHeader extends StatelessWidget {
     Color accent,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Icon(
@@ -96,10 +101,10 @@ class SearchScopeHeader extends StatelessWidget {
     Color accent,
   ) {
     return SizedBox(
-      height: 42,
+      height: 56, // increased height to accommodate vertical padding
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         itemCount: availableDocs.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
@@ -124,14 +129,14 @@ class SearchScopeHeader extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontWeight:
+                    isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? accent : colorScheme.onSurface,
               ),
             ),
             selected: isSelected,
-            onSelected: isResolving
-                ? null
-                : (val) => onSetDocumentSelected(doc, val),
+            onSelected:
+                isResolving ? null : (val) => onSetDocumentSelected(doc, val),
             avatar: isResolving
                 ? SizedBox.square(
                     dimension: 14,
@@ -141,11 +146,55 @@ class SearchScopeHeader extends StatelessWidget {
                     ),
                   )
                 : isSelected
-                ? Icon(Icons.check_rounded, size: 14, color: accent)
-                : null,
+                    ? Icon(Icons.check_rounded, size: 14, color: accent)
+                    : null,
             visualDensity: VisualDensity.compact,
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildReasoningRow(
+    BuildContext context,
+    ColorScheme colorScheme,
+    Color accent,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              key: ValueKey(reasoningMode),
+              size: 15,
+              color: reasoningMode ? accent : colorScheme.outline,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Reasoning Mode',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: reasoningMode
+                    ? accent
+                    : colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+          ),
+          Transform.scale(
+            scale: 0.78,
+            child: Switch(
+              value: reasoningMode,
+              onChanged: loading ? null : onReasoningModeChanged,
+              activeThumbColor: accent,
+            ),
+          ),
+        ],
       ),
     );
   }

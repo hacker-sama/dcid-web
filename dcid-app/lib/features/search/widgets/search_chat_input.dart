@@ -15,11 +15,13 @@ class SearchChatInput extends StatelessWidget {
     required this.selectedVersionIdsByDocId,
     required this.availableDocs,
     required this.resolvingDocIds,
+    required this.reasoningMode,
     required this.hasChatMessages,
     required this.onAsk,
     required this.onSetDocumentSelected,
     required this.onClearDocSelection,
     required this.onClearChat,
+    required this.onReasoningModeChanged,
   });
 
   final TextEditingController controller;
@@ -29,12 +31,14 @@ class SearchChatInput extends StatelessWidget {
   final Map<String, String> selectedVersionIdsByDocId;
   final List<DocumentSummary> availableDocs;
   final Set<String> resolvingDocIds;
+  final bool reasoningMode;
   final bool hasChatMessages;
   final VoidCallback onAsk;
   final Future<void> Function(DocumentSummary document, bool selected)
-  onSetDocumentSelected;
+      onSetDocumentSelected;
   final VoidCallback onClearDocSelection;
   final VoidCallback onClearChat;
+  final ValueChanged<bool> onReasoningModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -47,8 +51,8 @@ class SearchChatInput extends StatelessWidget {
     final borderColor = inputFocused
         ? accent.withValues(alpha: 0.6)
         : (isDark
-              ? kDarkBorder
-              : colorScheme.outlineVariant.withValues(alpha: 0.5));
+            ? kDarkBorder
+            : colorScheme.outlineVariant.withValues(alpha: 0.5));
 
     return Align(
       alignment: Alignment.bottomCenter,
@@ -66,8 +70,8 @@ class SearchChatInput extends StatelessWidget {
                 BoxShadow(color: accentGlow, blurRadius: 16, spreadRadius: 0)
               else
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.07),
-                  blurRadius: 14,
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                  blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
             ],
@@ -79,18 +83,20 @@ class SearchChatInput extends StatelessWidget {
                 selectedVersionIdsByDocId: selectedVersionIdsByDocId,
                 availableDocs: availableDocs,
                 resolvingDocIds: resolvingDocIds,
+                reasoningMode: reasoningMode,
                 loading: loading,
                 hasChatMessages: hasChatMessages,
                 onSetDocumentSelected: onSetDocumentSelected,
                 onClearDocSelection: onClearDocSelection,
                 onClearChat: onClearChat,
+                onReasoningModeChanged: onReasoningModeChanged,
               ),
               Divider(
                 height: 1,
                 thickness: 1,
                 color: isDark
                     ? kDarkBorder
-                    : colorScheme.outlineVariant.withValues(alpha: 0.4),
+                    : colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
               _buildTextInput(context, colorScheme, accent),
             ],
@@ -125,7 +131,7 @@ class SearchChatInput extends StatelessWidget {
                     : 'Ask about ${selectedVersionIdsByDocId.length} selected document(s)…',
                 hintStyle: TextStyle(
                   fontSize: 13,
-                  color: colorScheme.onSurface.withValues(alpha: 0.35),
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -137,10 +143,16 @@ class SearchChatInput extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          SearchSendButton(
-            onTap: loading ? null : onAsk,
-            isLoading: loading,
-            accent: accent,
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, child) {
+              final isInputEmpty = value.text.trim().isEmpty;
+              return SearchSendButton(
+                onTap: (loading || isInputEmpty) ? null : onAsk,
+                isLoading: loading,
+                accent: accent,
+              );
+            },
           ),
         ],
       ),
@@ -170,6 +182,8 @@ class _SearchSendButtonState extends State<SearchSendButton> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -183,13 +197,13 @@ class _SearchSendButtonState extends State<SearchSendButton> {
             shape: BoxShape.circle,
             color: enabled
                 ? (_hovered
-                      ? widget.accent.withValues(alpha: 0.85)
-                      : widget.accent)
-                : widget.accent.withValues(alpha: 0.25),
+                    ? colorScheme.primary.withValues(alpha: 0.85)
+                    : colorScheme.primary)
+                : colorScheme.surfaceContainerHigh,
             boxShadow: enabled && _hovered
                 ? [
                     BoxShadow(
-                      color: widget.accent.withValues(alpha: 0.35),
+                      color: colorScheme.primary.withValues(alpha: 0.35),
                       blurRadius: 10,
                     ),
                   ]
@@ -205,10 +219,12 @@ class _SearchSendButtonState extends State<SearchSendButton> {
                       color: Colors.white,
                     ),
                   )
-                : const Icon(
+                : Icon(
                     Icons.arrow_upward_rounded,
                     size: 18,
-                    color: Colors.white,
+                    color: enabled
+                        ? colorScheme.onPrimary
+                        : colorScheme.onSurface.withValues(alpha: 0.38),
                   ),
           ),
         ),

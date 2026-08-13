@@ -269,9 +269,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final accent = accentFor(context);
 
     final sessionId = ref.watch(activeChatSessionIdProvider);
-    final sessions = ref.watch(chatSessionsProvider);
-    final session = sessions.where((s) => s.id == sessionId).firstOrNull;
-    final messages = session?.messages ?? [];
+    // Use select() so the screen only rebuilds when the active session's
+    // messages change — not on any other session mutation.
+    final messages = ref.watch(
+      chatSessionsProvider.select((sessions) {
+        if (sessionId == null) return const <ChatMessage>[];
+        final session = sessions.where((s) => s.id == sessionId).firstOrNull;
+        return session?.messages ?? const <ChatMessage>[];
+      }),
+    );
 
     return SafeArea(
       child: ConstrainedContent(
@@ -378,13 +384,11 @@ class _MessageBubble extends StatelessWidget {
             bottomLeft: Radius.circular(18),
             bottomRight: Radius.circular(4),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.22),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          // Lightweight border instead of blurry BoxShadow (GPU paint cost)
+          border: Border.all(
+            color: accent.withValues(alpha: 0.35),
+            width: 1,
+          ),
         ),
         child: Text(
           entry.content,
