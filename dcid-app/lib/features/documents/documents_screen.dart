@@ -184,68 +184,65 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
       // ── Compact dropdown for narrow phone screens ─────────────────────────
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Text(
-                'Sort:',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+        child: Row(
+          children: [
+            Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text(
+              'Sort:',
+              style: TextStyle(
+                fontSize: 13,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            // Pill-shaped dropdown button
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: scheme.primaryContainer,
+                  width: 1,
                 ),
               ),
-              const SizedBox(width: 16),
-              // Pill-shaped dropdown button
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: scheme.primaryContainer,
-                    width: 1,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<_SortOption>(
+                  value: _sort,
+                  isDense: true,
+                  icon: Icon(Icons.expand_more,
+                      size: 18, color: scheme.primary),
+                  borderRadius: BorderRadius.circular(12),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
                   ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<_SortOption>(
-                    value: _sort,
-                    isDense: true,
-                    icon: Icon(Icons.expand_more,
-                        size: 18, color: scheme.primary),
-                    borderRadius: BorderRadius.circular(12),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: scheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    items: _SortOption.values
-                        .map((opt) => DropdownMenuItem(
-                              value: opt,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(opt.icon,
-                                      size: 15,
-                                      color: scheme.onSurface),
-                                  const SizedBox(width: 8),
-                                  Text(opt.label),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) setState(() => _sort = v);
-                    },
-                  ),
+                  items: _SortOption.values
+                      .map((opt) => DropdownMenuItem(
+                            value: opt,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(opt.icon,
+                                    size: 15,
+                                    color: scheme.onSurface),
+                                const SizedBox(width: 8),
+                                Text(opt.label),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _sort = v);
+                  },
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -397,17 +394,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               minVerticalPadding: isTablet ? 10 : 14,
                               leading:
                                   const Icon(Icons.description_outlined),
-                              title: Text(
-                                doc.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              title: Text(doc.title),
                               subtitle: subtitleParts.isEmpty
                                   ? null
                                   : Text(
                                       subtitleParts.join(' · '),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
                                       style:
                                           const TextStyle(fontSize: 12),
                                     ),

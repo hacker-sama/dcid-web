@@ -303,16 +303,12 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: scheme.onSurface,
-                      ),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -409,27 +405,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   );
                 }
 
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: cards[0]),
-                        const SizedBox(width: 8),
-                        Expanded(child: cards[1]),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: cards[2]),
-                        const SizedBox(width: 8),
-                        Expanded(child: cards[3]),
-                      ],
-                    ),
-                  ],
+                return GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 2.2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: cards,
                 );
               },
             ),

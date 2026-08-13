@@ -50,16 +50,14 @@ class CollapsibleSidebar extends ConsumerWidget {
 
     final sidebarDecoration = BoxDecoration(
       color: colorScheme.surface,
-      border: !Responsive.isWide(context)
-          ? null
-          : Border(
-              right: BorderSide(
-                color: Theme.of(context).brightness == Brightness.light
-                    ? const Color(0xFFE5E7EB)
-                    : colorScheme.outlineVariant.withValues(alpha: 0.15),
-                width: 1,
-              ),
-            ),
+      border: Border(
+        right: BorderSide(
+          color: Theme.of(context).brightness == Brightness.light
+              ? const Color(0xFFE5E7EB)
+              : colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
     );
 
     // Shared callbacks
@@ -386,12 +384,11 @@ class CollapsibleSidebar extends ConsumerWidget {
                   icon: const Icon(Icons.logout_rounded),
                   onPressed: onLogout,
                 ),
-                if (Responsive.isWide(context))
-                  IconButton(
-                    tooltip: 'Collapse sidebar',
-                    icon: const Icon(Icons.chevron_left_rounded),
-                    onPressed: collapse,
-                  ),
+                IconButton(
+                  tooltip: 'Collapse sidebar',
+                  icon: const Icon(Icons.chevron_left_rounded),
+                  onPressed: collapse,
+                ),
               ],
             ),
           ),
@@ -403,8 +400,8 @@ class CollapsibleSidebar extends ConsumerWidget {
     // LayoutBuilder provides the finite height both children require so that
     // Spacer / Expanded / mainAxisAlignment: spaceBetween all work correctly.
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeInOutCubic,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
       width: isExpanded ? 260.0 : 68.0,
       decoration: sidebarDecoration,
       child: ClipRect(
@@ -416,8 +413,8 @@ class CollapsibleSidebar extends ConsumerWidget {
               crossFadeState: isExpanded
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
-              firstChild: ClipRect(child: SizedBox(width: 68, child: buildCollapsedChild(h))),
-              secondChild: ClipRect(child: SizedBox(width: 260, child: buildExpandedChild(h))),
+              firstChild: ClipRect(child: buildCollapsedChild(h)),
+              secondChild: ClipRect(child: buildExpandedChild(h)),
               alignment: Alignment.topCenter,
               sizeCurve: Curves.easeInOut,
               layoutBuilder: (topChild, topChildKey, bottomChild, bottomChildKey) {
@@ -446,3 +443,4 @@ class CollapsibleSidebar extends ConsumerWidget {
     );
   }
 }
+
