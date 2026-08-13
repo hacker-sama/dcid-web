@@ -66,7 +66,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
                   return Transform(
                     transform: Matrix4.identity()
                       ..rotateZ(angle)
-                      ..scaleByDouble(scale, scale, 1.0, 1.0),
+                      ..scaleByDouble(scaleFactor, scaleFactor, 1.0, 1.0),
                     alignment: Alignment.center,
                     child: child,
                   );

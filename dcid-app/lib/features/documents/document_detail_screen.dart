@@ -72,6 +72,7 @@ class DocumentDetailScreen extends ConsumerWidget {
       ),
 
       body: detailAsync.when(
+        skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
           child: Column(

@@ -321,6 +321,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         return Scaffold(
           body: SafeArea(
             child: docsAsync.when(
+              skipLoadingOnRefresh: true,
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (_, _) => _ErrorState(
