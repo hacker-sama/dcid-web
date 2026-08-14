@@ -132,10 +132,10 @@ jobs:
             echo "Commit mới    : ${{ github.sha }}"
 
             echo "━━━ [2/6] Pull code mới ━━━"
-            # fetch origin (không chỉ định branch) để tạo ref origin/main
-            # git fetch origin main chỉ cập nhật FETCH_HEAD, không tạo origin/main
+            # Dùng SHA cụ thể thay vì branch name — luôn đúng bất kể nhánh
+            # github.sha là commit đã trigger workflow, chắc chắn tồn tại sau fetch
             git fetch origin
-            git checkout -B main origin/main
+            git checkout -f ${{ github.sha }}
 
             echo "━━━ [3/6] Build Docker images ━━━"
             # Layer caching Docker — không dùng --no-cache để nhanh hơn
