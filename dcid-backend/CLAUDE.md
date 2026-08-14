@@ -67,10 +67,12 @@ vn.dcid/                          — (package name kept from the original repo)
 │   ├── request/                  — LoginRequest
 │   └── response/                 — LoginResponse, UserProfileDTO
 ├── service/                      — AuthService, UserService, AuditLogService, MinioService
-└── api/
+├── api/
     ├── HealthController          — public GET /api/health
-    └── AuthController            — POST /api/auth/login, GET /api/auth/me
+    ├── AuthController            — POST /api/auth/login, GET /api/auth/me
+    └── UserController            — Admin User Management CRUD (/api/admin/users)
 ```
+
 
 ## Authentication & RBAC
 

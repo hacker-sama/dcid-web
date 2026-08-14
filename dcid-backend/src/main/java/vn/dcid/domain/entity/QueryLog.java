@@ -22,7 +22,7 @@ public class QueryLog {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "actor_id", nullable = false)
+    @Column(name = "actor_id")
     private UUID actorId;
 
     @Column(name = "question", nullable = false, columnDefinition = "TEXT")

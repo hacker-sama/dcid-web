@@ -1,6 +1,6 @@
 # Smart KCN Docs — ERD & Database
 
-> Schema quan hệ (PostgreSQL) cho `dcid-backend`. Vector/chunk sống ở **ChromaDB**, file ở **MinIO**;
+> Schema quan hệ (PostgreSQL) cho `dcid-backend`. Vector/chunk sống ở **Qdrant**, file ở **MinIO**;
 > Postgres chỉ giữ **metadata + audit**. Xem kiến trúc: [`ARCHITECTURE.md`](ARCHITECTURE.md) §B3.
 
 ---
@@ -10,10 +10,10 @@
 | Dữ liệu | Nơi lưu | Ghi chú |
 |---|---|---|
 | users, documents, versions, pages, query_logs, work_orders, audit_logs | **PostgreSQL** | quan hệ, giao dịch, RBAC, audit |
-| vector embedding + chunk text + metadata (version_id, page, bbox_key, lang) | **ChromaDB** | semantic search |
+| vector embedding + chunk text + metadata (version_id, page, bbox_key, lang) | **Qdrant** | semantic search |
 | PDF gốc, ảnh trang, bounding-box crop | **MinIO** | tham chiếu bằng `storage_key` / `image_key` / `bbox_key` |
 
-**Nguyên tắc single-writer:** chỉ **backend** ghi Postgres. `dcid-ai` đọc MinIO, ghi ChromaDB + MinIO,
+**Nguyên tắc single-writer:** chỉ **backend** ghi Postgres. `dcid-ai` đọc MinIO, ghi Qdrant + MinIO,
 rồi **gọi callback** để backend persist `document_pages` + cập nhật `status`. AI **không** nối thẳng Postgres.
 
 ---
@@ -130,13 +130,13 @@ stateDiagram-v2
 ## 5. Cách một câu trả lời truy ngược về bằng chứng (citation)
 
 ```
-/api/query → AI trả citations[{ versionId, pageNo, bboxKey }]
+/api/query → AI trả citations[{ versionId, pageNo, bboxKey, snippet }]
    versionId  → document_versions   (tài liệu nào, version nào)
    pageNo     → document_pages       (ảnh trang: image_key + width/height)
-   bboxKey    → MinIO                 (ảnh crop khoanh đỏ số liệu)
+   bboxKey    → Tọa độ không gian    (định dạng p{pageNo}_[minX,minY,maxX,maxY] khoanh đỏ vùng dữ liệu)
+   snippet    → Đoạn trích dẫn       (đoạn văn bản gốc cấu trúc hóa Markdown tối đa 300 ký tự)
 ```
-FE vẽ overlay bbox lên ảnh trang theo toạ độ chuẩn hoá (dựa `width/height`). `query_logs` lưu lại
-`matched_version_id` + `confidence` + `locked` để hậu kiểm.
+FE hiển thị nhãn trích dẫn `Trang X [Bbox]`, click vào để mở Hộp thoại Trích Dẫn Không Gian hiển thị trực tiếp tọa độ Bbox và đoạn văn bản gốc (`snippet`). `query_logs` lưu lại `matched_version_id` + `confidence` + `locked` để hậu kiểm.
 
 ---
 
@@ -157,7 +157,7 @@ FE vẽ overlay bbox lên ảnh trang theo toạ độ chuẩn hoá (dựa `widt
 
 ## 7. Quyết định thiết kế
 
-- **Chunk/vector ở ChromaDB**, không nhồi Postgres → tránh trùng lặp, tách rõ trách nhiệm.
+- **Chunk/vector ở Qdrant**, không nhồi Postgres → tránh trùng lặp, tách rõ trách nhiệm.
 - **Single-writer Postgres = backend** → AI gửi page metadata qua callback, backend persist.
 - **`status` ở version, không ở document** → 1 tài liệu "còn hiệu lực" nếu có version ACTIVE.
 - **`min_role` trên document** → lọc RBAC ở tầng dữ liệu (Operator không thấy bản vẽ).

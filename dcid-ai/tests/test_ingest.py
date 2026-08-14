@@ -49,9 +49,15 @@ def test_ingest_success_sends_ready_callback(
 ) -> None:
     sent: list[IngestCallback] = []
     monkeypatch.setattr(
-        ingest_service.minio_client, "get_object", lambda storage_key: _make_pdf(3)
+        ingest_service.ocr_client,
+        "extract_pages",
+        lambda storage_key, langs, **_kwargs: _fake_extract_pages(_make_pdf(3), langs),
     )
-    monkeypatch.setattr(ingest_service.ocr, "extract_pages", _fake_extract_pages)
+    monkeypatch.setattr(
+        ingest_service.index_pipeline,
+        "upsert_chunks",
+        lambda version_id, chunks: len(chunks),
+    )
     monkeypatch.setattr(
         ingest_service.backend_client, "post_ingest_callback", sent.append
     )
@@ -82,11 +88,11 @@ def test_ingest_success_sends_ready_callback(
 def test_ingest_minio_error_sends_failed_callback(
     client: TestClient, auth_headers: dict[str, str], monkeypatch
 ) -> None:
-    def boom(storage_key: str) -> bytes:
+    def boom(storage_key: str, langs: list[str], **_kwargs) -> list[PageOcr]:
         raise ConnectionError("MinIO unreachable")
 
     sent: list[IngestCallback] = []
-    monkeypatch.setattr(ingest_service.minio_client, "get_object", boom)
+    monkeypatch.setattr(ingest_service.ocr_client, "extract_pages", boom)
     monkeypatch.setattr(
         ingest_service.backend_client, "post_ingest_callback", sent.append
     )
@@ -111,9 +117,10 @@ def test_ingest_callback_failure_does_not_crash(
         raise ConnectionError("backend down")
 
     monkeypatch.setattr(
-        ingest_service.minio_client, "get_object", lambda storage_key: _make_pdf(1)
+        ingest_service.ocr_client,
+        "extract_pages",
+        lambda storage_key, langs, **_kwargs: _fake_extract_pages(_make_pdf(1), langs),
     )
-    monkeypatch.setattr(ingest_service.ocr, "extract_pages", _fake_extract_pages)
     monkeypatch.setattr(
         ingest_service.backend_client, "post_ingest_callback", callback_boom
     )

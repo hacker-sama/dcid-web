@@ -36,6 +36,28 @@ class IngestCallback(BaseModel):
     error: str | None = None
 
 
+class IngestStatusPush(BaseModel):
+    """AI → BE: POST /api/internal/ingest-status — push trạng thái từng bước xử lý.
+
+    Cho phép BE/Flutter theo dõi tiến độ realtime mà không cần polling.
+    BE nên update trạng thái document version theo trình tự:
+        PROCESSING_OCR → PROCESSING_EMBED → PROCESSING_INDEX → READY | FAILED
+    """
+
+    versionId: UUID
+    status: Literal["PROCESSING_OCR", "PROCESSING_EMBED", "PROCESSING_INDEX", "READY", "FAILED"]
+    step: str                    # Mô tả bước đang chạy (ví dụ: "OCR", "EMBED", "INDEX")
+    pageCount: int | None = None
+    chunkCount: int | None = None
+    error: str | None = None
+
+
+class ChatMessage(BaseModel):
+    """Một lượt tin nhắn trong lịch sử hội thoại multi-turn."""
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class QueryRequest(BaseModel):
     """BE → AI (contract §2.2)."""
 
@@ -43,17 +65,22 @@ class QueryRequest(BaseModel):
     topK: int = 5
     allowedVersionIds: list[UUID]
     machineCode: str | None = None
+    reasoningMode: bool = False
+    history: list[ChatMessage] = []
+    imageStorageKey: str | None = None
 
 
 class Guard(BaseModel):
     locked: bool = False
     numericRule: bool = False
+    reasoningMode: bool = False
 
 
 class Citation(BaseModel):
     versionId: UUID
     pageNo: int
     bboxKey: str | None = None
+    imagePath: str | None = None  # Đường dẫn file ảnh crop ở uploads/crops/ để Frontend UI render
     snippet: str | None = None
 
 
@@ -79,3 +106,14 @@ class IngestAccepted(BaseModel):
     """202 body của POST /ai/ingest."""
 
     accepted: bool = True
+    taskId: str | None = None   # Celery task ID — dùng cho GET /ai/status/{taskId}
+
+
+class TaskStatusResponse(BaseModel):
+    """GET /ai/status/{task_id} response."""
+
+    taskId: str
+    state: str          # PENDING | PROCESSING_OCR | PROCESSING_EMBED | PROCESSING_INDEX | SUCCESS | FAILURE
+    step: str | None = None
+    info: dict | None = None
+    error: str | None = None

@@ -1,7 +1,4 @@
-"""Client gọi ai-ocr service (HTTP) để thực hiện OCR PDF → pages.
-
-ai-ocr chạy tại OCR_SERVICE_URL (env), expose POST /ocr với X-Internal-Token.
-"""
+"""HTTP client for the dedicated PaddleOCR sidecar, with a native-text fallback."""
 
 import logging
 
@@ -10,6 +7,7 @@ import httpx
 from app.config import get_settings
 from app.pipeline.ocr import PageOcr
 from app.security import INTERNAL_TOKEN_HEADER
+from app.services.resource_gate import serialized_heavy
 
 logger = logging.getLogger("dcid-ai.ocr_client")
 
@@ -17,48 +15,55 @@ OCR_PATH = "/ocr"
 TIMEOUT_SECONDS = 300.0  # OCR có thể chậm với PDF nhiều trang
 
 
-def extract_pages(storage_key: str, langs: list[str]) -> list[PageOcr]:
-    """Gọi ai-ocr service để OCR PDF từ MinIO.
+@serialized_heavy("ocr")
+def extract_pages(
+    storage_key: str,
+    langs: list[str] | None = None,
+    image_key_prefix: str | None = None,
+) -> list[PageOcr]:
+    """Extract pages through ai-ocr; fall back to local PyMuPDF if it is unavailable.
 
     Args:
         storage_key: key MinIO của file PDF.
-        langs: danh sách ngôn ngữ, ví dụ ["vi", "en"].
+        langs: danh sách ngôn ngữ (không bắt buộc).
 
     Returns:
-        list[PageOcr] mỗi phần tử là dataclass PageOcr
-
-    Raises:
-        httpx.HTTPError: lỗi kết nối / timeout / HTTP error.
-        KeyError: response thiếu field bắt buộc.
+        list[PageOcr] containing OCR text, bboxes and optional MinIO page image keys.
     """
-    s = get_settings()
-    url = f"{s.ocr_service_url.rstrip('/')}{OCR_PATH}"
-    payload = {"storageKey": storage_key, "langs": langs}
+    settings = get_settings()
+    payload = {
+        "storageKey": storage_key,
+        "langs": langs or ["vi", "en"],
+        "imageKeyPrefix": image_key_prefix,
+    }
+    headers = {INTERNAL_TOKEN_HEADER: settings.ai_internal_token}
 
-    logger.info("Gọi ai-ocr: url=%s storageKey=%s", url, storage_key)
-    with httpx.Client(timeout=TIMEOUT_SECONDS) as client:
-        resp = client.post(
-            url,
+    try:
+        response = httpx.post(
+            f"{settings.ocr_service_url.rstrip('/')}{OCR_PATH}",
             json=payload,
-            headers={
-                "Content-Type": "application/json",
-                INTERNAL_TOKEN_HEADER: s.ai_internal_token,
-            },
+            headers=headers,
+            timeout=TIMEOUT_SECONDS,
         )
-        resp.raise_for_status()
-
-    data = resp.json()
-    raw_pages = data.get("pages", [])
-    logger.info("ai-ocr trả về %d trang", len(raw_pages))
-
-    pages: list[PageOcr] = []
-    for item in raw_pages:
-        pages.append(
+        response.raise_for_status()
+        body = response.json()
+        pages = [
             PageOcr(
-                page_no=item["pageNo"],
-                text=item["text"],
+                page_no=int(item["pageNo"]),
+                text=str(item.get("text") or ""),
                 width=item.get("width"),
                 height=item.get("height"),
+                boxes=[tuple(float(v) for v in box[:4]) for box in item.get("boxes", [])],
+                image_key=item.get("imageKey"),
             )
-        )
-    return pages
+            for item in body.get("pages", [])
+        ]
+        logger.info("OCR sidecar OK: storageKey=%s pages=%d", storage_key, len(pages))
+        return pages
+    except Exception as exc:
+        logger.warning("OCR sidecar unavailable, falling back to local text extraction: %s", exc)
+        from app.clients import minio_client
+        from app.pipeline import ocr as ocr_pipeline
+
+        data = minio_client.get_object(storage_key)
+        return ocr_pipeline.extract_pages(data, langs)

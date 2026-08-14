@@ -1,5 +1,7 @@
 package vn.dcid.config;
 
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -42,7 +44,15 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, exception) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                        .accessDeniedHandler((request, response, exception) ->
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden")))
                 .authorizeHttpRequests(auth -> auth
+                        // SSE completes through an ASYNC dispatch after the original
+                        // authenticated request has already passed authorization.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(
                                 "/api/health",
                                 "/api/auth/login",
@@ -70,7 +80,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        // Chỉ dùng setAllowedOriginPatterns — hỗ trợ credentials=true đúng cách.
+        // setAllowedOrigins + setAllowedOriginPatterns cùng lúc gây xung đột trong Spring Security.
+        List<String> patterns = new java.util.ArrayList<>(Arrays.asList(allowedOrigins.split(",")));
+        // Thêm wildcard cho mọi port localhost khi dev
+        if (!patterns.contains("http://localhost:*")) {
+            patterns.add("http://localhost:*");
+        }
+        if (!patterns.contains("http://127.0.0.1:*")) {
+            patterns.add("http://127.0.0.1:*");
+        }
+        configuration.setAllowedOriginPatterns(patterns);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

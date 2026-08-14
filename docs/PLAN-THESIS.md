@@ -92,7 +92,7 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
 | E1 | **Chunking**: fixed-size vs layout/table-aware | Recall@k, answer accuracy |
 | E2 | **Guardrail**: LLM thuần vs confidence-gate (θ=0.60) vs + numeric rule | hallucination rate, false-answer rate |
 | E3 | **Retrieval**: dense-only (e5) vs hybrid BM25+dense *(nếu kịp)* | Recall@k |
-| E4 | **Model/quantization**: Qwen2.5-1.5B Q4 vs Q8 (hoặc 0.5B vs 1.5B) | quality vs latency |
+| E4 | **Model/quantization**: DeepSeek R1 Distill Qwen 1.5B (Q4 vs Q8) | quality vs latency |
 | E5 | **Tập sạch vs suy giảm** | toàn bộ metric |
 
 > Tối thiểu phải có **E1 + E2**; E3–E5 làm nếu còn thời gian, mỗi cái thêm là một mục trong chương thực nghiệm.
@@ -199,6 +199,11 @@ Chưa có dữ liệu doanh nghiệp thật; CN/JP để hướng phát triển;
   - Cấu hình `VisualDensity.adaptivePlatformDensity` cho `ThemeData` để tự động thu hẹp khoảng trắng trên desktop/web.
   - Cập nhật hằng số `Breakpoints` chuẩn vào `responsive.dart` và cập nhật các logic rẽ nhánh layout.
   - Chạy `flutter analyze` (0 issue) và `flutter test` (xanh 100%) hoàn tất việc verify.
+- ✅ **Nâng cấp Snap & Ask Multi-Image & Persistence (01/08/2026)**:
+  - Chuyển router sang `StatefulShellRoute.indexedStack` giúp bảo toàn 100% trạng thái (state, scroll position) của các tab khi chuyển đổi qua lại giữa Tra cứu, Snap & Ask, và Tài liệu.
+  - Hỗ trợ **chọn và tải lên cùng lúc nhiều ảnh thiết bị (`pickMultiImage` / `allowMultiple: true`)**; tự động chọn ảnh đầu tiên trong đợt tải lên mới làm active selection.
+  - Tự động mã hóa Base64 và lưu trữ 2 lớp (Stateful Riverpod Notifier + `FlutterSecureStorage` / `localStorage` trên Web), giúp dữ liệu ảnh và lịch sử Q&A tồn tại qua cả quá trình refresh trang web.
+  - Verify bằng `flutter analyze` (0 issue).
 
 
 **Còn lại của T1 (làm nốt trước khi vào T2):**

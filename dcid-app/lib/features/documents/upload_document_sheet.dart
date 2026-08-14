@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/providers.dart';
+import 'widgets/upload_document_form.dart';
 
-/// Bottom sheet upload PDF (PLAN-FLUTTER-DOCS.md §3.3, §4.3).
-/// Pop `true` khi upload thành công.
+/// Modal bottom sheet / dialog for uploading PDF documents.
+/// Returns the new document ID (String) upon successful upload.
 class UploadDocumentSheet extends ConsumerStatefulWidget {
   const UploadDocumentSheet({super.key});
 
@@ -20,16 +21,17 @@ class UploadDocumentSheet extends ConsumerStatefulWidget {
 class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
   static const _categories = <String, String>{
     'SOP': 'SOP',
-    'DRAWING': 'Bản vẽ',
-    'CIRCUIT': 'Sơ đồ điện',
-    'MAINTENANCE_LOG': 'Nhật ký bảo trì',
-    'SAFETY': 'An toàn',
-    'OTHER': 'Khác',
+    'DRAWING': 'Drawing',
+    'CIRCUIT': 'Circuit Diagram',
+    'MAINTENANCE_LOG': 'Maintenance Log',
+    'SAFETY': 'Safety Rules',
+    'OTHER': 'Other',
   };
+
   static const _minRoles = <String, String>{
     'OPERATOR': 'Operator',
     'ENGINEER': 'Engineer',
-    'QA_ADMIN': 'QA/Admin',
+    'QA_ADMIN': 'QA / Admin',
     'ADMIN': 'Admin',
   };
 
@@ -37,7 +39,7 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
   final _titleController = TextEditingController();
   final _machineCodeController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _langController = TextEditingController(text: 'vi,en');
+  final _langController = TextEditingController(text: 'en,vi');
 
   String? _category;
   String _minRole = 'OPERATOR';
@@ -56,8 +58,6 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
   }
 
   Future<void> _pickFile() async {
-    // withData: true — bắt buộc để có bytes trên web (PlatformFile.path luôn
-    // null trong trình duyệt); dùng chung 1 luồng bytes cho mọi nền tảng.
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -66,7 +66,8 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
     if (result == null || result.files.isEmpty) return;
     final file = result.files.first;
     if (file.bytes == null) {
-      setState(() => _error = 'Không đọc được nội dung file. Thử lại.');
+      setState(
+          () => _error = 'Could not read file contents. Please try again.');
       return;
     }
     setState(() {
@@ -79,7 +80,7 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_fileBytes == null) {
-      setState(() => _error = 'Vui lòng chọn file PDF.');
+      setState(() => _error = 'Please select a PDF file before uploading.');
       return;
     }
     setState(() {
@@ -87,7 +88,7 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
       _error = null;
     });
     try {
-      await ref.read(docsRepositoryProvider).uploadDocument(
+      final detail = await ref.read(docsRepositoryProvider).uploadDocument(
             title: _titleController.text.trim(),
             category: _category!,
             machineCode: _machineCodeController.text.trim(),
@@ -97,7 +98,7 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
             fileBytes: _fileBytes!,
             fileName: _fileName ?? 'document.pdf',
           );
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(detail.document.id);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -112,7 +113,7 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
     if (e is DioException) {
       final code = e.response?.statusCode;
       if (code == 403) {
-        return 'Bạn không có quyền tải tài liệu (cần vai QA/Admin).';
+        return 'You do not have permission to upload documents (requires QA/Admin role).';
       }
       if (code == 422) {
         final data = e.response?.data;
@@ -122,119 +123,40 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
               .map((err) => '• ${err['field']}: ${err['message']}')
               .join('\n');
           if (details.isNotEmpty) {
-            return 'Dữ liệu chưa hợp lệ:\n$details';
+            return 'Invalid parameters:\n$details';
           }
         }
-        return 'Dữ liệu chưa hợp lệ. Kiểm tra lại các trường.';
+        return 'Invalid input parameters. Please check required fields.';
       }
     }
-    return 'Tải lên thất bại. Kiểm tra kết nối backend.';
+    return 'Upload failed. Please check backend connection.';
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Tải tài liệu mới',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Tiêu đề *'),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Tiêu đề là bắt buộc'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _category,
-                decoration: const InputDecoration(labelText: 'Loại tài liệu *'),
-                items: [
-                  for (final entry in _categories.entries)
-                    DropdownMenuItem(
-                      value: entry.key,
-                      child: Text('${entry.value} (${entry.key})'),
-                    ),
-                ],
-                onChanged:
-                    _uploading ? null : (v) => setState(() => _category = v),
-                validator: (v) => v == null ? 'Chọn loại tài liệu' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _machineCodeController,
-                decoration: const InputDecoration(
-                    labelText: 'Mã máy', hintText: 'VD: CNC-01'),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _minRole,
-                decoration:
-                    const InputDecoration(labelText: 'Vai tối thiểu được xem'),
-                items: [
-                  for (final entry in _minRoles.entries)
-                    DropdownMenuItem(
-                        value: entry.key, child: Text(entry.value)),
-                ],
-                onChanged: _uploading
-                    ? null
-                    : (v) => setState(() => _minRole = v ?? 'OPERATOR'),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Mô tả'),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _langController,
-                decoration: const InputDecoration(
-                    labelText: 'Ngôn ngữ', hintText: 'vi,en'),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: _uploading ? null : _pickFile,
-                icon: const Icon(Icons.attach_file),
-                label: Text(
-                  _fileName ?? 'Chọn file PDF *',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!,
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.error)),
-              ],
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _uploading ? null : _submit,
-                icon: _uploading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.cloud_upload),
-                label: Text(_uploading ? 'Đang tải lên...' : 'Tải lên'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed:
-                    _uploading ? null : () => Navigator.of(context).pop(false),
-                child: const Text('Hủy'),
-              ),
-            ],
-          ),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
+      child: SingleChildScrollView(
+        child: UploadDocumentForm(
+          formKey: _formKey,
+          titleController: _titleController,
+          machineCodeController: _machineCodeController,
+          descriptionController: _descriptionController,
+          langController: _langController,
+          category: _category,
+          minRole: _minRole,
+          fileBytes: _fileBytes,
+          fileName: _fileName,
+          uploading: _uploading,
+          error: _error,
+          categories: _categories,
+          minRoles: _minRoles,
+          onCategoryChanged: (v) => setState(() => _category = v),
+          onMinRoleChanged: (v) => setState(() => _minRole = v ?? 'OPERATOR'),
+          onPickFile: _pickFile,
+          onSubmit: _submit,
+          onCancel: () => Navigator.of(context).pop(null),
         ),
       ),
     );

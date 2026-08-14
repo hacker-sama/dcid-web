@@ -33,7 +33,7 @@ public class MinioService {
             minioClient.putObject(args);
             return objectName;
         } catch (Exception e) {
-            throw new UnsupportedOperationException("TODO: Handle MinIO upload error", e);
+            throw new IllegalStateException("Lỗi upload file lên MinIO: " + e.getMessage(), e);
         }
     }
 
@@ -45,7 +45,7 @@ public class MinioService {
 
             return upload(objectName, inputStream, size, contentType);
         } catch (Exception e) {
-            throw new UnsupportedOperationException("TODO: Handle file upload error", e);
+            throw new IllegalStateException("Lỗi upload file lên MinIO: " + e.getMessage(), e);
         }
     }
 
@@ -60,7 +60,7 @@ public class MinioService {
                             .build()
             );
         } catch (Exception e) {
-            throw new UnsupportedOperationException("TODO: Handle presigned URL generation error", e);
+            throw new IllegalStateException("Lỗi tạo presigned URL: " + e.getMessage(), e);
         }
     }
 
@@ -73,7 +73,7 @@ public class MinioService {
                             .build()
             );
         } catch (Exception e) {
-            throw new UnsupportedOperationException("TODO: Handle MinIO delete error", e);
+            throw new IllegalStateException("Lỗi xóa file khỏi MinIO: " + e.getMessage(), e);
         }
     }
 
@@ -86,7 +86,7 @@ public class MinioService {
                             .build()
             );
         } catch (Exception e) {
-            throw new UnsupportedOperationException("TODO: Handle MinIO download error", e);
+            throw new IllegalStateException("Lỗi tải file từ MinIO: " + e.getMessage(), e);
         }
     }
 

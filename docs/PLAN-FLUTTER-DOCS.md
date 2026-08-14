@@ -124,9 +124,17 @@ Lỗi validation → `422` `{"code":"VALIDATION_FAILED", "message":..., "errors"
   đúng bug đã fix.
 
 ### 4.3. `lib/features/documents/` — UI
-- `documents_screen.dart`: bỏ `FeaturePlaceholder`; `FutureProvider`/`AsyncNotifier` (Riverpod) load
-  danh sách; `RefreshIndicator`; empty state "Chưa có tài liệu"; error state có nút Thử lại;
-  FAB/nút upload chỉ khi `isAdminLevel`.
+- `documents_screen.dart`: ✅ **Đã hoàn thiện và refactor** —
+  - Đổi từ `ConsumerWidget` sang `ConsumerStatefulWidget` để lưu trạng thái sort cục bộ (`_SortOption`).
+  - Bọc `Scaffold.body` trong `SafeArea` để tránh bị che bởi notch/status bar trên Android.
+  - **Sort bar**: mobile/tablet hiển thị `FilterChip` cuộn ngang (5 tuỳ chọn); desktop hiển thị
+    `DropdownButton` trong toolbar. Tuỳ chọn: Mới nhất · Cũ nhất · Tiêu đề A→Z · Tiêu đề Z→A ·
+    Loại / Mã máy. Logic sort thuần (copy list, sort theo `_SortOption`).
+  - **Timestamp trên card**: subtitle mobile/tablet bổ sung `"Cập nhật: <relative time>"`
+    (e.g. "2 giờ trước", "5 ngày trước") qua helper `_formatRelative()`.
+  - Desktop layout tách thành `_DesktopView` riêng (StatelessWidget) nhận callback, giữ `DataTable2`.
+  - `_formatInstant()` (bảng desktop) và `_formatRelative()` (card mobile) — cả hai dùng chung.
+  - `flutter test` xanh 18/18 sau refactor.
 - `document_detail_screen.dart` (mới): nhận `documentId`, load 3.2, hiện thông tin + list version
   với chip trạng thái màu. Đăng ký route con trong `lib/core/router.dart`
   (vd `/documents/:id`, nằm trong ShellRoute hiện có).

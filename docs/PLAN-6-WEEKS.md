@@ -67,7 +67,7 @@ bbox overlay, màn admin (chỉ còn list + upload), versioning. Mỗi người 
 | AI-1 | Khung FastAPI + `/ai/health` + Dockerfile | 1 | W1 | — |
 | AI-2 | `/ai/ingest`: PaddleOCR (VI+EN) → chunk | 3 | W1–2 | AI-1 |
 | AI-3 | Embed e5-small (ONNX) + ChromaDB upsert | 2 | W2 | AI-2 |
-| AI-4 | `/ai/query`: retrieve top-k + llama-cpp Qwen2.5 + citation | 3 | W3 | AI-3 |
+| AI-4 | `/ai/query`: retrieve top-k + LM Studio (`deepseek-r1-distill-qwen-1.5b`) + citation | 3 | W3 | AI-3 |
 | AI-5 | Guardrail: ngưỡng cosine < 0.60 + rule số liệu | 2 | W4 | AI-4 |
 | AI-6 | Cắt bbox crop → MinIO, trả `bboxKey` *(stretch)* | 2 | W4 | AI-4 |
 | AI-7 | Chuyển ingest sang Celery (async) *(stretch)* | 1.5 | W5 | AI-2 |

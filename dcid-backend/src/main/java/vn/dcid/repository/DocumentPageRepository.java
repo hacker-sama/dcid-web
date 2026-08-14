@@ -16,5 +16,7 @@ public interface DocumentPageRepository extends JpaRepository<DocumentPage, UUID
     Optional<DocumentPage> findByVersionIdAndPageNo(UUID versionId, Integer pageNo);
 
     /** Xóa pages cũ trước khi ghi lại từ callback (idempotent). */
-    void deleteByVersionId(UUID versionId);
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM DocumentPage p WHERE p.versionId = :versionId")
+    void deleteByVersionId(@org.springframework.data.repository.query.Param("versionId") UUID versionId);
 }
