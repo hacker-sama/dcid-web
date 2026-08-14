@@ -12,12 +12,16 @@ mật khẩu `root`, mật khẩu database của ứng dụng hoặc file `.env.
 | Thành viên nhập/sửa dữ liệu | PostgreSQL cá nhân | `dcid_editor` |
 | Nhóm trưởng | PostgreSQL cá nhân | `dcid_maintainer` |
 | Nhóm trưởng | Linux cá nhân | SSH key, `sudo`, Docker |
+| **GitHub Actions CI/CD** | Linux `ci-deploy` | SSH key, Docker (không có sudo) |
 
 Không dùng chung một username/mật khẩu PostgreSQL. Database vẫn là database chung
 `dcid`, nhưng mỗi người có tài khoản riêng để có thể thu hồi quyền và truy vết.
 
 > Thành viên nhóm trưởng thuộc nhóm `docker`. Quyền Docker gần tương đương quyền
 > root, vì vậy chỉ cấp cho người thực sự chịu trách nhiệm vận hành VPS.
+>
+> User `ci-deploy` cũng thuộc nhóm `docker` nhưng **không có `sudo`** và chỉ SSH
+> được vào bằng key của GitHub Actions.
 
 ## 2. Trạng thái production chuẩn
 
@@ -166,30 +170,18 @@ Không nhập IP VPS vào trường Host và không mở PostgreSQL ra Internet.
 
 ## 7. Cập nhật phiên bản trên VPS
 
-Mọi thay đổi code phải được commit/push từ máy phát triển. VPS chỉ pull code:
+**Thông thường:** Pipeline GitHub Actions tự động chạy khi có code mới vào `main`.
+Xem kết quả tại: **GitHub → Actions → Deploy to Production**.
+
+**Deploy thủ công (khi cần hotfix hoặc pipeline gặp sự cố):**
 
 ```bash
 cd /opt/dcid
-git status --short
-git switch huynew1
-git pull --ff-only origin huynew1
+bash scripts/deploy.sh --status   # kiểm tra hiện trạng
+bash scripts/deploy.sh --full     # pull + build + restart + health check
 ```
 
-Build và áp dụng:
-
-```bash
-docker compose --env-file .env.production \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.vps.yml \
-  build backend ai ai-worker ai-ocr
-
-docker compose --env-file .env.production \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.vps.yml \
-  up -d
-```
+Xem đầy đủ các tùy chọn tại [DEPLOY-RUNBOOK.md](DEPLOY-RUNBOOK.md).
 
 Không chạy `docker compose down -v`; tùy chọn `-v` xóa volume dữ liệu.
 
@@ -235,8 +227,36 @@ Không xóa tài khoản ngay nếu còn cần nhật ký hoặc file thuộc s�
 
 - `.env.production`, private SSH key và mật khẩu không được gửi qua chat hoặc
   commit lên Git.
+- `ci-deploy` private key chỉ lưu trong GitHub Secrets; không chia sẻ qua kênh khác.
 - Backup DataZ không thay thế backup ứng dụng.
 - `scripts/backup.sh` hiện chỉ dump PostgreSQL; MinIO và các volume AI cần được
   sao lưu riêng trước khi coi quy trình backup là đầy đủ.
 - Sau khi thay đổi quan trọng, tạo snapshot/backup từ trang quản trị DataZ.
 
+## 11. CI/CD Pipeline
+
+Nhóm dùng GitHub Actions với quy trình:
+
+```
+Nhánh cá nhân ──PR─▶ dev ──PR─▶ main ──auto─▶ Deploy VPS
+```
+
+| Workflow | Trigger | Việc làm |
+|---|---|---|
+| `ci.yml` | Mọi PR vào `dev`/`main`, push lên `dev` | Build backend + test, build Flutter, lint Python |
+| `deploy.yml` | Push/merge vào `main` | Build → SCP Flutter → SSH deploy → health check → rollback nếu fail |
+
+**GitHub Secrets cần thiết** (Settings → Secrets → Actions):
+
+| Secret | Mô tả |
+|---|---|
+| `VPS_HOST` | `160.250.132.20` |
+| `VPS_USER` | `ci-deploy` |
+| `VPS_SSH_KEY` | Private key SSH của user `ci-deploy` |
+| `VPS_PORT` | `22` |
+| `API_BASE_URL` | `https://160.250.132.20.sslip.io` |
+
+> `.env.production` **không** được inject qua CI. File này tồn tại trên VPS và
+> được tạo thủ công một lần — pipeline chỉ pull code và rebuild Docker image.
+
+Xem chi tiết vận hành tại [DEPLOY-RUNBOOK.md](DEPLOY-RUNBOOK.md).

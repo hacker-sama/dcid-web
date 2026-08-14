@@ -1,5 +1,8 @@
 # Smart KCN Docs
 
+[![CI](https://github.com/hacker-sama/dcid-web/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/hacker-sama/dcid-web/actions/workflows/ci.yml)
+[![Deploy](https://github.com/hacker-sama/dcid-web/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/hacker-sama/dcid-web/actions/workflows/deploy.yml)
+
 Trợ lý kỹ thuật số & quản trị tri thức **on-premise** cho khu công nghiệp (KCN).
 
 Monorepo:
@@ -36,6 +39,8 @@ Hệ thống được thiết kế theo kiến trúc **Dual-Plane Local RAG** đ
 - **[Kiến trúc dự án](docs/ARCHITECTURE.md)** — sơ đồ tổng thể, luồng nghiệp vụ, data model, API.
 - **[ERD & Database](docs/ERD.md)** — schema quan hệ, phân tách Postgres/Qdrant/MinIO, vòng đời version.
 - **[API Contract BE↔AI](docs/API-CONTRACT.md)** — nguồn sự thật ranh giới ingest/query/callback.
+- **[Bàn giao VPS & phân quyền](docs/VPS-TEAM-HANDOVER.md)** — tài khoản Linux/PostgreSQL, SSH tunnel, thu hồi quyền.
+- **[Deploy Runbook](docs/DEPLOY-RUNBOOK.md)** — vận hành CI/CD, deploy thủ công, rollback, xử lý sự cố.
 - [Work order: dựng khung dcid-ai](docs/PLAN-DCID-AI.md) — plan tự chứa cho agent thực thi. ✅ đã xong
 - [Work order: Flutter màn Tài liệu + Upload](docs/PLAN-FLUTTER-DOCS.md) — plan tự chứa cho agent thực thi. ✅ đã xong
 - **[Kế hoạch Khóa luận 8 tuần (nhóm 5 người)](docs/PLAN-THESIS.md)** — đóng khung đề tài, dataset, thực nghiệm, lịch tuần. ← **dùng cái này**
