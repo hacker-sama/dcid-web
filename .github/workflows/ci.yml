@@ -43,7 +43,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.4'   # pin version cố định, tránh surprise break
+          # Không pin version cứng vì project yêu cầu Dart ^3.11.5 (Flutter 3.35+)
+          # Dùng latest stable để luôn tương thích
           channel: 'stable'
           cache: true
 

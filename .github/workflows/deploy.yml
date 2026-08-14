@@ -54,7 +54,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.4'
+          # Không pin version cứng — project yêu cầu Dart ^3.11.5 (Flutter 3.35+)
           channel: 'stable'
           cache: true
 
@@ -80,7 +80,9 @@ jobs:
     name: Deploy to VPS
     needs: [build-backend, build-flutter]
     runs-on: ubuntu-latest
-    environment: production   # bật GitHub Environment protection nếu cần approve thủ công
+    environment: production   # Tạo Environment này trong GitHub Settings trước khi dùng
+                               # Settings → Environments → New: "production"
+                               # Xóa dòng này nếu chưa tạo Environment
 
     steps:
       - uses: actions/checkout@v4
@@ -129,9 +131,10 @@ jobs:
             echo "Commit mới    : ${{ github.sha }}"
 
             echo "━━━ [2/6] Pull code mới ━━━"
+            # reset --hard đảm bảo VPS luôn khớp với remote main,
+            # dù hiện tại đang ở nhánh nào hay có commit lịch sử gì
             git fetch origin main
-            git checkout main
-            git pull --ff-only origin main
+            git checkout -B main origin/main
 
             echo "━━━ [3/6] Build Docker images ━━━"
             # Layer caching Docker — không dùng --no-cache để nhanh hơn
