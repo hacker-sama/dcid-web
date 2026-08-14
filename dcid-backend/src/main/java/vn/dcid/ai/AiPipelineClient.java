@@ -4,25 +4,22 @@ import vn.dcid.ai.dto.AiIngestRequest;
 import vn.dcid.ai.dto.AiQueryRequest;
 import vn.dcid.ai.dto.AiQueryResponse;
 
-/**
- * Ranh giới BE → AI service (dcid-ai). Hợp đồng: docs/API-CONTRACT.md.
- * Interface tách riêng để test bằng mock khi AI chưa chạy.
- */
+/** Boundary between the backend and the internal AI service. */
 public interface AiPipelineClient {
 
-    /** Kích hoạt ingest bất đồng bộ; AI trả 202 rồi báo kết quả qua /api/internal/ingest-callback. */
+    /** Queue asynchronous ingestion for an official document version. */
     void ingest(AiIngestRequest request);
 
-    /** Truy vấn RAG đồng bộ. */
+    /** Run a synchronous authenticated RAG query. */
     AiQueryResponse query(AiQueryRequest request);
 
-    /** Thông báo AI service xóa toàn bộ vector chunks của tài liệu. */
+    /** Delete all indexed vectors for an official document. */
     void deleteDocument(java.util.UUID documentId);
 
-    /** Thông báo AI service xóa toàn bộ vector chunks của phiên tạm guest session. */
-    void deleteGuestSessionVectors(java.util.UUID sessionId);
-
-    /** Truy vấn RAG stream. */
-    void queryStream(AiQueryRequest request, java.util.function.Consumer<String> tokenConsumer, Runnable onComplete, java.util.function.Consumer<Throwable> onError);
+    /** Run an authenticated RAG query and forward its SSE payloads. */
+    void queryStream(
+            AiQueryRequest request,
+            java.util.function.Consumer<String> tokenConsumer,
+            Runnable onComplete,
+            java.util.function.Consumer<Throwable> onError);
 }
-

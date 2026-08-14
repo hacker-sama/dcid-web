@@ -15,11 +15,11 @@ void main() {
 
       final notifier = container.read(chatSessionsProvider.notifier);
       final initialMessage = 'How do I operate the CNC machine safely?';
-      
+
       final session = notifier.createSession(initialMessage);
-      
+
       final sessions = container.read(chatSessionsProvider);
-      
+
       expect(sessions.length, 1);
       expect(sessions.first.id, session.id);
       expect(sessions.first.title, 'How do I operate the CNC machi...');
@@ -31,10 +31,10 @@ void main() {
       addTearDown(container.dispose);
 
       final notifier = container.read(chatSessionsProvider.notifier);
-      
+
       final session1 = notifier.createSession('First chat');
       final session2 = notifier.createSession('Second chat');
-      
+
       // Initially session2 is at top because it was created most recently
       var sessions = container.read(chatSessionsProvider);
       expect(sessions.first.id, session2.id);
@@ -42,7 +42,7 @@ void main() {
       // Add a message to session1
       final msg = ChatMessage(role: 'user', content: 'Hello');
       notifier.addMessage(session1.id, msg);
-      
+
       // session1 should now be at the top
       sessions = container.read(chatSessionsProvider);
       expect(sessions.first.id, session1.id);
@@ -55,14 +55,14 @@ void main() {
       addTearDown(container.dispose);
 
       final notifier = container.read(chatSessionsProvider.notifier);
-      
+
       final session = notifier.createSession('Test chat');
       final msg = ChatMessage(role: 'assistant', content: 'Init');
       notifier.addMessage(session.id, msg);
-      
+
       msg.content = 'Init update';
       notifier.updateMessage(session.id, msg);
-      
+
       final sessions = container.read(chatSessionsProvider);
       expect(sessions.first.messages.first.content, 'Init update');
     });
@@ -78,7 +78,7 @@ void main() {
 
       notifier.setId('session-123');
       expect(container.read(activeChatSessionIdProvider), 'session-123');
-      
+
       notifier.setId(null);
       expect(container.read(activeChatSessionIdProvider), isNull);
     });
@@ -94,7 +94,7 @@ void main() {
 
       notifier.toggle();
       expect(container.read(isSidebarExpandedProvider), isTrue);
-      
+
       notifier.toggle();
       expect(container.read(isSidebarExpandedProvider), isFalse);
     });

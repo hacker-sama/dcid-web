@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
 import '../../core/constrained_content.dart';
 import '../../core/theme.dart';
 import '../../data/models/answer_result.dart';
@@ -34,7 +33,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final FocusNode _focusNode = FocusNode();
 
   bool _loading = false;
-  bool _reasoningMode = false;
   bool _inputFocused = false;
   String? _error;
 
@@ -143,7 +141,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     String? sessionId = ref.read(activeChatSessionIdProvider);
     if (sessionId == null) {
-      final session = ref.read(chatSessionsProvider.notifier).createSession(question);
+      final session = ref
+          .read(chatSessionsProvider.notifier)
+          .createSession(question);
       sessionId = session.id;
       ref.read(activeChatSessionIdProvider.notifier).setId(sessionId);
     }
@@ -152,7 +152,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     ref.read(chatSessionsProvider.notifier).addMessage(sessionId, userMessage);
 
     var assistantMessage = ChatMessage(role: 'assistant', content: '');
-    assistantMessage = ref.read(chatSessionsProvider.notifier).addMessage(sessionId, assistantMessage);
+    assistantMessage = ref
+        .read(chatSessionsProvider.notifier)
+        .addMessage(sessionId, assistantMessage);
 
     setState(() {
       _loading = true;
@@ -161,15 +163,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _scrollToBottom();
 
     try {
-      final session = ref.read(chatSessionsProvider).firstWhere((s) => s.id == sessionId);
+      final session = ref
+          .read(chatSessionsProvider)
+          .firstWhere((s) => s.id == sessionId);
       final history = session.messages
           .take(session.messages.length - 2)
           .map((m) => {'role': m.role, 'content': m.content})
           .toList();
 
-      final stream = ref.read(docsRepositoryProvider).askStream(
+      final stream = ref
+          .read(docsRepositoryProvider)
+          .askStream(
             question,
-            reasoningMode: _reasoningMode,
+            reasoningMode: true,
             selectedVersionIds: _selectedVersionIdsByDocId.isEmpty
                 ? null
                 : _selectedVersionIdsByDocId.values.toList(),
@@ -179,7 +185,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       List<Citation> currentCitations = [];
       bool isLocked = false;
       bool isNumeric = false;
-      bool isReasoning = _reasoningMode;
+      const bool isReasoning = true;
       double confidenceVal = 0.0;
 
       await for (final event in stream) {
@@ -188,9 +194,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           currentCitations = event.citations;
           isLocked = event.locked;
           isNumeric = event.numericRule;
-          isReasoning = event.reasoningMode;
           confidenceVal = event.confidence;
-          
+
           assistantMessage.result = AnswerResult(
             answer: assistantMessage.content,
             confidence: confidenceVal,
@@ -199,7 +204,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             reasoningMode: isReasoning,
             citations: currentCitations,
           );
-          ref.read(chatSessionsProvider.notifier).updateMessage(sessionId, assistantMessage);
+          ref
+              .read(chatSessionsProvider.notifier)
+              .updateMessage(sessionId, assistantMessage);
         } else if (event.type == SseEventType.delta) {
           if (event.textDelta != null) {
             assistantMessage.content += event.textDelta!;
@@ -211,14 +218,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               reasoningMode: isReasoning,
               citations: currentCitations,
             );
-            ref.read(chatSessionsProvider.notifier).updateMessage(sessionId, assistantMessage);
+            ref
+                .read(chatSessionsProvider.notifier)
+                .updateMessage(sessionId, assistantMessage);
             _scrollToBottom();
           }
         } else if (event.type == SseEventType.error) {
-          if (event.errorMessage != null && event.errorMessage!.contains('Phiên đăng nhập')) {
+          if (event.errorMessage != null &&
+              event.errorMessage!.contains('Phiên đăng nhập')) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Session expired, please sign in again')),
+                const SnackBar(
+                  content: Text('Session expired, please sign in again'),
+                ),
               );
             }
           } else {
@@ -301,8 +313,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             if (_error != null)
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Text(
                   _error!,
                   style: TextStyle(color: colorScheme.error, fontSize: 13),
@@ -319,15 +333,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 selectedVersionIdsByDocId: _selectedVersionIdsByDocId,
                 availableDocs: _availableDocs,
                 resolvingDocIds: _resolvingDocIds,
-                reasoningMode: _reasoningMode,
                 hasChatMessages: messages.isNotEmpty,
                 onAsk: _ask,
                 onSetDocumentSelected: _setDocumentSelected,
                 onClearDocSelection: () =>
                     setState(_selectedVersionIdsByDocId.clear),
                 onClearChat: _clearChat,
-                onReasoningModeChanged: (val) =>
-                    setState(() => _reasoningMode = val),
               ),
             ),
           ],
@@ -336,7 +347,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Message bubble
 // ─────────────────────────────────────────────────────────────────────────────
@@ -355,9 +365,7 @@ class _MessageBubble extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: isUser
-          ? _buildUserBubble()
-          : _buildAiBubble(colorScheme, isDark),
+      child: isUser ? _buildUserBubble() : _buildAiBubble(colorScheme, isDark),
     );
   }
 
@@ -445,8 +453,11 @@ class _MessageBubble extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.wifi_off_rounded,
-                        size: 10, color: Colors.amber.shade800),
+                    Icon(
+                      Icons.wifi_off_rounded,
+                      size: 10,
+                      color: Colors.amber.shade800,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Offline',
@@ -533,4 +544,3 @@ class _SearchAnswerInline extends StatelessWidget {
     return AnswerView(result: result, shrinkWrap: true);
   }
 }
-

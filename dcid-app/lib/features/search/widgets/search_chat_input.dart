@@ -15,13 +15,11 @@ class SearchChatInput extends StatelessWidget {
     required this.selectedVersionIdsByDocId,
     required this.availableDocs,
     required this.resolvingDocIds,
-    required this.reasoningMode,
     required this.hasChatMessages,
     required this.onAsk,
     required this.onSetDocumentSelected,
     required this.onClearDocSelection,
     required this.onClearChat,
-    required this.onReasoningModeChanged,
   });
 
   final TextEditingController controller;
@@ -31,14 +29,12 @@ class SearchChatInput extends StatelessWidget {
   final Map<String, String> selectedVersionIdsByDocId;
   final List<DocumentSummary> availableDocs;
   final Set<String> resolvingDocIds;
-  final bool reasoningMode;
   final bool hasChatMessages;
   final VoidCallback onAsk;
   final Future<void> Function(DocumentSummary document, bool selected)
-      onSetDocumentSelected;
+  onSetDocumentSelected;
   final VoidCallback onClearDocSelection;
   final VoidCallback onClearChat;
-  final ValueChanged<bool> onReasoningModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +47,8 @@ class SearchChatInput extends StatelessWidget {
     final borderColor = inputFocused
         ? accent.withValues(alpha: 0.6)
         : (isDark
-            ? kDarkBorder
-            : colorScheme.outlineVariant.withValues(alpha: 0.5));
+              ? kDarkBorder
+              : colorScheme.outlineVariant.withValues(alpha: 0.5));
 
     return Align(
       alignment: Alignment.bottomCenter,
@@ -83,13 +79,11 @@ class SearchChatInput extends StatelessWidget {
                 selectedVersionIdsByDocId: selectedVersionIdsByDocId,
                 availableDocs: availableDocs,
                 resolvingDocIds: resolvingDocIds,
-                reasoningMode: reasoningMode,
                 loading: loading,
                 hasChatMessages: hasChatMessages,
                 onSetDocumentSelected: onSetDocumentSelected,
                 onClearDocSelection: onClearDocSelection,
                 onClearChat: onClearChat,
-                onReasoningModeChanged: onReasoningModeChanged,
               ),
               Divider(
                 height: 1,
@@ -197,9 +191,9 @@ class _SearchSendButtonState extends State<SearchSendButton> {
             shape: BoxShape.circle,
             color: enabled
                 ? (_hovered
-                    ? colorScheme.primary.withValues(alpha: 0.85)
-                    : colorScheme.primary)
-                : colorScheme.surfaceContainerHigh,
+                      ? widget.accent.withValues(alpha: 0.85)
+                      : widget.accent)
+                : widget.accent.withValues(alpha: 0.25),
             boxShadow: enabled && _hovered
                 ? [
                     BoxShadow(
