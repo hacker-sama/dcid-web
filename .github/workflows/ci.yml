@@ -1,0 +1,87 @@
+name: CI — Build & Test
+
+# Chạy trên mọi PR vào dev hoặc main, và khi push code lên dev.
+# Mục đích: phản hồi nhanh cho dev — KHÔNG deploy.
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # 1. Backend: build Maven + chạy unit test
+  # ─────────────────────────────────────────────────────────────
+  backend:
+    name: Backend (Java 21)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build & Test
+        run: |
+          cd dcid-backend
+          chmod +x mvnw
+          ./mvnw clean package
+        # Không dùng -DskipTests — unit test phải pass mới cho merge
+
+  # ─────────────────────────────────────────────────────────────
+  # 2. Flutter Web: kiểm tra compile được
+  # ─────────────────────────────────────────────────────────────
+  flutter:
+    name: Flutter Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # Không pin version cứng vì project yêu cầu Dart ^3.11.5 (Flutter 3.35+)
+          # Dùng latest stable để luôn tương thích
+          channel: 'stable'
+          cache: true
+
+      - name: pub get & build
+        run: |
+          cd dcid-app
+          flutter pub get
+          flutter build web --release \
+            --dart-define=USE_MOCK_DATA=false \
+            --dart-define=API_BASE_URL=https://160.250.132.20.sslip.io
+
+  # ─────────────────────────────────────────────────────────────
+  # 3. AI Python: lint cơ bản (lỗi cú pháp + import không dùng)
+  # ─────────────────────────────────────────────────────────────
+  lint-ai:
+    name: AI Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install ruff
+        run: pip install ruff==0.5.0
+
+      - name: Lint (lỗi cú pháp & import)
+        run: |
+          ruff check dcid-ai/app \
+            --select E9,F401,F811,F821 \
+            --output-format=github
+        # E9  = lỗi cú pháp Python (luôn block)
+        # F401 = import không dùng
+        # F811 = re-define tên
+        # F821 = undefined name
+        # Không chặn style (line-length, formatting) ở giai đoạn đầu
