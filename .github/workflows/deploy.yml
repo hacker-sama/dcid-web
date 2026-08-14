@@ -33,6 +33,7 @@ jobs:
       - name: Build & Test
         run: |
           cd dcid-backend
+          chmod +x mvnw
           ./mvnw clean package
 
       - name: Upload JAR

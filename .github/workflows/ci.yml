@@ -28,6 +28,7 @@ jobs:
       - name: Build & Test
         run: |
           cd dcid-backend
+          chmod +x mvnw
           ./mvnw clean package
         # Không dùng -DskipTests — unit test phải pass mới cho merge
 
