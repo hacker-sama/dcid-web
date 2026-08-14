@@ -194,7 +194,7 @@ jobs:
             echo "### ✅ Deploy thành công" >> $GITHUB_STEP_SUMMARY
             echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- Người deploy: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-            echo "- URL: https://160.250.132.20.sslip.io" >> $GITHUB_STEP_SUMMARY
+            echo "- URL: https://dcid.tech" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ❌ Deploy thất bại — đã rollback" >> $GITHUB_STEP_SUMMARY
             echo "- Commit lỗi: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
