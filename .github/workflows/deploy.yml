@@ -114,6 +114,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
+          timeout: 60s
+          command_timeout: 15m
           # script_stop: false — tự xử lý lỗi thủ công để có thể rollback
           script_stop: false
           script: |
