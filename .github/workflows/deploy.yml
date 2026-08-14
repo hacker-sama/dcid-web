@@ -1,117 +1,200 @@
-name: Deploy DCID
+name: Deploy to Production
 
+# Chỉ chạy khi code vào nhánh main (= PR từ dev được merge).
+# Quy trình: build → SCP Flutter → SSH deploy → health check → rollback nếu fail.
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [main]
+  workflow_dispatch:   # cho phép trigger thủ công từ GitHub UI
+
+# Đảm bảo không có 2 deploy chạy cùng lúc.
+# Nếu đang deploy mà có push mới → chờ deploy hiện tại xong.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
+  # ─────────────────────────────────────────────────────────────
+  # 1. Build backend JAR (có chạy test)
+  # ─────────────────────────────────────────────────────────────
   build-backend:
+    name: Build Backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
-          
-      - name: Build backend with Maven
+          cache: 'maven'
+
+      - name: Build & Test
         run: |
           cd dcid-backend
-          ./mvnw clean package -DskipTests
-          
-      - name: Upload backend artifact
+          chmod +x mvnw
+          ./mvnw clean package
+
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: backend-jar
           path: dcid-backend/target/*.jar
           retention-days: 1
 
-  build-flutter-web:
+  # ─────────────────────────────────────────────────────────────
+  # 2. Build Flutter Web
+  # ─────────────────────────────────────────────────────────────
+  build-flutter:
+    name: Build Flutter Web
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          # Không pin version cứng — project yêu cầu Dart ^3.11.5 (Flutter 3.35+)
           channel: 'stable'
-          
-      - name: Build Flutter web
+          cache: true
+
+      - name: Build
         run: |
           cd dcid-app
           flutter pub get
-          flutter build web --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
-          
-      - name: Upload Flutter artifact
+          flutter build web --release \
+            --dart-define=USE_MOCK_DATA=false \
+            --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+
+      - name: Upload Flutter build
         uses: actions/upload-artifact@v4
         with:
           name: flutter-web
           path: dcid-app/build/web/
           retention-days: 1
 
+  # ─────────────────────────────────────────────────────────────
+  # 3. Deploy lên VPS (chỉ chạy sau khi cả 2 build pass)
+  # ─────────────────────────────────────────────────────────────
   deploy:
-    needs: [build-backend, build-flutter-web]
+    name: Deploy to VPS
+    needs: [build-backend, build-flutter]
     runs-on: ubuntu-latest
+    environment: production   # Tạo Environment này trong GitHub Settings trước khi dùng
+                               # Settings → Environments → New: "production"
+                               # Xóa dòng này nếu chưa tạo Environment
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Download backend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-jar
-          path: dcid-backend/target/
-          
-      - name: Download Flutter artifact
+
+      - name: Download Flutter build
         uses: actions/download-artifact@v4
         with:
           name: flutter-web
           path: flutter-build/
-          
-      - name: SCP artifacts to VPS
-        uses: appleboy/scp-action@master
+
+      # SCP Flutter static files lên VPS (vào thư mục tạm)
+      - name: SCP Flutter to VPS
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
-          source: "flutter-build/*"
-          target: "/opt/dcid/flutter-build"
+          port: ${{ secrets.VPS_PORT }}
+          source: "flutter-build/"
+          target: "/opt/dcid/flutter-build-incoming"
           strip_components: 1
 
+      # Toàn bộ deploy logic: git pull → build images → up -d → health check → rollback
       - name: Deploy on VPS
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
+          port: ${{ secrets.VPS_PORT }}
+          # script_stop: false — tự xử lý lỗi thủ công để có thể rollback
+          script_stop: false
           script: |
             set -e
-            cd /opt/dcid/dcid-web
+            cd /opt/dcid
 
-            # Pull latest code (Dockerfiles, compose, config)
-            git pull origin main
+            COMPOSE="docker compose \
+              --env-file .env.production \
+              -f docker-compose.yml \
+              -f docker-compose.prod.yml \
+              -f docker-compose.vps.yml"
 
-            # Ghi .env.production từ GitHub Secret
-            echo "${{ secrets.ENV_FILE_CONTENT }}" > .env.production
+            echo "━━━ [1/6] Lưu trạng thái hiện tại ━━━"
+            PREV_COMMIT=$(git rev-parse HEAD)
+            echo "Commit hiện tại: $PREV_COMMIT"
+            echo "Commit mới    : ${{ github.sha }}"
 
-            # Build lại images bị thay đổi (backend, ai, ai-ocr)
-            docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
-              --env-file .env.production build --no-cache backend ai ai-ocr
+            echo "━━━ [2/6] Pull code mới ━━━"
+            # reset --hard đảm bảo VPS luôn khớp với remote main,
+            # dù hiện tại đang ở nhánh nào hay có commit lịch sử gì
+            git fetch origin main
+            git checkout -B main origin/main
 
-            # Rolling restart (zero-downtime với docker-compose up -d)
-            docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
-              --env-file .env.production up -d
+            echo "━━━ [3/6] Build Docker images ━━━"
+            # Layer caching Docker — không dùng --no-cache để nhanh hơn
+            # Chỉ build 4 image custom; postgres/redis/minio/qdrant/ollama dùng image public
+            $COMPOSE build backend ai ai-worker ai-ocr
 
-            # Deploy Flutter Web static
-            rm -rf /var/www/dcid-web/*
-            cp -r /opt/dcid/flutter-build/* /var/www/dcid-web/
+            echo "━━━ [4/6] Rolling restart ━━━"
+            $COMPOSE up -d
+            # Không dùng 'down' — tránh downtime không cần thiết
 
-            # Health check
-            sleep 15
-            curl -sf http://localhost:8080/api/health && echo "✓ Backend healthy" || echo "✗ Health check failed"
+            echo "━━━ [5/6] Cập nhật Flutter static ━━━"
+            # Swap atomic: chỉ thay thế sau khi SCP xong
+            rsync -a --delete /opt/dcid/flutter-build-incoming/ /var/www/dcid-web/
+            echo "Flutter deployed."
+
+            echo "━━━ [6/6] Health check (tối đa 80 giây) ━━━"
+            HEALTHY=false
+            for i in $(seq 1 8); do
+              echo "  Lần thử $i/8..."
+              if curl -sf http://127.0.0.1:8080/api/health > /dev/null 2>&1; then
+                HEALTHY=true
+                break
+              fi
+              sleep 10
+            done
+
+            if [ "$HEALTHY" = "true" ]; then
+              echo "✅ Deploy thành công — $(git rev-parse --short HEAD)"
+              # Dọn dẹp thư mục tạm
+              rm -rf /opt/dcid/flutter-build-incoming
+              exit 0
+            fi
+
+            # ── ROLLBACK ──────────────────────────────────────────────
+            echo "❌ Health check thất bại — đang rollback về $PREV_COMMIT"
+            git checkout "$PREV_COMMIT"
+            $COMPOSE build backend ai ai-worker ai-ocr
+            $COMPOSE up -d
+
+            # Kiểm tra lại sau rollback
+            sleep 20
+            if curl -sf http://127.0.0.1:8080/api/health > /dev/null 2>&1; then
+              echo "🔁 Rollback thành công — hệ thống đang ở $PREV_COMMIT"
+            else
+              echo "🚨 Rollback THẤT BẠI — cần can thiệp thủ công!"
+            fi
+            # Trả về exit code lỗi để GitHub Actions đánh dấu job FAILED
+            exit 1
+
+      - name: Thông báo kết quả
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "### ✅ Deploy thành công" >> $GITHUB_STEP_SUMMARY
+            echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Người deploy: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+            echo "- URL: https://160.250.132.20.sslip.io" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Deploy thất bại — đã rollback" >> $GITHUB_STEP_SUMMARY
+            echo "- Commit lỗi: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Kiểm tra log SSH action ở trên để biết chi tiết." >> $GITHUB_STEP_SUMMARY
+          fi
