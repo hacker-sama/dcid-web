@@ -132,9 +132,9 @@ jobs:
             echo "Commit mới    : ${{ github.sha }}"
 
             echo "━━━ [2/6] Pull code mới ━━━"
-            # Dùng SHA cụ thể thay vì branch name — luôn đúng bất kể nhánh
-            # github.sha là commit đã trigger workflow, chắc chắn tồn tại sau fetch
-            git fetch origin
+            # Fetch đúng nhánh đã trigger workflow (github.ref = refs/heads/main hoặc nhánh hiện tại)
+            # Đảm bảo github.sha tồn tại trên VPS trước khi checkout
+            git fetch origin ${{ github.ref }}
             git checkout -f ${{ github.sha }}
 
             echo "━━━ [3/6] Build Docker images ━━━"
