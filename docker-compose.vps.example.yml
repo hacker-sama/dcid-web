@@ -1,0 +1,13 @@
+services:
+  backend:
+    ports: !override
+      - "127.0.0.1:8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  # PostgreSQL is reachable only from the VPS itself. Team members connect
+  # through an SSH tunnel; port 5433 is never opened in UFW.
+  postgres:
+    ports: !override
+      - "127.0.0.1:5433:5432"
+
