@@ -286,7 +286,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         side: BorderSide(color: color.withValues(alpha: 0.25)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: [
             Container(
@@ -297,16 +297,16 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               ),
               child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
                       value,
                       style: TextStyle(
                         fontSize: 18,
@@ -314,19 +314,18 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                         color: scheme.onSurface,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: scheme.onSurfaceVariant,
+                    const SizedBox(height: 2),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -409,27 +408,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   );
                 }
 
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: cards[0]),
-                        const SizedBox(width: 8),
-                        Expanded(child: cards[1]),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: cards[2]),
-                        const SizedBox(width: 8),
-                        Expanded(child: cards[3]),
-                      ],
-                    ),
-                  ],
+                return GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 2.2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: cards,
                 );
               },
             ),

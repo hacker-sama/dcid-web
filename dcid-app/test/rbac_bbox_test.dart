@@ -1,4 +1,4 @@
-﻿import 'package:dcid_app/data/models/page_info.dart';
+import 'package:dcid_app/data/models/page_info.dart';
 import 'package:dcid_app/data/models/user_role.dart';
 import 'package:dcid_app/state/role_filter.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -145,7 +145,7 @@ void main() {
       );
     });
 
-    test('Non-admin has 3 visible nav tabs (Search, Snap, Documents)', () {
+    test('Non-admin has 3 visible nav tabs (DocuMind, Snap, Documents)', () {
       final allAdminOnly = [false, false, false, true];
       for (final role in [UserRole.operatorRole, UserRole.engineer]) {
         final visibleCount = allAdminOnly
