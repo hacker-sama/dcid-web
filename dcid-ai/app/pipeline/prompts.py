@@ -74,8 +74,16 @@ def build_system_prompt(
         "Nếu yêu cầu mang tính tổng quát như 'phân tích tài liệu', hãy chủ động tóm tắt nội dung, "
         "nêu các ý chính, thông số kỹ thuật, quy trình và cảnh báo tìm thấy. "
         "Nếu tài liệu chỉ có một phần thông tin, hãy phân tích phần hiện có và nói rõ giới hạn ở cuối. "
-        "Không yêu cầu người dùng cung cấp lại tài liệu hoặc hình ảnh đã có trong context."
+        "Không yêu cầu người dùng cung cấp lại tài liệu hoặc hình ảnh đã có trong context. "
+        "Mỗi ý chỉ nêu một lần, không lặp câu, đoạn văn hoặc khối danh sách."
     )
+
+    if has_image:
+        direct_instruction += (
+            " Đối chiếu con số và đơn vị nhìn thấy trong ảnh với dữ liệu OCR trong context. "
+            "Chỉ nêu số liệu khi đọc rõ; nếu ảnh và OCR mâu thuẫn, nói rõ không thể xác nhận "
+            "thay vì tự chọn hoặc suy đoán một giá trị."
+        )
 
     return base + direct_instruction + suffix
 

@@ -716,7 +716,7 @@ def _remove_repetition_loops(text: str) -> str:
     # 1. PHÁT HIỆN LẶP CHUỖI ĐOẠN VĂN / KHỐI LỆNH (PARAGRAPH & BLOCK CYCLE TRUNCATION)
     # Tách thành các đoạn theo dòng trống (\n\n) hoặc xuống dòng (\n)
     paragraphs = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
-    if len(paragraphs) >= 3:
+    if len(paragraphs) >= 2:
         truncated_paragraphs = []
         cycle_found = False
         for i, p in enumerate(paragraphs):
@@ -752,7 +752,7 @@ def _remove_repetition_loops(text: str) -> str:
 
     # 2. PHÁT HIỆN LẶP DÒNG LIÊN TỤC TRONG CÙNG 1 ĐOẠN
     lines = [l.strip() for l in text.split("\n") if l.strip()]
-    if len(lines) >= 3:
+    if len(lines) >= 2:
         clean_lines = []
         for i, line in enumerate(lines):
             norm_l = re.sub(r'^[\#\*\_\-\.\s0-9]+', '', line).lower().strip()
@@ -770,7 +770,16 @@ def _remove_repetition_loops(text: str) -> str:
             clean_lines.append(line)
         text = "\n".join(clean_lines)
 
-    # 3. PHÁT HIỆN LẶP CỤM TỪ LIÊN TỤC (N-GRAM LOOP)
+    # 3. Xóa câu hoàn chỉnh bị lặp ngay cạnh nhau (kể cả chỉ lặp 2 lần).
+    # Giữ dấu câu và bố cục còn lại; chỉ mẫu trùng nguyên văn mới bị xóa để
+    # không làm mất các câu kỹ thuật gần giống nhưng khác số liệu.
+    duplicate_sentence = re.compile(
+        r"(?P<sentence>[^\n.!?]{15,}[.!?])(?:\s+(?P=sentence))+",
+        re.IGNORECASE,
+    )
+    text = duplicate_sentence.sub(lambda match: match.group("sentence"), text)
+
+    # 4. PHÁT HIỆN LẶP CỤM TỪ LIÊN TỤC (N-GRAM LOOP)
     loop_pattern = re.compile(r"((?:\b\w+[\s.,;:?!]+){2,25}?)\1{2,}", re.IGNORECASE)
     def _replace_loop(match: re.Match[str]) -> str:
         return match.group(1).strip()
