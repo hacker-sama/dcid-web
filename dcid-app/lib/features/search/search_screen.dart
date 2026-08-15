@@ -7,6 +7,8 @@ import '../../data/models/answer_result.dart';
 import '../../data/models/document_detail.dart';
 import '../../data/models/document_summary.dart';
 import '../../data/models/sse_event.dart';
+import '../../state/auth_controller.dart';
+import '../../state/documents_providers.dart';
 import '../../state/providers.dart';
 import 'widgets/search_chat_input.dart';
 import 'widgets/search_empty_state.dart';
@@ -36,27 +38,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   bool _inputFocused = false;
   String? _error;
 
-  List<DocumentSummary> _availableDocs = [];
   final Map<String, String> _selectedVersionIdsByDocId = {};
   final Set<String> _resolvingDocIds = {};
 
   @override
   void initState() {
     super.initState();
-    _loadDocs();
-
     _focusNode.addListener(() {
       if (mounted) setState(() => _inputFocused = _focusNode.hasFocus);
     });
-  }
-
-  Future<void> _loadDocs() async {
-    try {
-      final docs = await ref.read(docsRepositoryProvider).listDocuments();
-      if (mounted) setState(() => _availableDocs = docs);
-    } catch (_) {
-      // Backend may not be ready yet — silent fail
-    }
   }
 
   @override
@@ -267,6 +257,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final accent = accentFor(context);
+    final auth = ref.watch(authControllerProvider);
+    final availableDocs = auth.isAuthenticated
+        ? ref.watch(documentsProvider).value ?? const <DocumentSummary>[]
+        : const <DocumentSummary>[];
 
     final sessionId = ref.watch(activeChatSessionIdProvider);
     // Use select() so the screen only rebuilds when the active session's
@@ -331,7 +325,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 inputFocused: _inputFocused,
                 loading: _loading,
                 selectedVersionIdsByDocId: _selectedVersionIdsByDocId,
-                availableDocs: _availableDocs,
+                availableDocs: availableDocs,
                 resolvingDocIds: _resolvingDocIds,
                 hasChatMessages: messages.isNotEmpty,
                 onAsk: _ask,

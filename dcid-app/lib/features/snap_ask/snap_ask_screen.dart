@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,27 +23,32 @@ import 'widgets/snap_preview_dialog.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 AnswerResult _buildFallbackAnswer(
-    String question, String fileName, String? machineCode) {
+    String fileName, String? machineCode, Object error) {
   final machineTag =
       machineCode != null ? ' · Machine Code: **$machineCode**' : '';
+  final status = error is DioException ? error.response?.statusCode : null;
+  final String message;
+  if (status == 401 || status == 403) {
+    message =
+        '⚠️ **Phiên đăng nhập đã hết hạn.** Vui lòng đăng nhập lại trước khi phân tích ảnh.';
+  } else if (error is DioException &&
+      (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout)) {
+    message =
+        '⚠️ **Không thể kết nối dịch vụ phân tích ảnh.** Vui lòng kiểm tra backend và AI service rồi thử lại.';
+  } else {
+    message =
+        '⚠️ **Phân tích ảnh thất bại.** Máy chủ không trả về kết quả hợp lệ; vui lòng thử lại.';
+  }
   return AnswerResult(
-    answer:
-        '⚠️ **Offline Analysis (Mock)** — AI service temporarily unavailable$machineTag.\n\n'
-        '**File:** `$fileName`\n\n'
-        '**Technical OCR (simulated):**\n'
-        '| Parameter | Value |\n'
-        '|---|---|\n'
-        '| Component | Servo Driver MR-J4-10A |\n'
-        '| Input Voltage | 200–230 VAC ±10% |\n'
-        '| Rated Current | 3.5 A |\n'
-        '| Operating Temp | 0°C – 55°C |\n\n'
-        '**Suggestion for question:** "$question"\n\n'
-        'Check backend connection (`dcid-ai` port 8000) and LM Studio (port 1234). '
-        'If the service is ready, try your question again — the answer will come from the real LLM.',
+    answer: '$message$machineTag\n\n**File:** `$fileName`\n\n'
+        'Không có dữ liệu OCR hoặc thông số kỹ thuật nào được tạo giả.',
     confidence: 0.0,
-    locked: false,
+    locked: true,
     numericRule: false,
     reasoningMode: false,
+    isOfflineFallback: true,
     citations: [],
   );
 }
@@ -182,6 +188,10 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   // ── Q&A ──────────────────────────────────────────────────────────────────
 
   Future<void> _askQuestion() async {
+    // Keyboard submit and send-button tap can arrive in the same frame on web.
+    // Guard before reading state so one user action creates at most one request.
+    if (_isAsking) return;
+
     final snapState = ref.read(snapProvider);
     final snapIndex = snapState.selectedIndex;
     final snap = snapState.selectedSnap;
@@ -235,9 +245,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
       );
     } catch (e) {
       finalAnswer = _buildFallbackAnswer(
-        question,
         snap.fileName,
         machineCode.isNotEmpty ? machineCode : null,
+        e,
       );
       isError = true;
     }
