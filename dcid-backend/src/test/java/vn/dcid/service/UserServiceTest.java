@@ -38,6 +38,9 @@ class UserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private AuditLogService auditLogService;
+
     @InjectMocks
     private UserService userService;
 
@@ -74,6 +77,7 @@ class UserServiceTest {
         assertEquals("newuser", dto.username());
         assertEquals("OPERATOR", dto.role());
         verify(userRepository).save(any(User.class));
+        verify(auditLogService).log(any(), eq("USER_CREATED"), eq("USER"), any(), isNull(), any());
     }
 
     @Test
@@ -107,6 +111,7 @@ class UserServiceTest {
 
         assertEquals("Updated Name", dto.fullName());
         assertEquals("QA_ADMIN", dto.role());
+        verify(auditLogService).log(any(), eq("USER_UPDATED"), eq("USER"), eq(sampleId), isNull(), any());
     }
 
     @Test
@@ -119,6 +124,7 @@ class UserServiceTest {
 
         verify(userRepository).save(sampleUser);
         assertEquals("newHashedPass", sampleUser.getPasswordHash());
+        verify(auditLogService).log(any(), eq("USER_PASSWORD_RESET"), eq("USER"), eq(sampleId), isNull(), any());
     }
 
     @Test
@@ -130,5 +136,6 @@ class UserServiceTest {
         UserProfileDTO dto = userService.updateUserStatus(sampleId, req);
 
         assertFalse(dto.isActive());
+        verify(auditLogService).log(any(), eq("USER_STATUS_CHANGE"), eq("USER"), eq(sampleId), isNull(), any());
     }
 }
