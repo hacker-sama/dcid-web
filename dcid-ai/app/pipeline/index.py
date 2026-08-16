@@ -7,6 +7,7 @@ ingestion and query callers do not need database-specific code.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import unicodedata
 from functools import lru_cache
