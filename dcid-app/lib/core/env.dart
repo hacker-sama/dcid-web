@@ -12,10 +12,10 @@ class Env {
 
   static String get wsBaseUrl {
     if (apiBaseUrl.startsWith('https://')) {
-      return 'wss://${apiBaseUrl.substring(8)}/ws/websocket';
+      return 'wss://${apiBaseUrl.substring(8)}/ws';
     } else if (apiBaseUrl.startsWith('http://')) {
-      return 'ws://${apiBaseUrl.substring(7)}/ws/websocket';
+      return 'ws://${apiBaseUrl.substring(7)}/ws';
     }
-    return 'wss://dcid.tech/ws/websocket';
+    return 'wss://dcid.tech/ws';
   }
 }
