@@ -17,5 +17,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     Page<Document> findByCategory(DocumentCategory category, Pageable pageable);
 
     Page<Document> findByMinRoleIn(java.util.Collection<vn.dcid.domain.enums.UserRole> minRoles, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT d.category, COUNT(d) FROM Document d GROUP BY d.category")
+    java.util.List<Object[]> countDocumentsGroupedByCategory();
 }
 

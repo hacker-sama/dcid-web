@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     # Avoid loading the ~700 MiB SentenceTransformer in the query API. Ingest
     # still creates embeddings; selected-document queries use lexical ranking.
     low_memory_query_mode: bool = True
+    hybrid_retrieval_enabled: bool = True
+    hybrid_alpha: float = 0.70
 
     # ── Redis / Celery (async task queue) ─────────────────────────────────────
     # service `redis` trong docker-compose.yml (port nội bộ 6379)

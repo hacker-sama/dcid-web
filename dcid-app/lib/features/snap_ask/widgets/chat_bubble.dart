@@ -101,7 +101,7 @@ class ChatBubble extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Inline header: icon + "Smart KCN Docs"
+              // Inline header: icon + "DCID Docs"
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -126,7 +126,7 @@ class ChatBubble extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Smart KCN Docs',
+                    'DCID Docs',
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
@@ -198,7 +198,7 @@ class ChatBubble extends StatelessWidget {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    'AI Knowledge Base  •  Smart KCN',
+                    'AI Knowledge Base  •  DCID',
                     style: TextStyle(
                       fontSize: 10.5,
                       color: scheme.onSurface.withValues(alpha: 0.35),

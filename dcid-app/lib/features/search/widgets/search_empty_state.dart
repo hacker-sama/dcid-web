@@ -103,7 +103,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
 
             // Bold title
             Text(
-              'Smart KCN Docs',
+              'DCID Docs',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.displayMedium?.copyWith(
                     fontWeight: FontWeight.w800,

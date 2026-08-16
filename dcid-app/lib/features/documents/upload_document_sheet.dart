@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/ingest_progress_provider.dart';
 import '../../state/providers.dart';
 import 'widgets/upload_document_form.dart';
 
@@ -98,6 +99,9 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
             fileBytes: _fileBytes!,
             fileName: _fileName ?? 'document.pdf',
           );
+      if (detail.versions.isNotEmpty) {
+        ref.read(ingestProgressProvider.notifier).track(detail.versions.first.id);
+      }
       if (mounted) Navigator.of(context).pop(detail.document.id);
     } catch (e) {
       if (mounted) {

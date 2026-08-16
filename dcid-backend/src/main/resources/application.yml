@@ -1,6 +1,6 @@
 spring:
   application:
-    name: smart-kcn-docs-backend
+    name: dcid-backend
   servlet:
     multipart:
       max-file-size: ${MAX_UPLOAD_SIZE:50MB}
@@ -43,7 +43,7 @@ app:
     # HMAC-SHA256 secret (>= 32 bytes). MUST be overridden per environment via APP_JWT_SECRET.
     secret: ${APP_JWT_SECRET:change-me-dev-secret-please-override-32b+}
     expiration-ms: ${APP_JWT_EXPIRATION_MS:28800000}   # 8h
-    issuer: ${APP_JWT_ISSUER:smart-kcn-docs}
+    issuer: ${APP_JWT_ISSUER:dcid-backend}
   bootstrap:
     admin-username: ${APP_BOOTSTRAP_ADMIN_USERNAME:admin}
     admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:admin123}

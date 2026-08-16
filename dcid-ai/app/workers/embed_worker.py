@@ -143,6 +143,16 @@ def run_ingest_task(
             task_id, version_id, chunk_count,
         )
 
+        # ── Data Quality Gate ─────────────────────────────────────────────────
+        # Nếu không trích xuất được chunk nào sau OCR → file không dùng được.
+        # Raise ngay để worker FAILED + callback về BE, thay vì READY với 0 chunks
+        # (version bị index rỗng → query luôn trả confidence 0.0, gây nhầm lẫn).
+        if chunk_count == 0:
+            raise ValueError(
+                f"Không trích xuất được nội dung từ tài liệu (0 chunks sau {page_count} trang OCR). "
+                "Kiểm tra lại file: PDF bị mã hóa, scan chất lượng thấp, hoặc nội dung không phải văn bản."
+            )
+
         # ── Bước 3: Embed ────────────────────────────────────────────────────
         embeddings = embed_pipeline.embed_texts(texts)
         logger.info(

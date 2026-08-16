@@ -1,0 +1,16 @@
+# .understandignore — phạm vi phân tích dịch vụ AI
+# Test SNAP/ASL được giữ lại để đánh giá hành vi và độ tin cậy.
+
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.env
+chroma_db/
+uploads/
+*.pyc
+*.log
+
+# Dữ liệu đánh giá sinh ra, không phải mã nguồn.
+penalty_comparison*.json
+raw_inspect.json

@@ -50,3 +50,9 @@ vision_worker:
   render_dpi: 200
   max_side_pixels: 2400
   min_drawing_area_pixels: 10000  # Vùng ảnh tối thiểu để trigger Qwen2-VL
+
+retrieval:
+  use_hybrid: true
+  hybrid_alpha: 0.70   # Trọng số Dense vector (0.70 dense + 0.30 BM25)
+  bm25_k1: 1.5
+  bm25_b: 0.75

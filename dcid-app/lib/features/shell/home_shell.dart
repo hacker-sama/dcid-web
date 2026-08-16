@@ -124,7 +124,7 @@ class HomeShell extends ConsumerWidget {
                   size: 20, color: colorScheme.primary),
               const SizedBox(width: 8),
               const Text(
-                'Smart KCN Docs',
+                'DCID Docs',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
             ],

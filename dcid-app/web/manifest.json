@@ -1,11 +1,11 @@
 {
-    "name": "dcid_app",
-    "short_name": "dcid_app",
+    "name": "DCID: Digital Cognitive InDustrial System",
+    "short_name": "DCID",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0F172A",
+    "theme_color": "#0284C7",
+    "description": "DCID: Digital Cognitive InDustrial System — On-premise industrial knowledge assistant & document governance platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

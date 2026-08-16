@@ -1,1 +1,1 @@
-"""dcid-ai — AI plane của Smart KCN Docs (skeleton, contract v1)."""
+"""dcid-ai — AI plane của DCID: Digital Cognitive InDustrial System (skeleton, contract v1)."""

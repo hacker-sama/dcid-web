@@ -1,4 +1,4 @@
-# Smart KCN Docs — Frontend (Flutter, đa nền tảng)
+# DCID: Digital Cognitive InDustrial System — Frontend (Flutter, đa nền tảng)
 
 > Đọc kèm [`ARCHITECTURE.md`](ARCHITECTURE.md) và [`ROADMAP.md`](ROADMAP.md).
 > **Quyết định đã chốt (cập nhật 02/07/2026):** **Flutter-only** — MỘT project `dcid-app`, 1 codebase Dart,

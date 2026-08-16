@@ -96,7 +96,7 @@ class UploadDocumentForm extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Add SOPs, drawings, manuals or specs to Smart KCN Docs',
+                      'Add SOPs, drawings, manuals or specs to DCID',
                       style: TextStyle(
                         fontSize: 12,
                         color: scheme.onSurface.withValues(alpha: 0.55),

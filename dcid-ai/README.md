@@ -1,6 +1,6 @@
 # dcid-ai — AI plane
 
-FastAPI service cho **Smart KCN Docs**. Đúng contract [`docs/API-CONTRACT.md`](../docs/API-CONTRACT.md).
+FastAPI service cho **DCID: Digital Cognitive InDustrial System**. Đúng contract [`docs/API-CONTRACT.md`](../docs/API-CONTRACT.md).
 **Kiến trúc mô-đun hóa `src/` mới nhất** tích hợp RAG đa phương thức, Qdrant persistent vector DB, Celery/Redis workers và SSE streaming.
 
 ## Chạy local (Windows, Python 3.11+)

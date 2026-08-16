@@ -55,7 +55,7 @@ jobs:
           flutter pub get
           flutter build web --release \
             --dart-define=USE_MOCK_DATA=false \
-            --dart-define=API_BASE_URL=https://160.250.132.20.sslip.io
+            --dart-define=API_BASE_URL=https://dcid.tech
 
   # ─────────────────────────────────────────────────────────────
   # 3. AI Python: lint cơ bản (lỗi cú pháp + import không dùng)

@@ -15,8 +15,8 @@
     <groupId>vn.dcid</groupId>
     <artifactId>dcid-backend</artifactId>
     <version>1.0.0</version>
-    <name>Smart KCN Docs Backend</name>
-    <description>Smart KCN Docs - On-premise governance/control plane for industrial document assistant</description>
+    <name>DCID: Digital Cognitive InDustrial System Backend</name>
+    <description>DCID - On-premise governance/control plane for industrial document assistant</description>
 
     <properties>
         <java.version>21</java.version>
