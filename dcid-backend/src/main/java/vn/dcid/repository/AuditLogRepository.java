@@ -19,6 +19,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
     Page<AuditLog> findByResourceTypeAndResourceIdOrderByCreatedAtDesc(String resourceType, UUID resourceId, Pageable pageable);
 
+    Page<AuditLog> findByActionAndCreatedAtAfter(String action, Instant since, Pageable pageable);
+
+    Page<AuditLog> findByCreatedAtAfter(Instant since, Pageable pageable);
+
     @Query("SELECT a FROM AuditLog a WHERE a.createdAt BETWEEN :start AND :end ORDER BY a.createdAt DESC")
     List<AuditLog> findByCreatedAtBetween(@Param("start") Instant start, @Param("end") Instant end);
 }
+
