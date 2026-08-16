@@ -15,8 +15,9 @@ torchvision==0.18.1+cpu
 # --- Embedding pipeline (app/pipeline/embed.py) ---
 sentence-transformers>=3.0,<4.0
 
-# --- Vector index (app/pipeline/index.py) ---
+# --- Vector index & Retrieval (app/pipeline/index.py, bm25.py) ---
 qdrant-client>=1.15,<1.17
+rank-bm25>=0.2,<1.0
 
 # --- LLM client — OpenAI-compatible, dùng cho LM Studio local server ---
 openai>=1.40,<2.0

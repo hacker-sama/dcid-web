@@ -10,7 +10,7 @@
 
 ## 1. Bối cảnh (đọc 1 phút)
 
-Monorepo `dcid-web` là đồ án **Smart KCN Docs** — hệ thống hỏi–đáp (RAG) tài liệu kỹ thuật cơ khí,
+Monorepo `dcid-web` là hệ thống **DCID: Digital Cognitive InDustrial System** — hệ thống hỏi–đáp (RAG) tài liệu kỹ thuật cơ khí,
 chạy on-premise. Kiến trúc 2 mặt phẳng:
 
 - `dcid-backend/` (Spring Boot, **ĐÃ XONG phần liên quan**): auth JWT, RBAC, upload PDF vào MinIO,

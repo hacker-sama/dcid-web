@@ -28,23 +28,36 @@ public class IngestService {
 
     private final DocumentVersionRepository versionRepository;
     private final DocumentPageRepository pageRepository;
+    private final vn.dcid.repository.GuestDocumentRepository guestDocumentRepository;
     private final AuditLogService auditLogService;
     private final SimpMessagingTemplate messagingTemplate;
 
     public IngestService(DocumentVersionRepository versionRepository,
                          DocumentPageRepository pageRepository,
+                         vn.dcid.repository.GuestDocumentRepository guestDocumentRepository,
                          AuditLogService auditLogService,
                          SimpMessagingTemplate messagingTemplate) {
         this.versionRepository = versionRepository;
         this.pageRepository = pageRepository;
+        this.guestDocumentRepository = guestDocumentRepository;
         this.auditLogService = auditLogService;
         this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional
     public void handleCallback(IngestCallbackRequest req) {
-        DocumentVersion version = versionRepository.findById(req.versionId())
-                .orElseThrow(() -> new NotFoundException("DocumentVersion", req.versionId().toString()));
+        var optVersion = versionRepository.findById(req.versionId());
+        if (optVersion.isEmpty()) {
+            // Check if this is a GuestDocument
+            var optGuestDoc = guestDocumentRepository.findById(req.versionId());
+            if (optGuestDoc.isPresent()) {
+                handleGuestCallback(optGuestDoc.get(), req);
+                return;
+            }
+            throw new NotFoundException("DocumentVersion or GuestDocument", req.versionId().toString());
+        }
+
+        DocumentVersion version = optVersion.get();
 
         if ("FAILED".equals(req.status())) {
             version.setStatus(VersionStatus.FAILED);
@@ -91,5 +104,27 @@ public class IngestService {
                 version.getId(), null, null);
         messagingTemplate.convertAndSend("/topic/ingest/" + version.getId(),
                 new IngestProgressMessage(version.getId(), "READY", 100, "Xử lý thành công"));
+    }
+
+    private void handleGuestCallback(vn.dcid.domain.entity.GuestDocument guestDoc, IngestCallbackRequest req) {
+        if ("FAILED".equals(req.status())) {
+            guestDoc.setStatus(vn.dcid.domain.enums.GuestDocumentStatus.FAILED);
+            guestDoc.setErrorMessage(req.error());
+            guestDocumentRepository.save(guestDoc);
+            log.warn("Ingest FAILED cho guest doc {}: {}", guestDoc.getId(), req.error());
+            messagingTemplate.convertAndSend("/topic/ingest/" + guestDoc.getId(),
+                    new IngestProgressMessage(guestDoc.getId(), "FAILED", 0, req.error()));
+            return;
+        }
+
+        List<IngestCallbackRequest.PageInfo> pages = req.pages() != null ? req.pages() : List.of();
+        guestDoc.setStatus(vn.dcid.domain.enums.GuestDocumentStatus.READY);
+        guestDoc.setPageCount(req.pageCount() != null ? req.pageCount() : pages.size());
+        guestDoc.setErrorMessage(null);
+        guestDocumentRepository.save(guestDoc);
+
+        log.info("Ingest READY cho guest doc {} ({} trang)", guestDoc.getId(), guestDoc.getPageCount());
+        messagingTemplate.convertAndSend("/topic/ingest/" + guestDoc.getId(),
+                new IngestProgressMessage(guestDoc.getId(), "READY", 100, "Xử lý thành công"));
     }
 }

@@ -6,7 +6,7 @@ import 'core/theme.dart';
 import 'state/theme_controller.dart';
 
 /// Root widget. Wires the go_router instance (which reacts to auth state)
-/// into a Material 3 app with the Smart Industrial dual theme.
+/// into a Material 3 app with the DCID Industrial dual theme.
 class DcidApp extends ConsumerWidget {
   const DcidApp({super.key});
 
@@ -19,7 +19,7 @@ class DcidApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title: 'Smart KCN Docs',
+      title: 'DCID: Digital Cognitive InDustrial System',
       debugShowCheckedModeBanner: false,
       theme: _lightTheme,
       darkTheme: _darkTheme,

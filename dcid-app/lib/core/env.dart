@@ -7,4 +7,13 @@ class Env {
 
   static const String apiBaseUrl =
       String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8080');
+
+  static String get wsBaseUrl {
+    if (apiBaseUrl.startsWith('https://')) {
+      return 'wss://${apiBaseUrl.substring(8)}/ws/websocket';
+    } else if (apiBaseUrl.startsWith('http://')) {
+      return 'ws://${apiBaseUrl.substring(7)}/ws/websocket';
+    }
+    return 'ws://localhost:8080/ws/websocket';
+  }
 }

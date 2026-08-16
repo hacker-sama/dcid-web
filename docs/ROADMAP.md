@@ -1,4 +1,4 @@
-# Smart KCN Docs — Roadmap (cập nhật 06/08/2026)
+# DCID: Digital Cognitive InDustrial System — Roadmap (cập nhật 06/08/2026)
 
 > Dựa trực tiếp trên **code thực tế** trong repo (commit hiện tại) + tài liệu `PLAN-THESIS.md`,
 > `ARCHITECTURE.md`, `API-CONTRACT.md`, `ERD.md`, `FRONTEND.md`.

@@ -1,6 +1,6 @@
 # Sơ Đồ Kiến Trúc Chuẩn (Phông Màu Đen - Dark Theme): OCR Bóc Tách Hình Ảnh → AI Model Local Suy Luận
 
-Tài liệu này thể hiện đúng mục đích cốt lõi của hệ thống **Smart KCN Docs**: **OCR làm nhiệm vụ bóc tách hình ảnh/bản vẽ kỹ thuật thành thông số, sau đó gửi trực tiếp về AI Model Local (LM Studio / Qwen 1.5B) để thực hiện suy luận chuyên sâu và trả lời câu hỏi cầm tay chỉ việc cho kỹ sư.**  
+Tài liệu này thể hiện đúng mục đích cốt lõi của hệ thống **DCID: Digital Cognitive InDustrial System**: **OCR làm nhiệm vụ bóc tách hình ảnh/bản vẽ kỹ thuật thành thông số, sau đó gửi trực tiếp về AI Model Local (LM Studio / Qwen 1.5B) để thực hiện suy luận chuyên sâu và trả lời câu hỏi cầm tay chỉ việc cho kỹ sư.**  
 *(Đã chuẩn hóa phông màu đen tối ưu độ tương phản cao, dễ nhìn cho reviewer).*
 
 ---

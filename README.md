@@ -1,9 +1,9 @@
-# Smart KCN Docs
+# DCID: Digital Cognitive InDustrial System
 
 [![CI](https://github.com/hacker-sama/dcid-web/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/hacker-sama/dcid-web/actions/workflows/ci.yml)
 [![Deploy](https://github.com/hacker-sama/dcid-web/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/hacker-sama/dcid-web/actions/workflows/deploy.yml)
 
-Trợ lý kỹ thuật số & quản trị tri thức **on-premise** cho khu công nghiệp (KCN).
+Hệ thống trợ lý nhận thức kỹ thuật số & quản trị tri thức công nghiệp **on-premise** (**DCID: Digital Cognitive InDustrial System**).
 
 Monorepo:
 

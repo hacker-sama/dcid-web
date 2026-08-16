@@ -112,20 +112,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                           // Header Title & Subtitle
                           Text(
-                            'Smart KCN Docs',
+                            'DCID',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: scheme.onSurface,
+                                  letterSpacing: 0.5,
                                 ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Digital Cognitive InDustrial System',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.primary,
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'Sign in to access industrial documents & AI assistant',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12.5,
                               color: scheme.onSurfaceVariant,
                             ),
                           ),

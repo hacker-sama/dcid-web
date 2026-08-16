@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Brand design tokens — Smart Industrial palette
+// Brand design tokens — DCID Industrial palette
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Primary accent — Electric Cyan/Teal (dark mode buttons, AI glows, chips).

@@ -1,6 +1,6 @@
-# dcid-app — Smart KCN Docs (Flutter)
+# dcid-app — DCID: Digital Cognitive InDustrial System (Flutter)
 
-Frontend đa nền tảng cho Smart KCN Docs, 1 codebase Dart, 2 target:
+Frontend đa nền tảng cho hệ thống DCID: Digital Cognitive InDustrial System, 1 codebase Dart, 2 target:
 **Mobile (Android — Snap & Ask hiện trường)** và **Web (trình duyệt — Kiosk + Admin/QA console)**.
 Xem kiến trúc đầy đủ + lý do chọn Web thay vì app desktop native ở
 [`../docs/FRONTEND.md`](../docs/FRONTEND.md) §0.1.

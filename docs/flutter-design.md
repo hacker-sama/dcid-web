@@ -1,6 +1,6 @@
 ---
 name: dcid-web-layout-density
-description: Bắt buộc dùng skill này bất cứ khi nào viết, sửa, hoặc review một màn hình Flutter trong dự án dcid-app (Smart KCN Docs) có target build web (kiosk/admin), đặc biệt các màn của vai QA_ADMIN/ADMIN (danh sách tài liệu, quản lý version, audit log, dashboard). Cũng trigger khi user phàn nàn UI Flutter web "phình to", "trông như app mobile phóng to", "không đẹp bằng React", "quá nhiều khoảng trắng", hoặc khi tạo mới bất kỳ list/table/toolbar/FAB nào sẽ hiển thị trên breakpoint desktop. Áp dụng cả khi user không nói rõ "responsive" — nếu file đang sửa nằm trong lib/features/ và render trên web target, hãy tự kiểm tra theo skill này trước khi coi task là hoàn thành.
+description: Bắt buộc dùng skill này bất cứ khi nào viết, sửa, hoặc review một màn hình Flutter trong dự án dcid-app (DCID: Digital Cognitive InDustrial System) có target build web (kiosk/admin), đặc biệt các màn của vai QA_ADMIN/ADMIN (danh sách tài liệu, quản lý version, audit log, dashboard). Cũng trigger khi user phàn nàn UI Flutter web "phình to", "trông như app mobile phóng to", "không đẹp bằng React", "quá nhiều khoảng trắng", hoặc khi tạo mới bất kỳ list/table/toolbar/FAB nào sẽ hiển thị trên breakpoint desktop. Áp dụng cả khi user không nói rõ "responsive" — nếu file đang sửa nằm trong lib/features/ và render trên web target, hãy tự kiểm tra theo skill này trước khi coi task là hoàn thành.
 ---
 
 # dcid-app — Flutter Web Layout & Density

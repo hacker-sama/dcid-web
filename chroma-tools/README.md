@@ -1,6 +1,6 @@
 # ChromaDB Tools & Inspector
 
-Thư mục dành riêng để kiểm tra, giám sát, tải tài liệu và xác minh dữ liệu vector trong **ChromaDB (`kcn_chunks`)** của hệ thống Smart KCN Docs.
+Thư mục dành riêng để kiểm tra, giám sát, tải tài liệu và xác minh dữ liệu vector trong **ChromaDB (`kcn_chunks`)** của hệ thống **DCID: Digital Cognitive InDustrial System**.
 
 ## Danh sách công cụ
 

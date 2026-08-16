@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/health",
                                 "/api/auth/login",
+                                "/api/public/**",
                                 // Nội bộ BE↔AI: không dùng JWT, tự kiểm X-Internal-Token trong controller
                                 "/api/internal/**",
                                 "/actuator/prometheus",

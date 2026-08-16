@@ -1,6 +1,6 @@
-# Smart KCN Docs — Kiến trúc dự án (đề xuất)
+# DCID: Digital Cognitive InDustrial System — Kiến trúc dự án (đề xuất)
 
-> Trợ lý kỹ thuật số & quản trị tri thức **on-premise** cho khu công nghiệp.
+> Trợ lý kỹ thuật số & quản trị tri thức **on-premise** cho khu công nghiệp (DCID).
 > Tài liệu này là bản đề xuất kiến trúc thực tế, bám theo Business Case và **tái sử dụng tối đa**
 > hạ tầng Spring Boot sẵn có trong repo.
 

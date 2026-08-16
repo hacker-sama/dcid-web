@@ -402,7 +402,7 @@ class _MessageBubble extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Inline header: small icon + "Smart KCN Docs" title
+        // Inline header: small icon + "DCID Docs" title
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -427,7 +427,7 @@ class _MessageBubble extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'Smart KCN Docs',
+              'DCID Docs',
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
@@ -497,7 +497,7 @@ class _MessageBubble extends StatelessWidget {
 
         const SizedBox(height: 6),
 
-        // Muted "AI Knowledge Base • Smart KCN" metadata chip
+        // Muted "AI Knowledge Base • DCID" metadata chip
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -508,7 +508,7 @@ class _MessageBubble extends StatelessWidget {
             ),
             const SizedBox(width: 5),
             Text(
-              'AI Knowledge Base  •  Smart KCN',
+              'AI Knowledge Base  •  DCID',
               style: TextStyle(
                 fontSize: 10.5,
                 color: colorScheme.onSurface.withValues(alpha: 0.35),

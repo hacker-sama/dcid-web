@@ -24,7 +24,7 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("Smart KCN Docs API")
+                        .title("DCID: Digital Cognitive InDustrial System API")
                         .description("On-premise governance/control plane for the industrial document assistant")
                         .version("1.0.0")
                         .license(new License().name("MIT").url("https://opensource.org/licenses/MIT")))
