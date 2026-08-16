@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/user_role.dart';
 import '../../state/providers.dart';
+import 'analytics_view.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});
@@ -345,23 +346,36 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         .where((u) => u.role == UserRole.admin || u.role == UserRole.qaAdmin)
         .length;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('System & Account Management'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchUsers,
-            tooltip: 'Refresh',
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Admin Management & Analytics'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.people_alt_rounded), text: 'User Accounts'),
+              Tab(icon: Icon(Icons.analytics_rounded), text: 'System Analytics'),
+            ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                _fetchUsers();
+                ref.invalidate(analyticsFutureProvider);
+              },
+              tooltip: 'Refresh',
+            ),
+          ],
+        ),
+        body: TabBarView(
           children: [
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
             // ── 1. Overview Stat Cards Row ──────────────────────────────
             LayoutBuilder(
               builder: (context, constraints) {
@@ -810,11 +824,15 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+      const AnalyticsView(),
+    ],
+  ),
+),
+);
 }
 }
 

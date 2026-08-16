@@ -1,4 +1,4 @@
-"""Prompt Templates cho Smart KCN Docs — RAG Query Pipeline.
+"""Prompt Templates cho DCID — RAG Query Pipeline.
 
 Thiết kế cho model nhỏ (1.5B–2B, hỗ trợ cả Text LLM lẫn Vision VLM như Qwen2-VL): prompt ngắn gọn, rõ ràng,
 KHÔNG cho phép hallucination (bịa đặt) khi context là OCR rác hoặc không đủ thông tin.

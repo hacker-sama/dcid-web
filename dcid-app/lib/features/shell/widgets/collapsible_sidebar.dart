@@ -223,7 +223,7 @@ class CollapsibleSidebar extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Smart KCN',
+                          'DCID',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

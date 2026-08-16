@@ -1,4 +1,4 @@
-"""Query Service — RAG Pipeline Orchestrator cho Smart KCN Docs.
+"""Query Service — RAG Pipeline Orchestrator cho DCID.
 
 Luồng xử lý (theo contract §2.2):
     1. Embed câu hỏi bằng multilingual-e5-small (prefix "query: ").
@@ -310,6 +310,44 @@ def _prepare_uploaded_image(req: QueryRequest, *, stream: bool = False) -> tuple
         return None, image_text
 
 
+def _retrieve_hits(
+    req: QueryRequest,
+    query_vec: list[float],
+    low_memory_query: bool,
+    settings,
+) -> list[dict[str, Any]]:
+    """Execute hybrid BM25 + Dense or Lexical retrieval based on settings."""
+    if not req.allowedVersionIds:
+        return []
+    if low_memory_query:
+        return index_pipeline.search_selected_text(
+            question=req.question,
+            allowed_version_ids=req.allowedVersionIds,
+            top_k=req.topK,
+            machine_code=req.machineCode,
+        )
+
+    hybrid_enabled = getattr(settings, "hybrid_retrieval_enabled", True)
+    alpha = getattr(settings, "hybrid_alpha", 0.70)
+
+    if hybrid_enabled:
+        return index_pipeline.search_hybrid(
+            query_embedding=query_vec,
+            question=req.question,
+            allowed_version_ids=req.allowedVersionIds,
+            top_k=req.topK,
+            machine_code=req.machineCode,
+            alpha=alpha,
+        )
+    else:
+        return index_pipeline.search(
+            query_embedding=query_vec,
+            allowed_version_ids=req.allowedVersionIds,
+            top_k=req.topK,
+            machine_code=req.machineCode,
+        )
+
+
 def run_query(req: QueryRequest) -> QueryResponse:
     """Thực thi RAG pipeline đầy đủ cho một câu hỏi.
 
@@ -349,24 +387,10 @@ def run_query(req: QueryRequest) -> QueryResponse:
                 model="error-embed",
             )
 
-    # ── 2. Truy vấn Qdrant ───────────────────────────────────────────────────
+    # ── 2. Truy vấn Qdrant (Hybrid BM25 + Dense / Lexical) ───────────────────
     try:
-        if not req.allowedVersionIds:
-            hits = []
-        elif low_memory_query:
-            hits = index_pipeline.search_selected_text(
-                question=req.question,
-                allowed_version_ids=req.allowedVersionIds,
-                top_k=req.topK,
-                machine_code=req.machineCode,
-            )
-        else:
-            hits = index_pipeline.search(
-                query_embedding=query_vec,
-                allowed_version_ids=req.allowedVersionIds,
-                top_k=req.topK,
-                machine_code=req.machineCode,
-            )
+        settings = get_settings()
+        hits = _retrieve_hits(req, query_vec, low_memory_query, settings)
     except Exception as exc:
         logger.error("Qdrant search thất bại: %s", exc)
         return _locked_response(
@@ -651,24 +675,10 @@ def run_query_stream(req: QueryRequest):
             yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-embed")
             return
 
-    # ── 2. Truy vấn Qdrant ───────────────────────────────────────────────────
+    # ── 2. Truy vấn Qdrant (Hybrid BM25 + Dense / Lexical) ───────────────────
     try:
-        if not req.allowedVersionIds:
-            hits = []
-        elif low_memory_query:
-            hits = index_pipeline.search_selected_text(
-                question=req.question,
-                allowed_version_ids=req.allowedVersionIds,
-                top_k=req.topK,
-                machine_code=req.machineCode,
-            )
-        else:
-            hits = index_pipeline.search(
-                query_embedding=query_vec,
-                allowed_version_ids=req.allowedVersionIds,
-                top_k=req.topK,
-                machine_code=req.machineCode,
-            )
+        settings = get_settings()
+        hits = _retrieve_hits(req, query_vec, low_memory_query, settings)
     except Exception as exc:
         logger.error("Qdrant search thất bại (stream): %s", exc)
         yield _sse("error", message="Lỗi tìm kiếm tài liệu.")

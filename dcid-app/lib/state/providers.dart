@@ -6,6 +6,8 @@ import '../data/auth_repository.dart';
 import '../data/auth_repository_interface.dart';
 import '../data/docs_repository.dart';
 import '../data/docs_repository_interface.dart';
+import '../data/analytics_repository.dart';
+import '../data/models/analytics_summary.dart';
 
 import '../data/offline_cache_repository.dart';
 
@@ -38,3 +40,12 @@ final docsRepositoryProvider = Provider<IDocsRepository>(
     ref.watch(secureStorageProvider),
   ),
 );
+
+final analyticsRepositoryProvider = Provider<AnalyticsRepositoryInterface>(
+  (ref) => AnalyticsRepository(ref.watch(apiClientProvider)),
+);
+
+final analyticsFutureProvider = FutureProvider.autoDispose<AnalyticsSummary>((ref) {
+  final repo = ref.watch(analyticsRepositoryProvider);
+  return repo.getAnalytics();
+});

@@ -114,6 +114,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
+          timeout: 60s
+          command_timeout: 15m
           # script_stop: false — tự xử lý lỗi thủ công để có thể rollback
           script_stop: false
           script: |
@@ -132,10 +134,10 @@ jobs:
             echo "Commit mới    : ${{ github.sha }}"
 
             echo "━━━ [2/6] Pull code mới ━━━"
-            # reset --hard đảm bảo VPS luôn khớp với remote main,
-            # dù hiện tại đang ở nhánh nào hay có commit lịch sử gì
-            git fetch origin main
-            git checkout -B main origin/main
+            # Fetch đúng nhánh đã trigger workflow (github.ref = refs/heads/main hoặc nhánh hiện tại)
+            # Đảm bảo github.sha tồn tại trên VPS trước khi checkout
+            git fetch origin ${{ github.ref }}
+            git checkout -f ${{ github.sha }}
 
             echo "━━━ [3/6] Build Docker images ━━━"
             # Layer caching Docker — không dùng --no-cache để nhanh hơn
@@ -192,7 +194,7 @@ jobs:
             echo "### ✅ Deploy thành công" >> $GITHUB_STEP_SUMMARY
             echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- Người deploy: @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-            echo "- URL: https://160.250.132.20.sslip.io" >> $GITHUB_STEP_SUMMARY
+            echo "- URL: https://dcid.tech" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ❌ Deploy thất bại — đã rollback" >> $GITHUB_STEP_SUMMARY
             echo "- Commit lỗi: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

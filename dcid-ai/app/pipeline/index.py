@@ -226,6 +226,11 @@ def upsert_chunks(
         points=points,
         wait=True,
     )
+    try:
+        from app.pipeline.bm25 import invalidate_cache
+        invalidate_cache(str(version_id))
+    except Exception:
+        pass
     logger.info("Qdrant upsert OK: versionId=%s chunks=%d", version_id, len(points))
 
 
@@ -248,6 +253,90 @@ def search(
         with_vectors=False,
     )
     return [_payload_to_hit(point.payload or {}, point.score) for point in result.points]
+
+
+def search_hybrid(
+    query_embedding: list[float] | None,
+    question: str,
+    allowed_version_ids: list[UUID],
+    top_k: int = 5,
+    machine_code: str | None = None,
+    alpha: float = 0.70,
+) -> list[dict[str, Any]]:
+    """Combine dense semantic vectors and BM25 exact lexical matching with score fusion."""
+    if not allowed_version_ids:
+        return []
+
+    try:
+        from app.pipeline.bm25 import search_bm25
+    except ImportError:
+        if query_embedding:
+            return search(query_embedding, allowed_version_ids, top_k, machine_code)
+        return search_selected_text(question, allowed_version_ids, top_k, machine_code)
+
+    dense_hits: list[dict[str, Any]] = []
+    if query_embedding:
+        try:
+            dense_hits = search(
+                query_embedding=query_embedding,
+                allowed_version_ids=allowed_version_ids,
+                top_k=top_k * 2,
+                machine_code=machine_code,
+            )
+        except Exception as exc:
+            logger.warning("Dense search in hybrid retrieval failed: %s", exc)
+
+    bm25_hits: list[dict[str, Any]] = []
+    try:
+        bm25_hits = search_bm25(
+            question=question,
+            allowed_version_ids=allowed_version_ids,
+            top_k=top_k * 2,
+            machine_code=machine_code,
+        )
+    except Exception as exc:
+        logger.warning("BM25 search in hybrid retrieval failed: %s", exc)
+
+    if not dense_hits and not bm25_hits:
+        return []
+    if not dense_hits:
+        return bm25_hits[:top_k]
+    if not bm25_hits:
+        return dense_hits[:top_k]
+
+    fused: dict[str, dict[str, Any]] = {}
+    for hit in dense_hits:
+        key = f"{hit.get('version_id')}_{hit.get('page_no')}_{hit.get('chunk_index')}"
+        h = dict(hit)
+        h["dense_score"] = hit.get("score", 0.0)
+        h["bm25_score"] = 0.0
+        fused[key] = h
+
+    for hit in bm25_hits:
+        key = f"{hit.get('version_id')}_{hit.get('page_no')}_{hit.get('chunk_index')}"
+        if key in fused:
+            fused[key]["bm25_score"] = hit.get("score", 0.0)
+            if hit.get("bm25_raw_score") is not None:
+                fused[key]["bm25_raw_score"] = hit["bm25_raw_score"]
+        else:
+            h = dict(hit)
+            h["dense_score"] = 0.0
+            h["bm25_score"] = hit.get("score", 0.0)
+            fused[key] = h
+
+    for h in fused.values():
+        d_s = h.get("dense_score", 0.0)
+        b_s = h.get("bm25_score", 0.0)
+        if d_s > 0 and b_s > 0:
+            combined = alpha * d_s + (1.0 - alpha) * b_s
+            combined = min(0.99, combined + 0.04)
+        else:
+            combined = d_s if d_s > 0 else b_s
+        h["score"] = round(max(0.0, min(1.0, combined)), 4)
+
+    result = list(fused.values())
+    result.sort(key=lambda item: (-item["score"], item.get("page_no") or 0, item.get("chunk_index") or 0))
+    return result[:top_k]
 
 
 def _tokens(value: str) -> set[str]:
@@ -333,15 +422,13 @@ def delete_document_chunks(
     version_id: str | None = None,
 ) -> int:
     """Delete indexed chunks by document/version and clean local crop files."""
-    import os
-    from qdrant_client import models
-
     key = "document_id" if document_id else "version_id" if version_id else None
     value = document_id or version_id
     if not key or not value:
         return 0
 
     try:
+        from qdrant_client import models
         _ensure_collection()
         query_filter = models.Filter(
             must=[models.FieldCondition(key=key, match=models.MatchValue(value=str(value)))]
@@ -365,6 +452,11 @@ def delete_document_chunks(
             points_selector=models.FilterSelector(filter=query_filter),
             wait=True,
         )
+        try:
+            from app.pipeline.bm25 import invalidate_cache
+            invalidate_cache(version_id or None)
+        except Exception:
+            pass
         logger.info("Deleted %d Qdrant chunks for %s=%s", count, key, value)
         return int(count)
     except Exception as exc:

@@ -1,4 +1,4 @@
-# Smart KCN Docs — Kế hoạch Khóa luận 8 tuần (nhóm 5 người)
+# DCID: Digital Cognitive InDustrial System — Kế hoạch Khóa luận 8 tuần (nhóm 5 người)
 
 > **Bối cảnh:** Khóa luận cuối kỳ ngành CNTT, yêu cầu chỉnh chu cả **hệ thống** lẫn **AI**.
 > Nhóm 4–5 người · **8 tuần** đến hạn bảo vệ · dữ liệu **tự sưu tầm** (không có công ty đối tác).
