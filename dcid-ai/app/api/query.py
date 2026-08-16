@@ -44,7 +44,7 @@ def query(req: QueryRequest) -> QueryResponse:
 
     Response (contract §2.2):
         answer:      Câu trả lời sinh từ LM Studio.
-        confidence:  Điểm similarity cao nhất từ Qdrant (0.0–1.0).
+        confidence:  Điểm tổng hợp từ retrieval và bằng chứng ảnh/OCR (0.0–1.0).
         guard:       {locked, numericRule} — trạng thái guardrail.
         citations:   Danh sách trích dẫn trang từ Qdrant hits.
         latencyMs:   Thời gian xử lý end-to-end (ms).
