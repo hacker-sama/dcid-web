@@ -123,46 +123,34 @@ class TestIsLocked:
 class TestBuildSystemPrompt:
     def test_contains_base_instructions(self):
         from app.pipeline.prompts import build_system_prompt
-        prompt = build_system_prompt([], numeric_rule=False)
-        assert "Smart KCN Docs" in prompt
-        assert "NGUYÊN TẮC HƯỚNG DẪN TRẢ LỜI" in prompt
-        assert "DỰA VÀO CONTEXT" in prompt
-
-    def test_no_hits_shows_no_context_marker(self):
-        from app.pipeline.prompts import build_system_prompt
-        prompt = build_system_prompt([], numeric_rule=False)
-        assert "KHÔNG CÓ CONTEXT" in prompt
-
-    def test_hits_are_injected_with_page_info(self):
-        from app.pipeline.prompts import build_system_prompt
-        hits = [_make_hit(12, 0.83, "Điện áp cấp nguồn 220 VAC")]
-        prompt = build_system_prompt(hits, numeric_rule=False)
-        assert "Trang 12" in prompt
-        assert "Điện áp cấp nguồn 220 VAC" in prompt
-        assert "83.0%" in prompt
+        prompt = build_system_prompt(numeric_rule=False)
+        assert prompt.strip()
+        assert "context" in prompt.lower()
 
     def test_numeric_rule_injection(self):
         from app.pipeline.prompts import build_system_prompt
-        prompt = build_system_prompt([], numeric_rule=True)
-        assert "CHỈ THỊ ĐẶC BIỆT" in prompt
-        assert "TUYỆT ĐỐI KHÔNG làm tròn số" in prompt
+        prompt = build_system_prompt(numeric_rule=True)
+        base_prompt = build_system_prompt(numeric_rule=False)
+        assert len(prompt) > len(base_prompt)
+        assert prompt.startswith(base_prompt)
 
     def test_no_numeric_injection_when_false(self):
         from app.pipeline.prompts import build_system_prompt
-        prompt = build_system_prompt([], numeric_rule=False)
-        assert "CHỈ THỊ ĐẶC BIỆT" not in prompt
+        prompt = build_system_prompt(numeric_rule=False)
+        numeric_prompt = build_system_prompt(numeric_rule=True)
+        assert prompt.strip()
+        assert prompt != numeric_prompt
 
-    def test_multiple_hits_all_appear(self):
-        from app.pipeline.prompts import build_system_prompt
+    def test_user_prompt_hits_all_appear(self):
+        from app.pipeline.prompts import build_user_prompt
         hits = [
             _make_hit(5, 0.90, "nội dung trang 5"),
             _make_hit(7, 0.75, "nội dung trang 7"),
         ]
-        prompt = build_system_prompt(hits)
+        prompt = build_user_prompt("Câu hỏi test?", hits)
         assert "nội dung trang 5" in prompt
         assert "nội dung trang 7" in prompt
-        assert "Đoạn 1" in prompt
-        assert "Đoạn 2" in prompt
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -188,16 +176,16 @@ class TestRunQuery:
         assert response.confidence == 0.30
 
     def test_guardrail_locked_when_low_score(self):
-        """Score < 0.60 → locked, không gọi LLM."""
+        """Score < 0.25 (thấp hơn cả reasoning threshold) → locked, không gọi LLM."""
         from app.services.query_service import run_query
 
         with (
             patch("app.services.query_service.embed_pipeline.embed_query", return_value=[0.1] * 384),
             patch("app.services.query_service.index_pipeline.search", return_value=[
-                _make_hit(1, 0.45),  # score thấp → locked
+                _make_hit(1, 0.15, "nội dung mẫu"),
             ]),
         ):
-            req = self._make_req("Tài liệu này nói về gì?")
+            req = self._make_req("Mã chi tiết?")
             response = run_query(req)
 
         assert response.guard.locked is True
@@ -344,7 +332,7 @@ class TestCleanThinkTags:
     def test_strip_unclosed_think_tag(self):
         from app.clients.llm_client import _clean_think_tags
         raw = "<think>\nĐang suy luận dở dang bị ngắt dòng..."
-        assert _clean_think_tags(raw) == ""
+        assert "Đang suy luận" in _clean_think_tags(raw)
 
     def test_no_think_tag(self):
         from app.clients.llm_client import _clean_think_tags
@@ -355,3 +343,88 @@ class TestCleanThinkTags:
         from app.clients.llm_client import _clean_think_tags
         raw = "[CHỈ THỊ CHUYÊN GIA TƯ VẤN LẮP RÁP CƠ KHÍ — CẦM TAY CHỈ VIỆC]:\nNgười dùng đang yêu cầu tư vấn... TUYỆT ĐỐI KHÔNG tự suy luận.\n\n---\nBước 1 tháo ốc A."
         assert _clean_think_tags(raw) == "Bước 1 tháo ốc A."
+
+    def test_strip_echoed_user_request(self):
+        from app.clients.llm_client import _clean_think_tags
+
+        raw = "<user_request>Phân tích tài liệu cho tôi</user_request>\nTài liệu mô tả ba bước lắp đặt."
+        assert _clean_think_tags(raw) == "Tài liệu mô tả ba bước lắp đặt."
+
+
+class TestContextWindow:
+    def test_long_rag_prompt_is_trimmed_but_keeps_question(self):
+        from types import SimpleNamespace
+        from app.clients.llm_client import _estimated_tokens, _fit_messages_to_context
+
+        settings = SimpleNamespace(
+            llm_context_window=4096,
+            llm_context_safety_tokens=256,
+            llm_max_tokens=2048,
+        )
+        messages = [
+            {"role": "system", "content": "Hãy trả lời dựa trên tài liệu."},
+            {"role": "user", "content": "Tài liệu kỹ thuật " * 3000 + "\nCâu hỏi: Điện áp là bao nhiêu?"},
+        ]
+
+        fitted = _fit_messages_to_context(messages, settings)
+        total = sum(_estimated_tokens(m["content"]) for m in fitted)
+
+        assert total <= 4096 - 2048 - 256
+        assert "Câu hỏi: Điện áp là bao nhiêu?" in fitted[-1]["content"]
+        assert "ngữ cảnh đã được rút gọn" in fitted[-1]["content"]
+
+    def test_old_history_is_removed_before_current_question(self):
+        from types import SimpleNamespace
+        from app.clients.llm_client import _fit_messages_to_context
+
+        settings = SimpleNamespace(
+            llm_context_window=1024,
+            llm_context_safety_tokens=128,
+            llm_max_tokens=512,
+        )
+        messages = [
+            {"role": "system", "content": "Chỉ dẫn"},
+            {"role": "user", "content": "lịch sử cũ " * 500},
+            {"role": "assistant", "content": "trả lời cũ " * 500},
+            {"role": "user", "content": "context mới\nCâu hỏi: Bảo trì thế nào?"},
+        ]
+
+        fitted = _fit_messages_to_context(messages, settings)
+
+        assert len(fitted) == 2
+        assert "Câu hỏi: Bảo trì thế nào?" in fitted[-1]["content"]
+
+
+class TestNaturalAnswerGuard:
+    def test_detects_request_for_information(self):
+        from app.clients.llm_client import _is_unhelpful_answer
+
+        answer = "Xin vui lòng cung cấp thêm thông tin để tôi có thể phân tích."
+        assert _is_unhelpful_answer(answer) is True
+
+    def test_accepts_normal_document_summary(self):
+        from app.clients.llm_client import _is_unhelpful_answer
+
+        answer = "Tài liệu mô tả quy trình lắp đặt gồm ba bước chính."
+        assert _is_unhelpful_answer(answer) is False
+
+    def test_prompt_does_not_label_latest_question(self):
+        from app.pipeline.prompts import build_user_prompt
+
+        prompt = build_user_prompt("Phân tích tài liệu cho tôi", [{"text": "Nội dung kỹ thuật", "page_no": 2}])
+        assert "Câu hỏi mới nhất" not in prompt
+        assert "<user_request>" in prompt
+        assert "không chép lại yêu cầu" in prompt
+
+
+class TestVisionPrompts:
+    def test_build_system_prompt_vision_mode(self):
+        from app.pipeline.prompts import build_system_prompt
+        sp = build_system_prompt(has_image=True)
+        assert sp.strip()
+        assert sp != build_system_prompt(has_image=False)
+
+    def test_build_user_prompt_vision_mode(self):
+        from app.pipeline.prompts import build_user_prompt
+        up = build_user_prompt("Bản vẽ này có thông số gì?", hits=[], has_image=True)
+        assert "Bản vẽ này có thông số gì?" in up

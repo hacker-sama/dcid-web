@@ -13,6 +13,13 @@ class Citation {
         bboxKey: json['bboxKey'] as String?,
         snippet: json['snippet'] as String?,
       );
+
+  Map<String, dynamic> toJson() => {
+        'versionId': versionId,
+        'pageNo': pageNo,
+        'bboxKey': bboxKey,
+        'snippet': snippet,
+      };
 }
 
 /// Result of `POST /api/query` (RAG + guardrails).
@@ -22,7 +29,8 @@ class AnswerResult {
     required this.confidence,
     required this.locked,
     required this.numericRule,
-    required this.reasoningMode,
+    this.reasoningMode = false,
+    this.isOfflineFallback = false,
     required this.citations,
   });
 
@@ -37,20 +45,44 @@ class AnswerResult {
 
   /// Answer came from reasoning / assembly procedure mode.
   final bool reasoningMode;
+
+  /// True when backend/AI network request failed and fallback response is returned.
+  final bool isOfflineFallback;
   final List<Citation> citations;
 
   factory AnswerResult.fromJson(Map<String, dynamic> json) {
-    final guard = json['guard'] as Map<String, dynamic>? ?? const {};
+    final guard = (json['guard'] as Map<String, dynamic>?) ?? const {};
+
+    bool parseBool(dynamic val) {
+      if (val is bool) return val;
+      if (val is String) return val.toLowerCase() == 'true';
+      return false;
+    }
+
     final citations = (json['citations'] as List<dynamic>? ?? const [])
         .map((e) => Citation.fromJson(e as Map<String, dynamic>))
         .toList();
+
     return AnswerResult(
       answer: json['answer'] as String? ?? '',
-      confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
-      locked: guard['locked'] as bool? ?? false,
-      numericRule: guard['numericRule'] as bool? ?? false,
-      reasoningMode: guard['reasoningMode'] as bool? ?? false,
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      locked: parseBool(json['locked'] ?? guard['locked']),
+      numericRule: parseBool(json['numericRule'] ?? guard['numericRule']),
+      reasoningMode: parseBool(json['reasoningMode'] ?? guard['reasoningMode']),
+      isOfflineFallback: parseBool(json['isOfflineFallback']),
       citations: citations,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'answer': answer,
+        'confidence': confidence,
+        'citations': citations.map((c) => c.toJson()).toList(),
+        'guard': {
+          'locked': locked,
+          'numericRule': numericRule,
+          'reasoningMode': reasoningMode,
+        },
+        'isOfflineFallback': isOfflineFallback,
+      };
 }

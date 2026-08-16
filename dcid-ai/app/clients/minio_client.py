@@ -30,3 +30,124 @@ def get_object(storage_key: str) -> bytes:
     finally:
         response.close()
         response.release_conn()
+
+
+def get_object_base64(storage_key: str, max_side: int = 800) -> str:
+    """Tải object ảnh từ MinIO và chuyển thành Data URI tối ưu.
+    Resize cạnh tối đa về 800px; giữ PNG cho bản vẽ nét mảnh, còn ảnh
+    thông thường dùng JPEG 90 để cân bằng độ rõ và chi phí Vision.
+    """
+    import base64
+    import io
+
+    data = get_object(storage_key)
+
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(data))
+        source_format = (img.format or "").upper()
+        if img.mode in ("RGBA", "P", "LA"):
+            img = img.convert("RGB")
+        if max(img.width, img.height) > max_side:
+            img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+        
+        out_buf = io.BytesIO()
+        if source_format == "PNG":
+            img.save(out_buf, format="PNG", optimize=True)
+            mime_type = "image/png"
+        else:
+            img.save(out_buf, format="JPEG", quality=90, optimize=True)
+            mime_type = "image/jpeg"
+        data = out_buf.getvalue()
+    except Exception:
+        mime_type = "image/png"
+
+    b64 = base64.b64encode(data).decode("utf-8")
+    return f"data:{mime_type};base64,{b64}"
+
+
+def put_object(storage_key: str, data: bytes, content_type: str = "image/png") -> None:
+    """Tải dữ liệu bytes (ảnh trang PDF) lên MinIO bucket."""
+    import io
+    s = get_settings()
+    client = _make_client()
+    client.put_object(
+        s.minio_bucket,
+        storage_key,
+        io.BytesIO(data),
+        length=len(data),
+        content_type=content_type,
+    )
+
+
+def get_or_render_page_base64(
+    page_img_key: str,
+    version_id: str | None = None,
+    document_id: str | None = None,
+    page_no: int = 1,
+    max_side: int = 800,
+) -> str | None:
+    """Tải Base64 ảnh trang từ MinIO; nếu chưa có (tài liệu cũ) → tự động lấy PDF gốc, render trang PNG và lưu lại MinIO."""
+    import logging
+    logger = logging.getLogger("dcid-ai.minio")
+
+    try:
+        return get_object_base64(page_img_key, max_side=max_side)
+    except Exception:
+        logger.info("Ảnh trang %s chưa có sẵn trong MinIO, tự động dựng từ PDF gốc...", page_img_key)
+
+    pdf_keys_to_try = []
+    if document_id:
+        pdf_keys_to_try.extend([
+            f"documents/{document_id}/v1/original.pdf",
+            f"documents/{document_id}/original.pdf",
+        ])
+    if version_id:
+        pdf_keys_to_try.extend([
+            f"documents/{version_id}/v1/original.pdf",
+            f"documents/{version_id}/original.pdf",
+        ])
+
+    pdf_bytes = None
+    for k in pdf_keys_to_try:
+        try:
+            pdf_bytes = get_object(k)
+            if pdf_bytes:
+                break
+        except Exception:
+            continue
+
+    if not pdf_bytes:
+        return None
+
+    try:
+        import fitz
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        page_idx = max(0, page_no - 1)
+        if page_idx >= len(doc):
+            page_idx = 0
+        page = doc[page_idx]
+
+        # Only visual questions reach this path; retain enough detail for dimensions and labels.
+        rect = page.rect
+        max_dim = max(rect.width, rect.height)
+        scale = float(max_side) / max_dim if max_dim > max_side else 1.0
+        mat = fitz.Matrix(scale, scale)
+        pix = page.get_pixmap(matrix=mat)
+        
+        # PNG giữ các đường mảnh và nhãn kích thước rõ hơn cho bản vẽ.
+        image_bytes = pix.tobytes("png")
+        doc.close()
+
+        put_object(page_img_key, image_bytes, content_type="image/png")
+        logger.info("Đã tự động render và lưu ảnh trang %s (%d bytes) lên MinIO", page_img_key, len(image_bytes))
+
+        import base64
+        b64 = base64.b64encode(image_bytes).decode("utf-8")
+        return f"data:image/png;base64,{b64}"
+    except Exception as exc:
+        logger.warning("Không thể auto-render ảnh trang cho key %s: %s", page_img_key, exc)
+        return None
+
+
+

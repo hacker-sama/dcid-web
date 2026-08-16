@@ -25,9 +25,14 @@ public class AiClientConfig {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
 
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        // Vision inference on CPU includes model cold-start and can legitimately
+        // take several minutes before the next SSE chunk arrives.
+        requestFactory.setReadTimeout(Duration.ofMinutes(10));
+
         return RestClient.builder()
                 .baseUrl(properties.baseUrl())
-                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                .requestFactory(requestFactory)
                 .defaultHeader(INTERNAL_TOKEN_HEADER, properties.internalToken())
                 .build();
     }

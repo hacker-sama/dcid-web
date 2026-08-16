@@ -7,6 +7,7 @@ import '../../core/file_viewer/file_viewer.dart';
 import '../../data/models/document_detail.dart';
 import '../../state/documents_providers.dart';
 import '../../state/providers.dart';
+import '../../state/role_filter.dart';
 
 /// Chi tiết tài liệu (`/documents/:id`): thông tin + danh sách version
 /// với chip trạng thái màu (PLAN-FLUTTER-DOCS.md §2-mục-5).
@@ -18,10 +19,60 @@ class DocumentDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(documentDetailProvider(documentId));
+    final isAdminLevel = ref.watch(canUploadProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chi tiết tài liệu')),
+      appBar: AppBar(
+        title: const Text('Chi tiết tài liệu'),
+        actions: [
+          if (isAdminLevel)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              tooltip: 'Xóa tài liệu',
+              onPressed: () async {
+                final title = detailAsync.value?.document.title ?? 'tài liệu này';
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Xác nhận xóa tài liệu'),
+                    content: Text('Bạn có chắc chắn muốn xóa "$title"? Hành động này không thể hoàn tác.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Hủy'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Xóa'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true && context.mounted) {
+                  final messenger = ScaffoldMessenger.of(context);
+                  try {
+                    final repo = ref.read(docsRepositoryProvider);
+                    await repo.deleteDocument(documentId);
+                    ref.invalidate(documentsProvider);
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Đã xóa tài liệu thành công.')),
+                    );
+                    if (context.mounted) Navigator.of(context).pop();
+                  } catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Không thể xóa tài liệu: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+        ],
+      ),
+
       body: detailAsync.when(
+        skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
           child: Column(
@@ -188,7 +239,7 @@ class _VersionTile extends ConsumerWidget {
       );
       final dio = ref.read(apiClientProvider).dio;
       final response = await dio.get(
-        '/documents/$documentId/versions/${version.id}/download',
+        '/api/documents/$documentId/versions/${version.id}/download',
         options: Options(responseType: ResponseType.bytes),
       );
       final bytes = response.data as Uint8List;
@@ -215,7 +266,7 @@ class _VersionTile extends ConsumerWidget {
       );
       final dio = ref.read(apiClientProvider).dio;
       final response =
-          await dio.get('/documents/$documentId/versions/${version.id}/pages');
+          await dio.get('/api/documents/$documentId/versions/${version.id}/pages');
       if (context.mounted) Navigator.pop(context); // close progress
 
       final data = (response.data?['data'] as List<dynamic>?) ?? [];

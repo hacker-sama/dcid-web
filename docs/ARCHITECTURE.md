@@ -29,8 +29,8 @@
 flowchart TB
     subgraph Edge["🏭 Edge Device / Kiosk (CPU, phân xưởng)"]
         UI["Flutter app (dcid-app)\nKiosk (Windows) + Mobile (Android)\nSnap & Ask, side-by-side"]
-        AISVC["AI Service (Python, FastAPI + Celery)\nPaddleOCR · e5-small(ONNX) · LM Studio API(DeepSeek R1)\nRAG retrieval + Guardrails"]
-        CHROMA[("ChromaDB\nvector store")]
+        AISVC["AI Service (Python, FastAPI + Celery)\nPaddleOCR · e5-small(ONNX) · Ollama API (Qwen2-VL 2B Q4)\nRAG retrieval + Guardrails"]
+        QDRANT[("Qdrant\nvector store")]
     end
 
     subgraph Central["🖥️ Central Server (x86)"]
@@ -46,7 +46,7 @@ flowchart TB
     UI -->|"REST + JWT"| BE
     UI -->|"hỏi đáp (query)"| AISVC
     AISVC -->|"metadata, quyền, log"| BE
-    AISVC --> CHROMA
+    AISVC --> QDRANT
     BE --> PG
     BE --> MINIO
     BE --> REDIS
@@ -62,8 +62,8 @@ flowchart TB
 | Thành phần | Công nghệ | Trách nhiệm chính |
 |---|---|---|
 | **Governance plane** | Spring Boot 3.3, Java 21 | Auth/RBAC, quản lý tài liệu + version, audit ISO, storage MinIO, tích hợp CMMS/MES, điều phối job AI |
-| **AI plane** | Python, FastAPI, Celery | OCR (PaddleOCR), embedding (e5-small ONNX), retrieval (ChromaDB), LLM (DeepSeek R1 Distill Qwen 1.5B qua LM Studio REST API), guardrails |
-| **Vector store** | ChromaDB | Semantic search trên chunk + metadata (trang, ngôn ngữ, version) |
+| **AI plane** | Python, FastAPI, Celery | OCR (PaddleOCR), embedding (e5-small ONNX), retrieval (Qdrant), LLM (Qwen2-VL 2B Instruct Q4_K_M qua Ollama REST API), guardrails |
+| **Vector store** | Qdrant | Semantic search trên chunk + metadata (trang, ngôn ngữ, version) |
 | **Relational DB** | PostgreSQL 16 | users, roles, document/version metadata, query_logs, audit_logs, work_orders |
 | **Object storage** | MinIO | PDF gốc, ảnh trang, **bounding-box crop** (bằng chứng số liệu) |
 | **Cache/Broker** | Redis 7 | cache, rate-limit, (tùy chọn) Celery broker |
@@ -84,7 +84,7 @@ QA/Admin upload PDF (Spring Boot)
   → phát job sang AI Service (REST):
       → PaddleOCR + PyMuPDF bóc tách text + bảng (TSR) + toạ độ không gian (boxes Bbox: [x0,y0,x1,y1])
       → chunk theo cấu trúc Markdown (### [Đoạn kỹ thuật - Trang X | Bbox: ...]) + trích xuất snippet (300 ký tự)
-      → embed (e5-small) → upsert vào ChromaDB (collection kcn_chunks với metadata bbox & snippet)
+      → embed (e5-small) → upsert vào Qdrant (collection kcn_chunks với metadata bbox & snippet)
   → callback báo Spring Boot: status=READY (hoặc FAILED)
   → ghi audit_log
 ```
@@ -92,12 +92,12 @@ QA/Admin upload PDF (Spring Boot)
 ### 4.2. Truy vấn + Guardrail & Trích dẫn Không gian
 ```
 Kỹ sư hỏi (UI) → AI Service:
-  retrieve top-k từ ChromaDB (lọc theo allowedVersionIds + độ tương đồng)
+  retrieve top-k từ Qdrant (lọc theo allowedVersionIds + độ tương đồng)
   IF cosine_similarity < 0.60  → KHÓA câu trả lời sinh tự động,
                                   trả cảnh báo đỏ "Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm"
   IF query chạm 'điện áp/áp suất/nhiệt độ/dung sai'
                                 → trích số liệu trực tiếp từ metadata gốc (rule-based)
-  ELSE → AI Model Local (LM Studio / Qwen 1.5B, temp=0.2, top_p=0.9, repetition_penalty=1.2)
+  ELSE → AI Model Local (Ollama / Qwen2-VL 2B Q4, temp=0.2, top_p=0.9)
          sinh câu trả lời chuyên môn tường minh kèm trích dẫn tọa độ không gian
   Trả về AnswerDTO (answer, confidence, guard, citations[versionId, pageNo, bboxKey, snippet])
   Flutter App hiển thị câu trả lời và nhãn Trang X [Bbox] → Click mở Hộp thoại Trích Dẫn Không Gian
@@ -160,7 +160,7 @@ Khi bắt đầu tích hợp, đề xuất một interface `AiPipelineClient` tr
 
 Callback AI → Spring Boot: `POST /api/internal/ingest-callback` (bảo vệ bằng token nội bộ).
 
-> Quyết định thiết kế hiện tại: **chưa dựng** interface/stub này — xem §9 roadmap.
+> **Đã triển khai:** Interface `AiPipelineClient.java` và implementation `RestAiPipelineClient.java` đã được tích hợp trong Spring Boot để gọi sang AI Service (từ phase P3).
 
 ---
 
@@ -169,11 +169,11 @@ Callback AI → Spring Boot: `POST /api/internal/ingest-callback` (bảo vệ b�
 | Phase (BC) | Việc | Trạng thái trong repo |
 |---|---|---|
 | — | Reset skeleton + self-JWT + RBAC + audit | ✅ **Đã xong** (lần format này) |
-| P1–P2 | AI Core & OCR & RAG (Python) | ⬜ Repo riêng / service Python |
-| P3 | Backend Governance: Document/Version/Query/WorkOrder + Admin | ⬜ Thêm domain vào Spring Boot (theo §5) |
-| P3 | `AiPipelineClient` + ingest callback | ⬜ Theo §8 |
-| P4 | Kiosk/Mobile UI (Snap & Ask, side-by-side) | ⬜ `dcid-app` (Flutter, Android + Windows) — tạo mới |
-| P5 | Pilot & UAT 01 dây chuyền | ⬜ |
+| P1–P2 | AI Core & OCR & RAG (Python) | ✅ **Đã xong** (đã triển khai thật với PaddleOCR, ChromaDB, LM Studio) |
+| P3 | Backend Governance: Document/Version/Query/WorkOrder + Admin | ✅ **Đã xong** |
+| P3 | `AiPipelineClient` + ingest callback | ✅ **Đã xong** (đã code trong backend) |
+| P4 | Kiosk/Mobile UI (Snap & Ask, side-by-side) | ✅ **Đã xong** (`dcid-app` Flutter với các tính năng cơ bản, Snap & Ask, Document viewing) |
+| P5 | Pilot & UAT 01 dây chuyền | ⬜ Sẽ triển khai |
 
 ---
 
@@ -213,27 +213,23 @@ dcid-web/                      (monorepo)
 
 ```
 dcid-ai/
-├── app/
+├── app/                      # Web & API layer
 │   ├── main.py               # FastAPI app + router
 │   ├── config.py             # pydantic-settings (env)
-│   ├── api/
-│   │   ├── health.py         # GET  /ai/health
-│   │   ├── ingest.py         # POST /ai/ingest   → enqueue Celery task
-│   │   └── query.py          # POST /ai/query    → RAG + guardrails (đồng bộ)
-│   ├── pipeline/
-│   │   ├── ocr.py            # PaddleOCR (multi-lang, TSR bảng biểu)
-│   │   ├── chunk.py          # structure-aware chunking (giữ cấu trúc bảng)
-│   │   ├── embed.py          # multilingual-e5-small (ONNX qua optimum)
-│   │   ├── index.py          # ChromaDB upsert
-│   │   └── bbox.py           # cắt bounding-box crop → MinIO
-│   ├── clients/
-│   │   ├── llm_client.py     # OpenAILike REST client tới LM Studio (deepseek-r1-distill-qwen-1.5b)
-│   │   ├── minio_client.py   # đọc PDF gốc / ghi crop
-│   │   └── backend_client.py # callback → dcid-backend (token nội bộ)
-│   ├── services/
-│   │   ├── ingest_service.py # điều phối luồng bóc tách PDF & index
-│   │   └── query_service.py  # RAG retrieve + guardrails + gọi llm_client
-│   └── tasks.py              # Celery: ingest bất đồng bộ
+│   ├── api/                  # API endpoints (health, ingest, query)
+│   ├── pipeline/             # RAG pipeline integrations (guardrails, chunks)
+│   ├── clients/              # llm_client.py, minio_client.py, backend_client.py
+│   ├── services/             # ingest_service.py, query_service.py
+│   └── workers/              # Celery workers (embed_worker.py)
+├── src/                      # Modular Core RAG Engine
+│   ├── ingestion/            # OCR, Loader (PaddleOCR, PyMuPDF)
+│   ├── chunking/             # Layout-aware chunking (cắt vùng sơ đồ/bản vẽ)
+│   ├── embeddings/           # Embedding model (multilingual-e5-small)
+│   ├── vectordb/             # Vector Store (ChromaDB)
+│   ├── retrieval/            # Tìm kiếm thông tin
+│   ├── prompts/              # Quản lý prompt templates
+│   ├── llm/                  # Tương tác với LLM (LM Studio)
+│   └── utils/                # Tiện ích chung
 ├── models/                   # GGUF + ONNX weights (đóng gói offline)
 ├── tests/
 ├── pyproject.toml
@@ -292,17 +288,27 @@ một tài liệu nhiều trang là việc nặng → đẩy vào Celery worker,
 | POST | `/api/documents` | QA_ADMIN | tạo tài liệu + upload version đầu |
 | POST | `/api/documents/{id}/versions` | QA_ADMIN | upload version mới |
 | POST | `/api/documents/{versionId}/obsolete` | QA_ADMIN | đánh dấu obsolete |
+| DELETE | `/api/documents/{id}` | QA_ADMIN | xóa tài liệu + vector + MinIO |
 | GET | `/api/documents` | any (lọc theo role) | danh sách/tra cứu |
-| POST | `/api/query` | OPERATOR+ | hỏi–đáp (forward AI, ghi query_log) |
+| POST | `/api/query` | OPERATOR+ | hỏi–đáp đồng bộ (forward AI, ghi query_log) |
+| GET | `/api/query/stream` | OPERATOR+ | **[Mới]** SSE stream từng token (proxy từ AI) |
+| GET | `/api/files/{versionId}/{pageNo}/{bboxKey}` | OPERATOR+ | **[Mới]** Proxy ảnh trang từ MinIO (JWT-protected) |
 | POST | `/api/integration/work-orders` | (token CMMS) | nhận Work Order |
 | GET | `/api/admin/audit-logs` | ADMIN | xem audit |
+| GET | `/api/admin/users` | ADMIN | danh sách tài khoản (phân trang) |
+| POST | `/api/admin/users` | ADMIN | tạo tài khoản người dùng mới |
+| PUT | `/api/admin/users/{id}` | ADMIN | cập nhật thông tin/vai trò |
+| PUT | `/api/admin/users/{id}/password` | ADMIN | đổi/reset mật khẩu người dùng |
+| PATCH | `/api/admin/users/{id}/status` | ADMIN | khóa/kích hoạt tài khoản |
 
 **Nội bộ Backend ↔ AI (token nội bộ, không ra ngoài LAN):**
 | Hướng | Endpoint | Payload |
 |---|---|---|
 | BE→AI | `POST /ai/ingest` | `{versionId, storageKey, langs}` |
 | BE→AI | `POST /ai/query` | `{userId, role, question, filters:{machineCode?}}` |
+| BE→AI | `POST /ai/query/stream` | **[Mới]** SSE stream từng token |
 | AI→BE | `POST /api/internal/ingest-callback` | `{versionId, status, pageCount, error?}` |
+| AI→BE | `POST /api/internal/ingest-status` | **[Mới]** Per-step push: `{versionId, step, progress, message}` |
 | — | `GET /ai/health` | readiness model |
 
 `POST /ai/query` → response:
@@ -362,21 +368,25 @@ sequenceDiagram
 
 | Thành phần | Định dạng | ~Dung lượng | ~RAM khi chạy |
 |---|---|---|---|
-| DeepSeek R1 Distill Qwen 1.5B | GGUF Q8_0 (LM Studio) | ~1.8 GB | ~3–4 GB |
+| Qwen2-VL 2B Instruct | GGUF Q4_K_M (Ollama) | ~2.78 GB | ~1.3 GB |
 | multilingual-e5-small | ONNX | <400 MB | vài trăm MB |
 | PaddleOCR mobile (multi-lang) | — | vài trăm MB | ~1 GB khi OCR |
 | ChromaDB | persistent dir | theo dữ liệu | thấp |
 
-**Yêu cầu Edge tối thiểu:** CPU Core i5, **RAM 8 GB**, SSD. Không cần GPU. Đạt latency <5s/truy vấn
-là **mục tiêu cần đo sớm ở M1** (rủi ro #2 trong ROADMAP).
+**Yêu cầu tối thiểu:** CPU Core i5, **RAM 8 GB**, SSD. Không cần GPU. Model Qwen2-VL 2B Q4 chỉ cần ~1.3GB RAM cho inference. Đạt latency <5s/truy vấn là **mục tiêu cần đo sớm ở M1** (rủi ro #2 trong ROADMAP).
 
-## B7. Triển khai & đóng gói offline cho Edge
+## B7. Triển khai & đóng gói (2 mô hình)
 
-- **Không internet lúc chạy:** models (GGUF/ONNX/PaddleOCR) đóng vào image `dcid-ai` hoặc volume
-  `models/`; không tải runtime.
-- **Đóng gói:** `docker save` các image (backend, ai, postgres, redis, minio, chroma) → chuyển USB/registry nội bộ.
+### On-premise / Edge (mô hình gốc)
+- **Không internet lúc chạy:** models (GGUF/ONNX/PaddleOCR) đóng vào image `dcid-ai` hoặc volume `models/`; không tải runtime.
+- **Đóng gói:** `docker save` các image (backend, ai, postgres, redis, minio, chroma, ollama) → chuyển USB/registry nội bộ.
 - **Persistence Edge:** volume cho Postgres, MinIO, ChromaDB (survive restart).
-- **2 kiểu deploy pilot (còn mở):** (a) full-stack trên 1 Edge; (b) Central (PG+MinIO+BE) + Edge (AI+Chroma+UI).
+
+### Public Internet (mô hình VPS — thêm ngày 04/08/2026)
+- **VPS** (16GB RAM khuyến nghị): chạy toàn bộ stack + Ollama headless.
+- **Domain** + Let's Encrypt HTTPS: Nginx reverse proxy, SSE `X-Accel-Buffering: no`.
+- **CI/CD**: GitHub Actions → SSH deploy tự động khi push `main`.
+- Hướng dẫn chi tiết: [`docs/SETUP.md §6`](SETUP.md) + các file trong `nginx/`, `scripts/`, `.github/workflows/`.
 
 ## B8. Cấu hình · Secrets · Observability · Backup
 

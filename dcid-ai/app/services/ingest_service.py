@@ -1,11 +1,11 @@
-"""Ingest nền: MinIO → OCR (PaddleOCR) → chunk → embed → index (Chroma) → callback BE.
+"""Ingest nền: MinIO → OCR (PaddleOCR) → chunk → embed → index (Qdrant) → callback BE.
 
 Pipeline T2 (M1c):
   1. Tải PDF từ MinIO (storageKey).
   2. OCR từng trang: PyMuPDF rasterize + PaddleOCR nhận dạng.
   3. Chunk layout-aware: giữ bảng nguyên vẹn, sliding window cho text thường.
   4. Embed: multilingual-e5-small (passage prefix theo chuẩn E5).
-  5. Upsert vào ChromaDB collection `kcn_chunks` (idempotent theo version_id).
+  5. Upsert vào Qdrant collection `kcn_chunks` (idempotent theo version_id).
   6. Callback BE: READY (OCR + index thành công) hoặc FAILED (bất kỳ bước nào lỗi).
 
 Ghi chú:
@@ -15,7 +15,7 @@ Ghi chú:
 
 import logging
 
-from app.clients import backend_client, ocr_client
+from app.clients import backend_client, minio_client, ocr_client
 from app.pipeline import chunk as chunk_pipeline
 from app.pipeline import embed as embed_pipeline
 from app.pipeline import index as index_pipeline
@@ -28,7 +28,11 @@ def run_ingest(req: IngestRequest) -> None:
     """Chạy trong BackgroundTasks. Mọi lỗi → callback FAILED; callback lỗi → log, không crash."""
     try:
         # ── 1. OCR qua ai-ocr service (ai-ocr tự tải PDF từ MinIO) ─────────
-        page_results = ocr_client.extract_pages(req.storageKey, req.langs)
+        page_results = ocr_client.extract_pages(
+            req.storageKey,
+            req.langs,
+            image_key_prefix=f"pages/{req.versionId}",
+        )
         logger.info(
             "OCR OK: versionId=%s storageKey=%s pages=%d",
             req.versionId, req.storageKey, len(page_results),
@@ -50,7 +54,7 @@ def run_ingest(req: IngestRequest) -> None:
             len(embeddings[0]) if embeddings else 0,
         )
 
-        # ── 5. Upsert vào ChromaDB ───────────────────────────────
+        # ── 5. Upsert vào Qdrant ─────────────────────────────────
         index_pipeline.upsert_chunks(
             version_id=req.versionId,
             document_id=req.documentId,
@@ -59,21 +63,34 @@ def run_ingest(req: IngestRequest) -> None:
             metadata=req.metadata,  # lang, machine_code, min_role … từ BE
         )
 
-        # ── 6. Callback READY ────────────────────────────────────
-        callback = IngestCallback(
-            versionId=req.versionId,
-            status="READY",
-            pageCount=len(page_results),
-            pages=[
+        # ── 6. Lưu ảnh trang lên MinIO & Callback READY ─────────
+        pages_list = []
+        for p in page_results:
+            img_key = p.image_key
+            if not img_key and p.image_bytes:
+                img_key = f"pages/{req.versionId}/{p.page_no}.png"
+                try:
+                    minio_client.put_object(img_key, p.image_bytes, content_type="image/png")
+                except Exception as exc:
+                    logger.warning("Không thể lưu ảnh trang %s lên MinIO: %s", img_key, exc)
+                    img_key = None
+            else:
+                img_key = None
+            pages_list.append(
                 PageInfo(
                     pageNo=p.page_no,
-                    imageKey=None,  # TODO(M3): render ảnh trang → MinIO cho viewer/bbox
+                    imageKey=img_key,
                     width=p.width,
                     height=p.height,
                     ocrText=p.text,
                 )
-                for p in page_results
-            ],
+            )
+
+        callback = IngestCallback(
+            versionId=req.versionId,
+            status="READY",
+            pageCount=len(page_results),
+            pages=pages_list,
             error=None,
         )
         logger.info(

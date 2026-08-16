@@ -2,7 +2,11 @@
 volumes:
   postgres_data: {}
   minio_data: {}
-  chroma_data: {}  # ChromaDB persistent vector index (T2 — M1c)
+  qdrant_data: {}  # Qdrant persistent vector index
+  redis_data: {}   # Redis persistence cho Celery task results
+  ollama_data: {}
+  paddle_models: {}
+  hf_models: {}
 
 services:
   postgres:
@@ -19,12 +23,27 @@ services:
       # cài sẵn trên máy dev (rất hay gặp). Container backend dùng service name
       # `postgres:5432` qua mạng nội bộ compose, không bị ảnh hưởng bởi mapping này.
       - "5433:5432"
+    mem_limit: 320m
     restart: unless-stopped
 
   redis:
     image: redis:7
     container_name: dcid-redis
-    command: ["redis-server", "--save", "900 1", "--loglevel", "warning"]
+    command:
+      - redis-server
+      - --save
+      - "900 1"
+      - --loglevel
+      - warning
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"  # Expose ra host để dev local debug / kiểm tra Celery queue
+    mem_limit: 96m
     restart: unless-stopped
 
   minio:
@@ -39,6 +58,7 @@ services:
       - minio_data:/data
     ports:
       - "9000:9000"
+    mem_limit: 192m
     restart: unless-stopped
 
   backend:
@@ -51,7 +71,6 @@ services:
       POSTGRES_USER: dcid
       POSTGRES_PASSWORD: dcid
       REDIS_HOST: redis
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
@@ -60,12 +79,18 @@ services:
       APP_BOOTSTRAP_ADMIN_PASSWORD: admin123
       AI_BASE_URL: http://ai:8000
       AI_INTERNAL_TOKEN: change-me-internal-token
+      JAVA_TOOL_OPTIONS: >-
+        -XX:InitialRAMPercentage=20
+        -XX:MaxRAMPercentage=70
+        -XX:MaxMetaspaceSize=128m
+        -XX:+UseSerialGC
     depends_on:
       - postgres
       - redis
       - minio
     ports:
       - "8080:8080"
+    mem_limit: 512m
     restart: unless-stopped
 
   ai:
@@ -81,17 +106,93 @@ services:
       MINIO_SECRET_KEY: minio123
       MINIO_BUCKET: kcn-docs
       OCR_SERVICE_URL: http://ai-ocr:8001
-      # ChromaDB — khớp service name trong compose (port nội bộ 8000)
-      CHROMA_HOST: chroma
-      CHROMA_PORT: 8000
+      # Qdrant — service nội bộ trên REST port 6333
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_VECTOR_SIZE: 384
+      QDRANT_VECTORS_ON_DISK: "true"
+      QDRANT_HNSW_ON_DISK: "true"
+      QDRANT_PAYLOAD_ON_DISK: "true"
+      # Redis — Celery broker/backend (service `redis`, port nội bộ 6379)
+      REDIS_URL: redis://redis:6379/0
+      AI_RESOURCE_GATE_ENABLED: "true"
+      AI_RESOURCE_GATE_FAIL_OPEN: "false"
+      AI_RESOURCE_LOCK_WAIT_SECONDS: "330"
+      LM_STUDIO_BASE_URL: http://ollama:11434/v1
+      LM_STUDIO_API_KEY: ollama
+      OMP_NUM_THREADS: "8"
+      MKL_NUM_THREADS: "8"
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HUB_OFFLINE: "0"
+      TRANSFORMERS_OFFLINE: "0"
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+      VISION_MODEL: ${VISION_MODEL:-qwen2.5vl:3b}
+      LLM_CONTEXT_WINDOW: "4096"
+      LLM_MAX_TOKENS: "768"
+    volumes:
+      - hf_models:/root/.cache/huggingface
     depends_on:
       - minio
-      - chroma
+      - qdrant
       - ai-ocr
+      - redis
+      - ollama
     ports:
       - "8000:8000"
+    mem_limit: 512m
     restart: unless-stopped
 
+  # ── Celery Worker: chạy Embed/Index pipeline bất đồng bộ ─────────────────
+  ai-worker:
+    build:
+      context: ./dcid-ai
+      dockerfile: Dockerfile
+    container_name: dcid-ai-worker
+    # Worker chạy Celery thay vì uvicorn
+    command: ["celery", "-A", "app.celery_app.celery_app", "worker",
+              "--loglevel=info", "--concurrency=1", "--prefetch-multiplier=1",
+              "--max-tasks-per-child=1", "-Q", "ingest,default"]
+    environment:
+      AI_INTERNAL_TOKEN: change-me-internal-token
+      BE_BASE_URL: http://backend:8080
+      OCR_SERVICE_URL: http://ai-ocr:8001
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+      MINIO_BUCKET: kcn-docs
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_VECTOR_SIZE: 384
+      QDRANT_VECTORS_ON_DISK: "true"
+      QDRANT_HNSW_ON_DISK: "true"
+      QDRANT_PAYLOAD_ON_DISK: "true"
+      REDIS_URL: redis://redis:6379/0
+      AI_RESOURCE_GATE_ENABLED: "true"
+      AI_RESOURCE_GATE_FAIL_OPEN: "false"
+      AI_RESOURCE_LOCK_WAIT_SECONDS: "330"
+      LM_STUDIO_BASE_URL: http://ollama:11434/v1
+      LM_STUDIO_API_KEY: ollama
+      OMP_NUM_THREADS: "8"
+      MKL_NUM_THREADS: "8"
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HUB_OFFLINE: "0"
+      TRANSFORMERS_OFFLINE: "0"
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+      VISION_MODEL: ${VISION_MODEL:-qwen2.5vl:3b}
+      LLM_CONTEXT_WINDOW: "4096"
+      LLM_MAX_TOKENS: "768"
+    volumes:
+      - hf_models:/root/.cache/huggingface
+    depends_on:
+      - redis
+      - minio
+      - qdrant
+      - ai-ocr
+      - ollama
+    mem_limit: 896m
+    restart: unless-stopped
+
+  # ── Flower: Celery monitoring UI (http://localhost:5555) ─────────────────
   ai-ocr:
     build:
       context: ./dcid-ai
@@ -99,16 +200,28 @@ services:
     container_name: dcid-ai-ocr
     environment:
       AI_INTERNAL_TOKEN: change-me-internal-token
+      PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
+      OMP_NUM_THREADS: "4"
+      MKL_NUM_THREADS: "4"
+      OPENBLAS_NUM_THREADS: "4"
+      NUMEXPR_NUM_THREADS: "4"
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio123
       MINIO_BUCKET: kcn-docs
+    volumes:
+      # OCR dependencies are heavy; mount application code so local changes do not
+      # require exporting a multi-GB Paddle image on every rebuild.
+      - ./dcid-ai/app:/srv/dcid-ai/app:ro
+      - paddle_models:/root/.paddlex
     depends_on:
       - minio
     ports:
       - "8002:8001"
+    mem_limit: 640m
     restart: unless-stopped
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     frontend:
       build:
@@ -150,36 +263,41 @@ services:
   chroma:
     image: chromadb/chroma:latest
     container_name: dcid-chroma
+=======
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    container_name: dcid-qdrant
+>>>>>>> b86cba269cd74c35f28642b06e08a0a60c3c8681
     volumes:
-      - chroma_data:/chroma/.chroma/index
+      - qdrant_data:/qdrant/storage
     ports:
-      - "8001:8000"  # host 8001 tránh đụng với dcid-ai (8000)
+      - "6333:6333"
+    mem_limit: 512m
     restart: unless-stopped
 >>>>>>> 1d838c37bcc1fd9ac0d034f22eee5cd59e49cf18
 
-  kafka:
-    # We use the official Confluent Kafka image for a single-node broker
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: dcid-kafka
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dcid-ollama
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-    depends_on:
-      - zookeeper
+      # 7.57 GiB Docker budget: never keep text + vision models resident together.
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_QUEUE: "8"
+      OLLAMA_CONTEXT_LENGTH: "4096"
+      OLLAMA_KEEP_ALIVE: "2m"
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: "q8_0"
+      OLLAMA_ORIGINS: "*"
+    volumes:
+      - ollama_data:/root/.ollama
     ports:
-      - "9092:9092"
-    restart: unless-stopped
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: dcid-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
+      - "11434:11434"  # OpenAI-compatible local model API
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 4224m
     restart: unless-stopped

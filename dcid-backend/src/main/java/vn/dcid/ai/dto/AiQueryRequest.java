@@ -15,6 +15,7 @@ public record AiQueryRequest(
         List<UUID> allowedVersionIds,
         String machineCode,
         boolean reasoningMode,
-        List<ChatMessageDTO> history
+        List<ChatMessageDTO> history,
+        String imageStorageKey
 ) {
 }

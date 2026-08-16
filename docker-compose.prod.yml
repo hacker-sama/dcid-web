@@ -1,0 +1,49 @@
+services:
+  postgres:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  redis:
+    ports: !reset []
+
+  minio:
+    ports: !reset []
+    environment:
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+  backend:
+    ports:
+      - "8080:8080"
+    environment:
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD}
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+
+  ai:
+    ports: !reset []
+    environment:
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+
+  ai-worker:
+    environment:
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+
+  ai-ocr:
+    ports: !reset []
+    environment:
+      AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+
+  qdrant:
+    ports: !reset []
+
+  ollama:
+    ports: !reset []

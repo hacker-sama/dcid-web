@@ -33,3 +33,15 @@ venv/
 *.log
 .DS_Store
 Thumbs.db
+
+# Production secrets
+.env.production
+.env.local
+backups/
+
+.codegraph
+.codegraph/codegraph.db
+.codegraph/codegraph.db-shm
+dcid-app/ios/Runner/GeneratedPluginRegistrant.h
+dcid-app/ios/Runner/GeneratedPluginRegistrant.m
+dcid-app/macos/Flutter/GeneratedPluginRegistrant.swift

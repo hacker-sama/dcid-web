@@ -49,10 +49,10 @@ _NUMERIC_PATTERN = re.compile(
 _REASONING_PATTERN = re.compile(
     r"""
     \b(
-        tư\s*vấn   | suy\s*luận | suy\s*đoán
+        tư\s*vấn\s*quy\s*trình  | suy\s*luận\s*quy\s*trình
       | lắp\s*đặt  | lắp\s*ráp  | các\s*bước\s*lắp | quy\s*trình\s*lắp | hướng\s*dẫn\s*lắp
-      | tháo\s*lắp | bảo\s*trì  | thao\s*tác
-      | reasoning  | assembly   | procedure
+      | tháo\s*lắp | bảo\s*trì  | thao\s*tác\s*tháo | trình\s*tự\s*tháo
+      | assembly\s*procedure    | disassembly       | maintenance\s*steps
     )\b
     """,
     re.IGNORECASE | re.VERBOSE,
@@ -74,10 +74,16 @@ def check_numeric(question: str) -> bool:
     return bool(_NUMERIC_PATTERN.search(question))
 
 
-def check_reasoning_mode(question: str, explicit_flag: bool = False) -> bool:
-    """True nếu bật chế độ tư vấn/suy luận (từ cờ API hoặc từ khóa câu hỏi)."""
-    if explicit_flag:
-        return True
+def check_reasoning_mode(question: str, explicit_flag: bool | None = None) -> bool:
+    """True nếu bật chế độ tư vấn/suy luận.
+
+    Nút gạt trong UI (explicit_flag) có quyền quyết định tuyệt đối nếu được truyền vào:
+    - explicit_flag = True  → Bật reasoning mode.
+    - explicit_flag = False → TẮT reasoning mode (trả lời chuẩn, không ép dạng bước tháo lắp).
+    - explicit_flag = None  → Tự động quét từ khóa quy trình lắp đặt trong câu hỏi.
+    """
+    if explicit_flag is not None:
+        return explicit_flag
     return bool(_REASONING_PATTERN.search(question))
 
 
@@ -102,8 +108,9 @@ def is_locked(hits: list[dict], question: str, reasoning_mode: bool = False) -> 
         return True
     if not hits:
         return True
-    # Khi ở chế độ tư vấn/suy luận, cho phép ngưỡng similarity thấp hơn (0.25)
-    # để lấy được các chi tiết bản vẽ và thực hiện suy luận quy trình,
-    # hoặc trả lời các câu hỏi tóm tắt chung chung (độ tương đồng ngữ nghĩa thấp).
-    threshold = 0.25 if reasoning_mode else THRESHOLD
+    # Khi ở chế độ tư vấn/suy luận, cho phép ngưỡng similarity thấp hơn so với standard (0.45).
+    # LƯU Ý AN TOÀN: Không hạ dưới 0.45 — ngưỡng quá thấp (vd: 0.25) sẽ cho phép
+    # các tài liệu gần như không liên quan trôi qua guardrail, khiến LLM bị buộc
+    # suy luận quy trình tháo lắp/bảo dưỡng từ dữ liệu rác → nguy cơ tai nạn lao động.
+    threshold = 0.45 if reasoning_mode else THRESHOLD
     return hits[0]["score"] < threshold

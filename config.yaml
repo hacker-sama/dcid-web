@@ -1,0 +1,52 @@
+# Config YAML cho DCID-Web Python AI Service
+
+app:
+  name: "DCID AI Service"
+  version: "1.0.0"
+  env: "development"
+  port: 8000
+  host: "0.0.0.0"
+
+paths:
+  uploads_dir: "./uploads"
+  crops_dir: "./uploads/crops"
+  logs_dir: "./logs"
+
+models:
+  # Vision Language Model cho Visual Captioner khâu Ingestion
+  vision_model: "qwen2.5vl:3b"
+  
+  # Text LLM cho khâu Suy luận RAG
+  main_llm_model: "qwen2.5vl:3b"
+  
+  # Embedding Model local
+  embedding_model: "intfloat/multilingual-e5-small"
+  embedding_dim: 384
+
+lm_studio:
+  # Tên section được giữ để tương thích code cũ; provider thực tế là Ollama.
+  base_url: "http://localhost:11434/v1"
+  api_key: "ollama"
+  timeout: 60.0
+  temperature: 0.2
+  max_tokens: 2048
+
+qdrant:
+  host: "localhost"
+  port: 6333
+  collection_name: "kcn_chunks"
+  vector_size: 384
+  distance: "cosine"
+  on_disk: true
+
+chunking:
+  chunk_size: 600
+  chunk_overlap: 100
+  min_chunk_size: 50
+
+vision_worker:
+  enable_vision: true
+  skip_pure_text_pages: true
+  render_dpi: 200
+  max_side_pixels: 2400
+  min_drawing_area_pixels: 10000  # Vùng ảnh tối thiểu để trigger Qwen2-VL

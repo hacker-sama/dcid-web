@@ -7,13 +7,28 @@ class DocumentDetail {
   final DocumentSummary document;
   final List<VersionSummary> versions;
 
+  /// Version that can be used as a RAG source.
+  ///
+  /// The backend normally promotes a successfully ingested version to ACTIVE.
+  /// READY remains a safe fallback for deployments where publishing is manual.
+  VersionSummary? get queryableVersion {
+    for (final version in versions) {
+      if (version.status == 'ACTIVE') return version;
+    }
+    for (final version in versions) {
+      if (version.status == 'READY') return version;
+    }
+    return null;
+  }
+
   factory DocumentDetail.fromJson(Map<String, dynamic> json) => DocumentDetail(
-        document:
-            DocumentSummary.fromJson(json['document'] as Map<String, dynamic>),
-        versions: (json['versions'] as List<dynamic>? ?? const [])
-            .map((e) => VersionSummary.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    document: DocumentSummary.fromJson(
+      json['document'] as Map<String, dynamic>,
+    ),
+    versions: (json['versions'] as List<dynamic>? ?? const [])
+        .map((e) => VersionSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 /// One version of a document. `pageCount`/`ingestedAt`/`lang` are null while
@@ -44,14 +59,14 @@ class VersionSummary {
   final String? ingestedAt;
 
   factory VersionSummary.fromJson(Map<String, dynamic> json) => VersionSummary(
-        id: json['id'] as String,
-        versionNo: json['versionNo'] as int? ?? 0,
-        status: json['status'] as String? ?? 'PROCESSING',
-        lang: json['lang'] as String?,
-        pageCount: json['pageCount'] as int?,
-        originalFilename: json['originalFilename'] as String?,
-        fileSize: json['fileSize'] as int?,
-        createdAt: json['createdAt'] as String?,
-        ingestedAt: json['ingestedAt'] as String?,
-      );
+    id: json['id'] as String,
+    versionNo: json['versionNo'] as int? ?? 0,
+    status: json['status'] as String? ?? 'PROCESSING',
+    lang: json['lang'] as String?,
+    pageCount: json['pageCount'] as int?,
+    originalFilename: json['originalFilename'] as String?,
+    fileSize: json['fileSize'] as int?,
+    createdAt: json['createdAt'] as String?,
+    ingestedAt: json['ingestedAt'] as String?,
+  );
 }

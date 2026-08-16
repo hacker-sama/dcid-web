@@ -31,9 +31,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     )
     try:
         logger.info("Preloading PaddleOCR models at startup...")
+        # The Vietnamese recognizer also covers Latin/English technical labels.
+        # Other languages remain lazy-loaded to keep the sidecar memory bounded.
         ocr._get_engine("vi")
-        ocr._get_engine("en")
-        logger.info("PaddleOCR models preloaded OK.")
+        logger.info("PaddleOCR Vietnamese/Latin model preloaded OK.")
     except Exception as e:
         logger.error("Failed to preload PaddleOCR: %s", e)
     yield
@@ -52,6 +53,7 @@ router = APIRouter(tags=["ocr"], dependencies=[Depends(require_internal_token)])
 class OcrRequest(BaseModel):
     storageKey: str
     langs: list[str] = ["vi", "en"]
+    imageKeyPrefix: str | None = None
 
 
 class PageOcrDto(BaseModel):
@@ -59,6 +61,8 @@ class PageOcrDto(BaseModel):
     text: str
     width: int | None = None
     height: int | None = None
+    boxes: list[tuple[float, float, float, float]] = []
+    imageKey: str | None = None
 
 
 class OcrResponse(BaseModel):
@@ -71,15 +75,22 @@ def run_ocr(req: OcrRequest) -> OcrResponse:
     logger.info("Nhận job OCR: storageKey=%s langs=%s", req.storageKey, req.langs)
     pdf_bytes = minio_client.get_object(req.storageKey)
     pages = ocr.extract_pages(pdf_bytes, req.langs)
-    dtos = [
-        PageOcrDto(
-            pageNo=p.page_no,
-            text=p.text,
-            width=p.width,
-            height=p.height,
+    dtos: list[PageOcrDto] = []
+    for page in pages:
+        image_key = None
+        if req.imageKeyPrefix and page.image_bytes:
+            image_key = f"{req.imageKeyPrefix.rstrip('/')}/{page.page_no}.png"
+            minio_client.put_object(image_key, page.image_bytes, content_type="image/png")
+        dtos.append(
+            PageOcrDto(
+                pageNo=page.page_no,
+                text=page.text,
+                width=page.width,
+                height=page.height,
+                boxes=page.boxes,
+                imageKey=image_key,
+            )
         )
-        for p in pages
-    ]
     logger.info("Hoàn thành OCR: %d trang", len(dtos))
     return OcrResponse(pages=dtos, pageCount=len(dtos))
 

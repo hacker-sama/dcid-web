@@ -9,6 +9,8 @@ import vn.dcid.ai.dto.AiQueryRequest;
 import vn.dcid.ai.dto.AiQueryResponse;
 import vn.dcid.exception.ServiceUnavailableException;
 
+import java.util.UUID;
+
 @Component
 public class RestAiPipelineClient implements AiPipelineClient {
 
@@ -47,6 +49,52 @@ public class RestAiPipelineClient implements AiPipelineClient {
             return response;
         } catch (RestClientException e) {
             throw new ServiceUnavailableException("AI service không phản hồi khi query", e);
+        }
+    }
+
+    @Override
+    public void deleteDocument(UUID documentId) {
+        try {
+            restClient.delete()
+                    .uri("/ai/documents/{documentId}", documentId)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            // Vector cleanup must not block deletion of the primary database record.
+            org.slf4j.LoggerFactory.getLogger(RestAiPipelineClient.class)
+                    .warn("Không thể xóa vector documentId={}: {}", documentId, e.getMessage());
+        }
+    }
+
+    @Override
+    public void queryStream(
+            AiQueryRequest request,
+            java.util.function.Consumer<String> tokenConsumer,
+            Runnable onComplete,
+            java.util.function.Consumer<Throwable> onError) {
+        try {
+            restClient.post()
+                    .uri("/ai/query/stream")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .accept(MediaType.TEXT_EVENT_STREAM)
+                    .exchange((req, res) -> {
+                        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                                new java.io.InputStreamReader(res.getBody()))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                if (line.startsWith("data:")) {
+                                    tokenConsumer.accept(line.substring(5).trim());
+                                }
+                            }
+                            onComplete.run();
+                        } catch (Exception ex) {
+                            onError.accept(ex);
+                        }
+                        return null;
+                    });
+        } catch (Exception e) {
+            onError.accept(e);
         }
     }
 }

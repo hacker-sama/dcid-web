@@ -93,8 +93,8 @@ TEST_HITS = [
 
 for mode, label in [(False, "Thuong"), (True, "SuyLuan")]:
     print(f"\n--- TEST {label} ---")
-    sp = build_system_prompt(TEST_HITS, reasoning_mode=mode)
-    up = build_user_prompt("Cach lap dat hop giam toc banh rang tru 2 cap?", reasoning_mode=mode)
+    sp = build_system_prompt(reasoning_mode=mode)
+    up = build_user_prompt("Cach lap dat hop giam toc banh rang tru 2 cap?", hits=TEST_HITS, reasoning_mode=mode)
     print(f"System prompt: {len(sp)} chars")
     print(f"User prompt:   {len(up)} chars")
     try:

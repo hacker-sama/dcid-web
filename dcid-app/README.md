@@ -12,13 +12,13 @@ flutter pub get
 flutter analyze && flutter test
 
 # Mobile
-flutter run --dart-define=API_BASE_URL=http://localhost:8080
+flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 
 # Web (kiosk/admin) — cố định port để khớp CORS backend (mặc định cho phép localhost:3000)
-flutter run -d chrome --web-port=3000 --dart-define=API_BASE_URL=http://localhost:8080
+flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 
 # Build web production
-flutter build web --dart-define=API_BASE_URL=http://<backend-lan-ip>:8080
+flutter build web --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://<backend-lan-ip>:8080
 ```
 
 > **Android:** build APK cần bật **Developer Mode** trên máy dev Windows
