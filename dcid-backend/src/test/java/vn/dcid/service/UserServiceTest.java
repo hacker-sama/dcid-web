@@ -138,4 +138,40 @@ class UserServiceTest {
         assertFalse(dto.isActive());
         verify(auditLogService).log(any(), eq("USER_STATUS_CHANGE"), eq("USER"), eq(sampleId), isNull(), any());
     }
+
+    @Test
+    void changeOwnPassword_Success() {
+        vn.dcid.security.UserPrincipal principal = new vn.dcid.security.UserPrincipal(sampleId.toString(), "testuser", "ENGINEER", java.util.Set.of("ROLE_ENGINEER"));
+        org.springframework.security.core.Authentication auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, java.util.List.of());
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(userRepository.findById(sampleId)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("oldPass", "hashedPassword")).thenReturn(true);
+        when(passwordEncoder.encode("newPass123")).thenReturn("newHashedPass");
+
+        vn.dcid.dto.request.ChangePasswordRequest req = new vn.dcid.dto.request.ChangePasswordRequest("oldPass", "newPass123");
+        userService.changeOwnPassword(req);
+
+        verify(userRepository).save(sampleUser);
+        assertEquals("newHashedPass", sampleUser.getPasswordHash());
+        verify(auditLogService).log(eq(sampleId), eq("USER_SELF_PASSWORD_CHANGE"), eq("USER"), eq(sampleId), isNull(), isNull());
+    }
+
+    @Test
+    void changeOwnPassword_WrongCurrentPassword() {
+        vn.dcid.security.UserPrincipal principal = new vn.dcid.security.UserPrincipal(sampleId.toString(), "testuser", "ENGINEER", java.util.Set.of("ROLE_ENGINEER"));
+        org.springframework.security.core.Authentication auth =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, java.util.List.of());
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(userRepository.findById(sampleId)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("wrongPass", "hashedPassword")).thenReturn(false);
+
+        vn.dcid.dto.request.ChangePasswordRequest req = new vn.dcid.dto.request.ChangePasswordRequest("wrongPass", "newPass123");
+        assertThrows(org.springframework.security.authentication.BadCredentialsException.class,
+                () -> userService.changeOwnPassword(req));
+
+        verify(userRepository, never()).save(any());
+    }
 }

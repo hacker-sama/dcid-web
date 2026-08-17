@@ -188,6 +188,7 @@ public class GuestService {
                 numericFlag, lockedFlag, ai.answer(), latencyMs);
 
         return new AnswerDTO(
+                null,
                 ai.answer(),
                 ai.confidence(),
                 new AnswerDTO.Guard(lockedFlag, numericFlag, reasoningFlag),

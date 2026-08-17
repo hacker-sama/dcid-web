@@ -15,11 +15,15 @@ class AnswerView extends StatelessWidget {
   const AnswerView({
     required this.result,
     this.shrinkWrap = false,
+    this.onFeedback,
     super.key,
   });
 
   final AnswerResult result;
   final bool shrinkWrap;
+
+  /// Callback khi user feedback (helpful=true/false). Nếu null thì không hiển thị feedback row.
+  final void Function(bool helpful)? onFeedback;
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +106,7 @@ class AnswerView extends StatelessWidget {
         ],
       ),
 
-      // ── Citations ──────────────────────────────────────────────────────────
+      // ── Citations ─────────────────────────────────────────────────────────────
       if (result.citations.isNotEmpty) ...[
         const SizedBox(height: 14),
         Text(
@@ -112,6 +116,12 @@ class AnswerView extends StatelessWidget {
         const SizedBox(height: 8),
         for (final c in result.citations)
           _CitationCard(citation: c, scheme: scheme, textTheme: textTheme),
+      ],
+
+      // ── Feedback row ──────────────────────────────────────────────────────
+      if (onFeedback != null && !result.locked && result.answer.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        _FeedbackRow(onFeedback: onFeedback!, scheme: scheme),
       ],
     ];
 
@@ -414,6 +424,105 @@ class _CitationCard extends StatelessWidget {
               ),
         trailing: Icon(Icons.open_in_new, size: 16, color: scheme.primary),
         onTap: () => context.push('/viewer/${citation.versionId}?page=${citation.pageNo}'),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Feedback row (👍 / 👎) — stateful để disable sau khi submit
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FeedbackRow extends StatefulWidget {
+  const _FeedbackRow({required this.onFeedback, required this.scheme});
+  final void Function(bool helpful) onFeedback;
+  final ColorScheme scheme;
+
+  @override
+  State<_FeedbackRow> createState() => _FeedbackRowState();
+}
+
+class _FeedbackRowState extends State<_FeedbackRow> {
+  bool? _selected; // null = chưa chọn, true = helpful, false = not helpful
+
+  void _pick(bool helpful) {
+    if (_selected != null) return; // idempotent
+    setState(() => _selected = helpful);
+    widget.onFeedback(helpful);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = widget.scheme;
+    return Row(
+      children: [
+        Text(
+          'Câu trả lời có hữu ích không?',
+          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(width: 10),
+        _FeedbackChip(
+          label: '👍',
+          selected: _selected == true,
+          disabled: _selected != null,
+          onTap: () => _pick(true),
+          scheme: scheme,
+        ),
+        const SizedBox(width: 6),
+        _FeedbackChip(
+          label: '👎',
+          selected: _selected == false,
+          disabled: _selected != null,
+          onTap: () => _pick(false),
+          scheme: scheme,
+        ),
+        if (_selected != null) ...[
+          const SizedBox(width: 8),
+          Text(
+            'Cảm ơn!',
+            style: TextStyle(fontSize: 11, color: scheme.primary, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FeedbackChip extends StatelessWidget {
+  const _FeedbackChip({
+    required this.label,
+    required this.selected,
+    required this.disabled,
+    required this.onTap,
+    required this.scheme,
+  });
+
+  final String label;
+  final bool selected;
+  final bool disabled;
+  final VoidCallback onTap;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected
+        ? scheme.primaryContainer
+        : scheme.surfaceContainerHighest.withValues(alpha: 0.6);
+    return InkWell(
+      onTap: disabled ? null : onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? scheme.primary : scheme.outlineVariant,
+            width: selected ? 1.5 : 0.8,
+          ),
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 15)),
       ),
     );
   }

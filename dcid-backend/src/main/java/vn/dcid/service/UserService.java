@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.dcid.common.PagedResponse;
 import vn.dcid.domain.entity.User;
 import vn.dcid.domain.enums.UserRole;
+import vn.dcid.dto.request.ChangePasswordRequest;
 import vn.dcid.dto.request.CreateUserRequest;
 import vn.dcid.dto.request.ResetPasswordRequest;
 import vn.dcid.dto.request.UpdateUserRequest;
@@ -113,6 +114,17 @@ public class UserService {
         userRepository.save(user);
         auditLogService.log(currentActorId(), "USER_PASSWORD_RESET", "USER", id, null,
                 "{\"targetUserId\":\"" + id + "\"}");
+    }
+
+    @Transactional
+    public void changeOwnPassword(ChangePasswordRequest request) {
+        User user = getCurrentUser();
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Mật khẩu hiện tại không đúng");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+        auditLogService.log(user.getId(), "USER_SELF_PASSWORD_CHANGE", "USER", user.getId(), null, null);
     }
 
     @Transactional

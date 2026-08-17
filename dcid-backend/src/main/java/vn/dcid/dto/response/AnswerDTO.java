@@ -8,6 +8,7 @@ import java.util.UUID;
  * Shape phải khớp model Flutter đang parse: answer / confidence / guard{locked,numericRule} / citations[].
  */
 public record AnswerDTO(
+        UUID queryLogId,
         String answer,
         double confidence,
         Guard guard,
@@ -21,6 +22,6 @@ public record AnswerDTO(
 
     /** Câu trả lời bị guardrail khóa (dùng khi không có tài liệu phù hợp quyền / độ tin cậy thấp). */
     public static AnswerDTO locked(String message) {
-        return new AnswerDTO(message, 0.0, new Guard(true, false, false), List.of());
+        return new AnswerDTO(null, message, 0.0, new Guard(true, false, false), List.of());
     }
 }
