@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 
@@ -65,10 +66,11 @@ class AnswerView extends StatelessWidget {
 
       const SizedBox(height: 8),
 
-      // ── Confidence + metadata row ──────────────────────────────────────────
+      // ── Confidence + metadata + Copy row ───────────────────────────────────
       Wrap(
         spacing: 8,
-        runSpacing: 4,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           _MetaBadge(
             icon: Icons.analytics_outlined,
@@ -90,6 +92,12 @@ class AnswerView extends StatelessWidget {
               scheme: scheme,
               color: scheme.secondaryContainer,
               onColor: scheme.onSecondaryContainer,
+            ),
+          if (!result.locked && result.answer.isNotEmpty)
+            _CopyAnswerButton(
+              key: const ValueKey('copy_answer_button'),
+              textToCopy: result.answer,
+              scheme: scheme,
             ),
         ],
       ),
@@ -248,6 +256,107 @@ class _MetaBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(label, style: TextStyle(fontSize: 11, color: fg, fontWeight: FontWeight.w500)),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Copy answer button
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CopyAnswerButton extends StatefulWidget {
+  const _CopyAnswerButton({
+    super.key,
+    required this.textToCopy,
+    required this.scheme,
+  });
+
+  final String textToCopy;
+  final ColorScheme scheme;
+
+  @override
+  State<_CopyAnswerButton> createState() => _CopyAnswerButtonState();
+}
+
+class _CopyAnswerButtonState extends State<_CopyAnswerButton> {
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    if (widget.textToCopy.isEmpty) return;
+    try {
+      await Clipboard.setData(ClipboardData(text: widget.textToCopy));
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _copied = true);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text('Đã sao chép nội dung câu trả lời vào clipboard'),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      setState(() => _copied = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.scheme.brightness == Brightness.dark;
+    final fg = _copied
+        ? (isDark ? Colors.green.shade300 : Colors.green.shade800)
+        : widget.scheme.onSurfaceVariant;
+    final bg = _copied
+        ? (isDark ? Colors.green.shade900.withValues(alpha: 0.35) : Colors.green.shade50)
+        : widget.scheme.surfaceContainerHighest.withValues(alpha: 0.7);
+
+    return InkWell(
+      onTap: _copy,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _copied
+                ? (isDark ? Colors.green.shade700 : Colors.green.shade300)
+                : widget.scheme.outlineVariant.withValues(alpha: 0.4),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _copied ? Icons.check_rounded : Icons.copy_rounded,
+              size: 12,
+              color: fg,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              _copied ? 'Đã sao chép' : 'Sao chép',
+              style: TextStyle(
+                fontSize: 11,
+                color: fg,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

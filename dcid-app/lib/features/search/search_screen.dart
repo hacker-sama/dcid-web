@@ -13,6 +13,7 @@ import '../../state/providers.dart';
 import 'widgets/search_chat_input.dart';
 import 'widgets/search_empty_state.dart';
 import 'answer_view.dart';
+import '../common/ai_disclaimer_footer.dart';
 import '../../state/chat_sessions_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -497,26 +498,8 @@ class _MessageBubble extends StatelessWidget {
 
         const SizedBox(height: 6),
 
-        // Muted "AI Knowledge Base • DCID" metadata chip
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.auto_awesome_rounded,
-              size: 11,
-              color: colorScheme.onSurface.withValues(alpha: 0.35),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              'AI Knowledge Base  •  DCID',
-              style: TextStyle(
-                fontSize: 10.5,
-                color: colorScheme.onSurface.withValues(alpha: 0.35),
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
+        // AI Knowledge Base disclaimer chip
+        const AiDisclaimerFooter(),
       ],
     );
   }

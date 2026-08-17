@@ -84,5 +84,36 @@ void main() {
       expect(find.textContaining('Insufficient data confidence'), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
     });
+
+    testWidgets('renders copy answer button and allows tapping',
+        (WidgetTester tester) async {
+      const result = AnswerResult(
+        answer: 'Nội dung trả lời cần sao chép',
+        confidence: 0.9,
+        locked: false,
+        numericRule: false,
+        citations: [],
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AnswerView(result: result, shrinkWrap: true),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Sao chép'), findsOneWidget);
+      expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('copy_answer_button')));
+      await tester.pumpAndSettle();
+
+      // After 2s animation & SnackBar timer settle, button returns to ready state
+      expect(find.text('Sao chép'), findsOneWidget);
+      expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+    });
   });
 }
