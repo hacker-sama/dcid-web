@@ -209,4 +209,14 @@ class OfflineCacheDocsRepository implements IDocsRepository {
       return null;
     }
   }
+
+  // ── History & Feedback: delegate thẳng xuống inner, không cache ──────────
+
+  @override
+  Future<List<dynamic>> getQueryHistory({int page = 0, int size = 20}) =>
+      _inner.getQueryHistory(page: page, size: size);
+
+  @override
+  Future<void> submitFeedback(String queryId, {required bool helpful, String? note}) =>
+      _inner.submitFeedback(queryId, helpful: helpful, note: note);
 }

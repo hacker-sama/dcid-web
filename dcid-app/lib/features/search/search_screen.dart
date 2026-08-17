@@ -509,15 +509,28 @@ class _MessageBubble extends StatelessWidget {
 // Inline answer renderer for Search chat (reuses AnswerView)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SearchAnswerInline extends StatelessWidget {
+class _SearchAnswerInline extends ConsumerWidget {
   const _SearchAnswerInline({required this.entry, required this.accent});
 
   final ChatMessage entry;
   final Color accent;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final result = entry.result!;
-    return AnswerView(result: result, shrinkWrap: true);
+    return AnswerView(
+      result: result,
+      shrinkWrap: true,
+      onFeedback: result.queryLogId != null
+          ? (helpful) async {
+              try {
+                await ref.read(docsRepositoryProvider).submitFeedback(
+                      result.queryLogId!,
+                      helpful: helpful,
+                    );
+              } catch (_) {}
+            }
+          : null,
+    );
   }
 }

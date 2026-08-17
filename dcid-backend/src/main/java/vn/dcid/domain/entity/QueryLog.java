@@ -156,4 +156,21 @@ public class QueryLog {
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
+
+    /** Phản hồi người dùng: 1 = hữu ích, -1 = không hữu ích, null = chưa phản hồi. */
+    @Column(name = "feedback")
+    private Short feedback;
+
+    @Column(name = "feedback_note", columnDefinition = "TEXT")
+    private String feedbackNote;
+
+    @Column(name = "feedback_at")
+    private Instant feedbackAt;
+
+    public Short getFeedback() { return feedback; }
+    public void setFeedback(Short feedback) { this.feedback = feedback; }
+    public String getFeedbackNote() { return feedbackNote; }
+    public void setFeedbackNote(String feedbackNote) { this.feedbackNote = feedbackNote; }
+    public Instant getFeedbackAt() { return feedbackAt; }
+    public void setFeedbackAt(Instant feedbackAt) { this.feedbackAt = feedbackAt; }
 }

@@ -169,5 +169,39 @@ Thiết bị đang ở trạng thái hoạt động bình thường (đèn RDY x
   Future<void> deleteDocument(String id) async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
   }
+
+  @override
+  Future<List<dynamic>> getQueryHistory({int page = 0, int size = 20}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    return [
+      {
+        'id': 'mock-query-1',
+        'question': 'Quy trình vận hành máy dán nhãn KCN-2024?',
+        'answerPreview': 'Bước 1: Bật công tắc nguồn chính. Bước 2: Kiểm tra áp suất khí nén đạt 0.6 MPa...',
+        'confidence': 0.92,
+        'locked': false,
+        'numericRuleHit': false,
+        'latencyMs': 420,
+        'createdAt': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
+        'feedback': 1,
+      },
+      {
+        'id': 'mock-query-2',
+        'question': 'Thông số lực siết bulong trục khuỷu M12?',
+        'answerPreview': 'Theo bản vẽ kỹ thuật mục 4.2: Lực siết tiêu chuẩn là 85 Nm ± 5 Nm.',
+        'confidence': 0.88,
+        'locked': false,
+        'numericRuleHit': true,
+        'latencyMs': 210,
+        'createdAt': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+        'feedback': null,
+      },
+    ];
+  }
+
+  @override
+  Future<void> submitFeedback(String queryId, {required bool helpful, String? note}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
 }
 
