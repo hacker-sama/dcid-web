@@ -1,5 +1,5 @@
 """POST /ai/query — RAG pipeline thực tế kết nối Qdrant + Ollama.
-POST /ai/query/stream — Streaming SSE variant: chữ hiện ra từng từ như ChatGPT.
+POST /ai/query/stream — SSE variant: kiểm tra câu trả lời hoàn chỉnh trước khi phát nội dung.
 
 Luồng xử lý được tách hoàn toàn sang app/services/query_service.py
 để dễ unit test. Router này chỉ làm nhiệm vụ HTTP layer thuần túy:
@@ -61,11 +61,12 @@ def query(req: QueryRequest) -> QueryResponse:
 def query_stream(req: QueryRequest) -> StreamingResponse:
     """Streaming SSE variant — trả về Server-Sent Events, chữ hiện từng từ như ChatGPT.
 
-    Giống /ai/query nhưng thay vì đợi LLM xong mới trả JSON,
-    endpoint này stream từng token text về ngay khi LM Studio sinh ra.
+    Giống /ai/query nhưng trả theo giao thức SSE. Dịch vụ giữ các token trong
+    bộ đệm đến khi kiểm tra xong confidence, sau đó mới phát nội dung. Câu trả
+    lời dưới mục tiêu 80% vẫn được gửi nhưng có cảnh báo và điểm thật đi kèm.
 
     Client đọc SSE stream và xử lý từng event:
-        - event "meta":  Nhận ngay citations/confidence/guard để hiển thị UI
+        - event "meta":  Nhận citations/confidence/guard sau bước kiểm tra
         - event "delta": Append từng đoạn text vào khung chat
         - event "done":  Stream kết thúc, có latencyMs và model name
         - event "error": Lỗi xảy ra, message mô tả nguyên nhân

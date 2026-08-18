@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/responsive.dart';
 import '../../../state/auth_controller.dart';
@@ -42,9 +43,7 @@ class CollapsibleSidebar extends ConsumerWidget {
     final bool isExpanded =
         forceExpanded ?? ref.watch(isSidebarExpandedProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    // Narrowly watch only the user role — avoids rebuilds on token refresh
-    final role =
-        ref.watch(authControllerProvider.select((a) => a.user?.role));
+    final user = ref.watch(authControllerProvider).user;
     final sessions = ref.watch(chatSessionsProvider);
     final activeSessionId = ref.watch(activeChatSessionIdProvider);
 
@@ -167,18 +166,40 @@ class CollapsibleSidebar extends ConsumerWidget {
               ),
               const Divider(height: 1),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (user != null)
+                      IconButton(
+                        tooltip: 'Hồ sơ cá nhân (${user.fullName ?? user.username})',
+                        icon: CircleAvatar(
+                          radius: 13,
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Text(
+                            _initials(user.fullName ?? user.username),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ),
+                        onPressed: () => context.push('/profile'),
+                      ),
+                    IconButton(
+                      tooltip: 'Lịch sử câu hỏi',
+                      icon: const Icon(Icons.history_rounded),
+                      onPressed: () => context.push('/history'),
+                    ),
                     themeToggleButton,
                     IconButton(
-                      tooltip: 'Logout',
+                      tooltip: 'Đăng xuất',
                       icon: const Icon(Icons.logout_rounded),
                       onPressed: onLogout,
                     ),
                     IconButton(
-                      tooltip: 'Expand sidebar',
+                      tooltip: 'Mở rộng thanh bên',
                       icon: const Icon(Icons.chevron_right_rounded),
                       onPressed: expand,
                     ),
@@ -359,33 +380,58 @@ class CollapsibleSidebar extends ConsumerWidget {
               }),
             ),
           ),
+          if (user != null) ...[
+            const Divider(height: 1),
+            Tooltip(
+              message: 'Hồ sơ cá nhân & Đổi mật khẩu',
+              child: ListTile(
+                leading: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: colorScheme.primaryContainer,
+                  child: Text(
+                    _initials(user.fullName ?? user.username),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  user.fullName ?? user.username,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                subtitle: Text(
+                  user.role.label,
+                  style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                onTap: () => context.push('/profile'),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
+          ],
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                themeToggleButton,
-                if (role != null)
-                  Chip(
-                    label: Text(
-                      role.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    visualDensity: VisualDensity.compact,
-                  ),
                 IconButton(
-                  tooltip: 'Logout',
+                  tooltip: 'Lịch sử câu hỏi',
+                  icon: const Icon(Icons.history_rounded),
+                  onPressed: () => context.push('/history'),
+                ),
+                themeToggleButton,
+                IconButton(
+                  tooltip: 'Đăng xuất',
                   icon: const Icon(Icons.logout_rounded),
                   onPressed: onLogout,
                 ),
                 IconButton(
-                  tooltip: 'Collapse sidebar',
+                  tooltip: 'Thu gọn thanh bên',
                   icon: const Icon(Icons.chevron_left_rounded),
                   onPressed: collapse,
                 ),
@@ -444,3 +490,8 @@ class CollapsibleSidebar extends ConsumerWidget {
   }
 }
 
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.length >= 2) return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  return name.substring(0, name.length.clamp(0, 2)).toUpperCase();
+}

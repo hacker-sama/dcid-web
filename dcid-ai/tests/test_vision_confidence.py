@@ -5,7 +5,7 @@ import pytest
 
 from app.pipeline.ocr import PageOcr
 from app.schemas import QueryRequest
-from app.services.query_service import LOCKED_ANSWER, run_query
+from app.services.query_service import run_query
 
 
 def _request(question: str) -> QueryRequest:
@@ -50,20 +50,21 @@ def test_snap_answer_uses_ocr_and_pixel_evidence_for_confidence() -> None:
     )
 
     assert response.guard.locked is False
-    assert response.confidence > 0.75
+    assert response.confidence >= 0.80
     assert response.answer == "Kích thước cụm camera là 42.15 mm."
 
 
-def test_snap_numeric_answer_is_locked_when_it_conflicts_with_ocr() -> None:
+def test_snap_numeric_conflict_returns_answer_with_warning() -> None:
     response = _run_with_image(
         "Kích thước cụm camera là bao nhiêu?",
         "CAMERA MODULE\n42.15\nUNIT mm\nDRAWING A-102",
         "Kích thước cụm camera là 48 mm.",
     )
 
-    assert response.guard.locked is True
+    assert response.guard.locked is False
     assert response.confidence <= 0.39
-    assert response.answer == LOCKED_ANSWER
+    assert "Kích thước cụm camera là 48 mm." in response.answer
+    assert "chưa được OCR/tài liệu xác nhận" in response.answer
 
 
 def test_snap_vision_only_confidence_is_nonzero_but_conservative() -> None:
@@ -75,6 +76,8 @@ def test_snap_vision_only_confidence_is_nonzero_but_conservative() -> None:
 
     assert response.guard.locked is False
     assert response.confidence == pytest.approx(0.55)
+    assert "Kích thước cụm camera là 42.15 mm." in response.answer
+    assert "80%" in response.answer
 
 
 def test_ocr_content_does_not_change_question_classification() -> None:
@@ -116,7 +119,7 @@ def test_snap_and_retrieved_document_agreement_raises_confidence() -> None:
     assert len(response.citations) == 1
 
 
-def test_snap_and_retrieved_document_numeric_conflict_is_locked() -> None:
+def test_snap_and_retrieved_document_numeric_conflict_warns() -> None:
     hit = {
         "text": "Kích thước danh nghĩa của cụm camera là 48 mm.",
         "version_id": "11111111-1111-1111-1111-111111111111",
@@ -140,6 +143,7 @@ def test_snap_and_retrieved_document_numeric_conflict_is_locked() -> None:
     ):
         response = run_query(_combined_request("Kích thước cụm camera là bao nhiêu?"))
 
-    assert response.guard.locked is True
+    assert response.guard.locked is False
     assert response.confidence <= 0.39
-    assert response.answer == LOCKED_ANSWER
+    assert "Kích thước cụm camera là 42.15 mm." in response.answer
+    assert "chưa được OCR/tài liệu xác nhận" in response.answer

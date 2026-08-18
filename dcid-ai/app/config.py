@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     lm_studio_base_url: str = "http://localhost:11434/v1"
     lm_studio_api_key: str = "ollama"
     # Use the lighter text model for OCR/RAG; load the VLM only for image requests.
-    lm_studio_model: str = "qwen2.5:1.5b"
+    lm_studio_model: str = "qwen2.5:3b"
     vision_model: str = "qwen2.5vl:3b"
     llm_temperature: float = 0.2          # Cấu hình suy luận tối ưu theo sơ đồ (Low Temperature: 0.2)
     llm_top_p: float = 0.9               # Cấu hình suy luận tối ưu theo sơ đồ (Top-P: 0.9)
@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     low_memory_query_mode: bool = True
     hybrid_retrieval_enabled: bool = True
     hybrid_alpha: float = 0.70
+    # Mục tiêu độ tin cậy. Điểm thấp hơn vẫn được trả lời nhưng kèm cảnh báo rõ ràng.
+    min_answer_confidence: float = 0.80
 
     # ── Redis / Celery (async task queue) ─────────────────────────────────────
     # service `redis` trong docker-compose.yml (port nội bộ 6379)
