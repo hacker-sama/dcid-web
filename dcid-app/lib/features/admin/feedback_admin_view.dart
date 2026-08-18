@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/localization/locale_controller.dart';
+import '../../core/theme.dart';
 import '../../data/models/feedback_admin_item.dart';
 import '../../state/providers.dart';
 
@@ -210,26 +211,37 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
     required Color color,
     required ColorScheme scheme,
   }) {
+    final isDark = scheme.brightness == Brightness.dark;
     return Card(
-      elevation: 0,
-      color: color.withValues(alpha: 0.08),
+      elevation: isDark ? 0 : 1,
+      color: isDark ? kDarkCard : Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: color.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: isDark ? color.withValues(alpha: 0.35) : color.withValues(alpha: 0.25),
+          width: 1.2,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
+                color: color.withValues(alpha: isDark ? 0.2 : 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: color.withValues(alpha: isDark ? 0.45 : 0.28),
+                  width: 1.2,
+                ),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Center(
+                child: Icon(icon, color: color, size: 22),
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,9 +250,10 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                   Text(
                     value,
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                       color: scheme.onSurface,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -249,7 +262,8 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
@@ -288,28 +302,28 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                   title: strings.totalFeedbacks,
                   value: '$total',
                   icon: Icons.rate_review_rounded,
-                  color: scheme.primary,
+                  color: Colors.blue.shade700,
                   scheme: scheme,
                 ),
                 _buildStatCard(
                   title: strings.helpfulCountLabel,
                   value: '$helpfulCount',
                   icon: Icons.thumb_up_rounded,
-                  color: Colors.green,
+                  color: Colors.green.shade700,
                   scheme: scheme,
                 ),
                 _buildStatCard(
                   title: strings.notHelpfulCountLabel,
                   value: '$unhelpfulCount',
                   icon: Icons.thumb_down_rounded,
-                  color: Colors.redAccent,
+                  color: Colors.red.shade700,
                   scheme: scheme,
                 ),
                 _buildStatCard(
                   title: strings.satisfactionRate,
                   value: '$satisfactionRate%',
                   icon: Icons.sentiment_satisfied_alt_rounded,
-                  color: Colors.teal,
+                  color: Colors.teal.shade700,
                   scheme: scheme,
                 ),
               ];
@@ -553,12 +567,28 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                                   onSelectChanged: (_) => _showDetailDialog(f),
                                   cells: [
                                     // Time
-                                    DataCell(Text(timeStr, style: const TextStyle(fontSize: 12))),
+                                    DataCell(
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.schedule_rounded, size: 13, color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                                          const SizedBox(width: 4),
+                                          Text(timeStr, style: const TextStyle(fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
                                     // User
                                     DataCell(
-                                      Text(
-                                        f.actorUsername,
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.person_outline_rounded, size: 14, color: scheme.primary),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            f.actorUsername,
+                                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                     // Rating
@@ -567,16 +597,32 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
                                           color: (f.feedback == 1 ? Colors.green : Colors.red)
-                                              .withValues(alpha: 0.15),
+                                              .withValues(alpha: 0.12),
                                           borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          f.feedback == 1 ? '👍 ${strings.helpful}' : '👎 ${strings.notHelpful}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: f.feedback == 1 ? Colors.green : Colors.red,
+                                          border: Border.all(
+                                            color: (f.feedback == 1 ? Colors.green : Colors.red)
+                                                .withValues(alpha: 0.3),
+                                            width: 1,
                                           ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              f.feedback == 1 ? Icons.thumb_up_rounded : Icons.thumb_down_rounded,
+                                              size: 13,
+                                              color: f.feedback == 1 ? Colors.green.shade700 : Colors.red.shade700,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              f.feedback == 1 ? strings.helpful : strings.notHelpful,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: f.feedback == 1 ? Colors.green.shade700 : Colors.red.shade700,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -611,13 +657,24 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                                     // Confidence
                                     DataCell(
                                       f.confidence != null
-                                          ? Text(
-                                              '${(f.confidence! * 100).toStringAsFixed(0)}%',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: f.confidence! >= 0.7 ? Colors.green : Colors.orange,
-                                              ),
+                                          ? Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.analytics_outlined,
+                                                  size: 13,
+                                                  color: f.confidence! >= 0.7 ? Colors.green : Colors.orange,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '${(f.confidence! * 100).toStringAsFixed(0)}%',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: f.confidence! >= 0.7 ? Colors.green : Colors.orange,
+                                                  ),
+                                                ),
+                                              ],
                                             )
                                           : const Text('—'),
                                     ),
