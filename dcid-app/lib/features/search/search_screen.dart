@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constrained_content.dart';
+import '../../core/localization/locale_controller.dart';
 import '../../core/theme.dart';
 import '../../data/models/answer_result.dart';
 import '../../data/models/document_detail.dart';
 import '../../data/models/document_summary.dart';
 import '../../data/models/sse_event.dart';
 import '../../state/auth_controller.dart';
+import '../../state/chat_sessions_provider.dart';
 import '../../state/documents_providers.dart';
 import '../../state/providers.dart';
+import '../common/ai_disclaimer_footer.dart';
+import 'answer_view.dart';
 import 'widgets/search_chat_input.dart';
 import 'widgets/search_empty_state.dart';
-import 'answer_view.dart';
-import '../common/ai_disclaimer_footer.dart';
-import '../../state/chat_sessions_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SearchScreen
@@ -98,10 +99,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       if (!mounted) return;
 
       if (version == null) {
+        final strings = ref.read(appStringsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Document "${document.title}" is still processing and cannot be used for AI queries yet.',
+              strings.docProcessingWarning(document.title),
             ),
           ),
         );
@@ -113,9 +115,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       });
     } catch (_) {
       if (mounted) {
+        final strings = ref.read(appStringsProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not load document version. Please try again.'),
+          SnackBar(
+            content: Text(strings.errorLoadingDocVersion),
           ),
         );
       }
@@ -215,27 +218,29 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             _scrollToBottom();
           }
         } else if (event.type == SseEventType.error) {
+          final strings = ref.read(appStringsProvider);
           if (event.errorMessage != null &&
-              event.errorMessage!.contains('Phiên đăng nhập')) {
+              (event.errorMessage!.contains('Phiên đăng nhập') ||
+                  event.errorMessage!.contains('Session expired'))) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Session expired, please sign in again'),
+                SnackBar(
+                  content: Text(strings.sessionExpired),
                 ),
               );
             }
           } else {
             setState(() {
-              _error = event.errorMessage ?? 'Unable to complete query.';
+              _error = event.errorMessage ?? strings.queryError;
             });
           }
         }
       }
     } catch (_) {
       if (mounted) {
+        final strings = ref.read(appStringsProvider);
         setState(
-          () => _error =
-              'Unable to complete query. Please check backend/AI connection.',
+          () => _error = strings.queryError,
         );
       }
     } finally {

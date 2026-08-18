@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/document_summary.dart';
 import 'search_scope_header.dart';
 
 /// Floating card container combining scope header controls and the chat text input.
-class SearchChatInput extends StatelessWidget {
+class SearchChatInput extends ConsumerWidget {
   const SearchChatInput({
     super.key,
     required this.controller,
@@ -37,11 +39,12 @@ class SearchChatInput extends StatelessWidget {
   final VoidCallback onClearChat;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = colorScheme.brightness == Brightness.dark;
     final accent = accentFor(context);
     final accentGlow = accentGlowFor(context);
+    final strings = ref.watch(appStringsProvider);
 
     final containerBg = isDark ? kDarkCard : Colors.white;
     final borderColor = inputFocused
@@ -92,7 +95,7 @@ class SearchChatInput extends StatelessWidget {
                     ? kDarkBorder
                     : colorScheme.outlineVariant.withValues(alpha: 0.3),
               ),
-              _buildTextInput(context, colorScheme, accent),
+              _buildTextInput(context, colorScheme, accent, strings),
             ],
           ),
         ),
@@ -104,6 +107,7 @@ class SearchChatInput extends StatelessWidget {
     BuildContext context,
     ColorScheme colorScheme,
     Color accent,
+    dynamic strings,
   ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
@@ -121,8 +125,8 @@ class SearchChatInput extends StatelessWidget {
               style: const TextStyle(fontSize: 14, height: 1.5),
               decoration: InputDecoration(
                 hintText: selectedVersionIdsByDocId.isEmpty
-                    ? 'Ask about SOPs, specs, drawings (All documents)…'
-                    : 'Ask about ${selectedVersionIdsByDocId.length} selected document(s)…',
+                    ? strings.searchPlaceholderAll
+                    : strings.searchPlaceholderSelected(selectedVersionIdsByDocId.length),
                 hintStyle: TextStyle(
                   fontSize: 13,
                   color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),

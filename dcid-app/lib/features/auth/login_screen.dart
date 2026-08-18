@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/localization/language_toggle_button.dart';
+import '../../core/localization/locale_controller.dart';
 import '../../state/auth_controller.dart';
 import '../../state/theme_controller.dart';
 
@@ -32,6 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    final strings = ref.watch(appStringsProvider);
     final loading = auth.status == AuthStatus.loading;
     final scheme = Theme.of(context).colorScheme;
 
@@ -46,23 +49,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Top-right Theme Toggle Button
+            // Top-right Language & Theme Toggle Buttons
             Positioned(
               top: 12,
               right: 16,
-              child: IconButton(
-                tooltip: isDark
-                    ? 'Switch to Light Mode'
-                    : 'Switch to Dark Mode',
-                icon: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: Icon(
-                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    key: ValueKey(isDark),
-                    color: scheme.onSurfaceVariant,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const LanguageToggleButton(),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: isDark
+                        ? strings.switchToLight
+                        : strings.switchToDark,
+                    icon: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: Icon(
+                        isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                        key: ValueKey(isDark),
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
                   ),
-                ),
-                onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+                ],
               ),
             ),
 
@@ -112,7 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                           // Header Title & Subtitle
                           Text(
-                            'DCID',
+                            strings.appTitle,
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(
@@ -123,7 +133,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Digital Cognitive InDustrial System',
+                            strings.appFullName,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
@@ -133,7 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Sign in to access industrial documents & AI assistant',
+                            strings.loginHeadline,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 12.5,
@@ -147,7 +157,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             controller: _username,
                             textInputAction: TextInputAction.next,
                             decoration: InputDecoration(
-                              labelText: 'Username',
+                              labelText: strings.username,
                               prefixIcon: const Icon(Icons.person_outline),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -167,7 +177,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             textInputAction: TextInputAction.done,
                             onSubmitted: (_) => _submit(),
                             decoration: InputDecoration(
-                              labelText: 'Password',
+                              labelText: strings.password,
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -218,7 +228,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      auth.error ?? 'Authentication failed',
+                                      auth.error ?? strings.authFailed,
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: scheme.onErrorContainer,
@@ -251,9 +261,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text(
-                                      'Sign In',
-                                      style: TextStyle(
+                                  : Text(
+                                      strings.signIn,
+                                      style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w600,
                                       ),

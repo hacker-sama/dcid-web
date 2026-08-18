@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/localization/locale_controller.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/user_role.dart';
 import '../../state/providers.dart';
@@ -65,6 +66,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     final fullNameCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
     UserRole selectedRole = UserRole.operatorRole;
+    final strings = ref.read(appStringsProvider);
 
     showDialog(
       context: context,
@@ -73,7 +75,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         final messenger = ScaffoldMessenger.of(context);
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Create New User Account'),
+          title: Text(strings.createUserTitle),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -84,51 +86,51 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   children: [
                     TextFormField(
                       controller: usernameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Username *',
-                        prefixIcon: Icon(Icons.person),
+                      decoration: InputDecoration(
+                        labelText: '${strings.usernameLabel} *',
+                        prefixIcon: const Icon(Icons.person),
                       ),
                       validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Required' : null,
+                          v == null || v.trim().isEmpty ? strings.currentPasswordRequired : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: passwordCtrl,
                       obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password *',
-                        prefixIcon: Icon(Icons.lock),
+                      decoration: InputDecoration(
+                        labelText: '${strings.password} *',
+                        prefixIcon: const Icon(Icons.lock),
                       ),
                       validator: (v) =>
-                          v == null || v.length < 4 ? 'Min 4 chars' : null,
+                          v == null || v.length < 4 ? strings.newPasswordMinLength : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: fullNameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        prefixIcon: Icon(Icons.badge),
+                      decoration: InputDecoration(
+                        labelText: strings.fullNameLabel,
+                        prefixIcon: const Icon(Icons.badge),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: emailCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address',
-                        prefixIcon: Icon(Icons.email),
+                      decoration: InputDecoration(
+                        labelText: strings.emailLabel,
+                        prefixIcon: const Icon(Icons.email),
                       ),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<UserRole>(
                       initialValue: selectedRole,
-                      decoration: const InputDecoration(
-                        labelText: 'Role *',
-                        prefixIcon: Icon(Icons.admin_panel_settings),
+                      decoration: InputDecoration(
+                        labelText: '${strings.roleLabel} *',
+                        prefixIcon: const Icon(Icons.admin_panel_settings),
                       ),
                       items: UserRole.values
                           .map((r) => DropdownMenuItem(
                                 value: r,
-                                child: Text(r.label),
+                                child: Text(r.localized(strings)),
                               ))
                           .toList(),
                       onChanged: (v) {
@@ -143,7 +145,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           actions: [
             TextButton(
               onPressed: () => nav.pop(),
-              child: const Text('Cancel'),
+              child: Text(strings.cancel),
             ),
             FilledButton(
               onPressed: () async {
@@ -176,7 +178,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   );
                 }
               },
-              child: const Text('Create Account'),
+              child: Text(strings.saveChanges),
             ),
           ],
         );
@@ -187,6 +189,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   void _showResetPasswordDialog(AppUser user) {
     final formKey = GlobalKey<FormState>();
     final passwordCtrl = TextEditingController();
+    final strings = ref.read(appStringsProvider);
 
     showDialog(
       context: context,
@@ -195,7 +198,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         final messenger = ScaffoldMessenger.of(context);
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Reset Password (${user.username})'),
+          title: Text('${strings.changePassword} (${user.username})'),
           content: Form(
             key: formKey,
             child: SizedBox(
@@ -203,19 +206,19 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               child: TextFormField(
                 controller: passwordCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'New Password *',
-                  prefixIcon: Icon(Icons.key),
+                decoration: InputDecoration(
+                  labelText: '${strings.newPassword} *',
+                  prefixIcon: const Icon(Icons.key),
                 ),
                 validator: (v) =>
-                    v == null || v.length < 4 ? 'Min 4 chars' : null,
+                    v == null || v.length < 4 ? strings.newPasswordMinLength : null,
               ),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => nav.pop(),
-              child: const Text('Cancel'),
+              child: Text(strings.cancel),
             ),
             FilledButton(
               onPressed: () async {
@@ -226,14 +229,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                       id: user.id, newPassword: passwordCtrl.text);
                   nav.pop();
                   messenger.showSnackBar(
-                    const SnackBar(
-                        content: Text('Password reset successfully!')),
+                    SnackBar(
+                        content: Text(strings.changePasswordSuccess)),
                   );
                 } catch (e) {
                   messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
-              child: const Text('Save Password'),
+              child: Text(strings.saveChanges),
             ),
           ],
         );
@@ -338,6 +341,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final strings = ref.watch(appStringsProvider);
 
     final totalUsers = _users.length;
     final operators = _users.where((u) => u.role == UserRole.operatorRole).length;
@@ -350,11 +354,11 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Admin Management & Analytics'),
-          bottom: const TabBar(
+          title: Text(strings.adminUserManagement),
+          bottom: TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.people_alt_rounded), text: 'User Accounts'),
-              Tab(icon: Icon(Icons.analytics_rounded), text: 'System Analytics'),
+              Tab(icon: const Icon(Icons.people_alt_rounded), text: strings.usernameLabel),
+              Tab(icon: const Icon(Icons.analytics_rounded), text: strings.adminAnalytics),
             ],
           ),
           actions: [
@@ -364,7 +368,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                 _fetchUsers();
                 ref.invalidate(analyticsFutureProvider);
               },
-              tooltip: 'Refresh',
+              tooltip: strings.refresh,
             ),
           ],
         ),
@@ -490,7 +494,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                         icon: Icon(Icons.arrow_drop_down, color: scheme.outline),
                         decoration: InputDecoration(
                           isDense: true,
-                          labelText: 'Filter Role',
+                          labelText: strings.roleLabel,
                           labelStyle: TextStyle(fontSize: 13, color: scheme.outline),
                           floatingLabelStyle: TextStyle(
                             fontSize: 12,
@@ -520,7 +524,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                           ...UserRole.values.map(
                             (r) => DropdownMenuItem(
                               value: r,
-                              child: Text(r.label, style: const TextStyle(fontSize: 13)),
+                              child: Text(r.localized(strings), style: const TextStyle(fontSize: 13)),
                             ),
                           ),
                         ],
@@ -600,7 +604,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                       FilledButton.icon(
                         onPressed: _fetchUsers,
                         icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
+                        label: Text(strings.retry),
                       ),
                     ],
                   ),
@@ -653,35 +657,35 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                   scheme.surfaceContainerHighest
                                       .withValues(alpha: 0.4),
                                 ),
-                                columns: const [
+                                columns: [
                                   DataColumn(
                                     label: Text(
-                                      'Username',
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                      strings.usernameLabel,
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                   DataColumn(
                                     label: Text(
-                                      'Full Name',
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                      strings.fullNameLabel,
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                   DataColumn(
                                     label: Text(
-                                      'Email',
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                      strings.emailLabel,
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                   DataColumn(
                                     label: Expanded(
                                       child: Text(
-                                        'Role',
+                                        strings.roleLabel,
                                         textAlign: TextAlign.center,
-                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ),
-                                  DataColumn(
+                                  const DataColumn(
                                     label: Expanded(
                                       child: Text(
                                         'Status',
@@ -690,7 +694,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                       ),
                                     ),
                                   ),
-                                  DataColumn(
+                                  const DataColumn(
                                     label: Expanded(
                                       child: Text(
                                         'Actions',
@@ -726,7 +730,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                                 BorderRadius.circular(12),
                                           ),
                                           child: Text(
-                                            user.role.label,
+                                            user.role.localized(strings),
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 11,
@@ -772,7 +776,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                         child: IconButton(
                                           icon: Icon(Icons.key_rounded,
                                               size: 18, color: scheme.primary),
-                                          tooltip: 'Reset Password',
+                                          tooltip: strings.changePassword,
                                           onPressed: () =>
                                               _showResetPasswordDialog(user),
                                         ),
