@@ -61,7 +61,9 @@ class AnswerView extends StatelessWidget {
         ),
 
       // ── Markdown answer ────────────────────────────────────────────────────
-      if (!result.locked && result.answer.isNotEmpty)
+      // Luôn hiển thị nội dung phản hồi. Khi guardrail khóa vì không có nguồn
+      // hoặc dịch vụ lỗi, banner phía trên vẫn giải thích trạng thái an toàn.
+      if (result.answer.isNotEmpty)
         _MarkdownAnswer(
           text: result.answer,
           scheme: scheme,
