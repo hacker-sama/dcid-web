@@ -131,7 +131,7 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
 
                 // Question
                 Text(
-                  'Câu hỏi (Question):',
+                  strings.questionDetailLabel,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 4),
@@ -144,7 +144,7 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                 // Answer preview
                 if (item.answerPreview != null && item.answerPreview!.isNotEmpty) ...[
                   Text(
-                    'Câu trả lời AI (AI Answer):',
+                    strings.answerDetailLabel,
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 4),
@@ -285,28 +285,28 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
               final isWide = constraints.maxWidth >= 700;
               final cards = [
                 _buildStatCard(
-                  title: 'Total Feedbacks',
+                  title: strings.totalFeedbacks,
                   value: '$total',
                   icon: Icons.rate_review_rounded,
                   color: scheme.primary,
                   scheme: scheme,
                 ),
                 _buildStatCard(
-                  title: 'Helpful (👍)',
+                  title: strings.helpfulCountLabel,
                   value: '$helpfulCount',
                   icon: Icons.thumb_up_rounded,
                   color: Colors.green,
                   scheme: scheme,
                 ),
                 _buildStatCard(
-                  title: 'Not Helpful (👎)',
+                  title: strings.notHelpfulCountLabel,
                   value: '$unhelpfulCount',
                   icon: Icons.thumb_down_rounded,
                   color: Colors.redAccent,
                   scheme: scheme,
                 ),
                 _buildStatCard(
-                  title: 'Satisfaction Rate',
+                  title: strings.satisfactionRate,
                   value: '$satisfactionRate%',
                   icon: Icons.sentiment_satisfied_alt_rounded,
                   color: Colors.teal,
@@ -358,7 +358,7 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                       style: TextStyle(fontSize: 13, color: scheme.onSurface),
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
-                        hintText: 'Search by question, answer, user, or note...',
+                        hintText: strings.searchFeedbackPlaceholder,
                         hintStyle: TextStyle(fontSize: 13, color: scheme.outline),
                         prefixIcon: Icon(Icons.search, size: 18, color: scheme.outline),
                         suffixIcon: _searchController.text.isNotEmpty
@@ -414,10 +414,10 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                           borderSide: BorderSide(color: scheme.primary, width: 1.5),
                         ),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: null, child: Text('All Ratings', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 1, child: Text('👍 Helpful only', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: -1, child: Text('👎 Not Helpful only', style: TextStyle(fontSize: 13))),
+                      items: [
+                        DropdownMenuItem(value: null, child: Text(strings.filterAllRatings, style: const TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: 1, child: Text(strings.filterHelpfulOnly, style: const TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: -1, child: Text(strings.filterNotHelpfulOnly, style: const TextStyle(fontSize: 13))),
                       ],
                       onChanged: (v) {
                         setState(() => _selectedFeedbackFilter = v);
@@ -536,13 +536,13 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                               headingRowColor: WidgetStateProperty.all(
                                 scheme.surfaceContainerHighest.withValues(alpha: 0.4),
                               ),
-                              columns: const [
-                                DataColumn(label: Text('Time', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('User', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Rating', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Question', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Feedback Note', style: TextStyle(fontWeight: FontWeight.bold))),
-                                DataColumn(label: Text('Confidence', style: TextStyle(fontWeight: FontWeight.bold))),
+                              columns: [
+                                DataColumn(label: Text(strings.columnTime, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text(strings.columnUser, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text(strings.columnRating, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text(strings.columnQuestion, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text(strings.columnFeedbackNote, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text(strings.columnConfidence, style: const TextStyle(fontWeight: FontWeight.bold))),
                               ],
                               rows: items.map((f) {
                                 final timeStr = f.feedbackAt != null
@@ -571,7 +571,7 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          f.feedback == 1 ? '👍 Helpful' : '👎 Not Helpful',
+                                          f.feedback == 1 ? '👍 ${strings.helpful}' : '👎 ${strings.notHelpful}',
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
@@ -633,7 +633,7 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       child: Text(
-                        'Showing ${items.length} feedback entries (Click any row for full details)',
+                        strings.showingFeedbacksCount(items.length),
                         style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                       ),
                     ),

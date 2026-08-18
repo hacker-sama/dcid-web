@@ -228,6 +228,23 @@ abstract class AppStrings {
   String get feedbackRating;
   String get feedbackNoteLabel;
   String get feedbackUserLabel;
+  String get totalFeedbacks;
+  String get helpfulCountLabel;
+  String get notHelpfulCountLabel;
+  String get satisfactionRate;
+  String get searchFeedbackPlaceholder;
+  String get filterAllRatings;
+  String get filterHelpfulOnly;
+  String get filterNotHelpfulOnly;
+  String get columnTime;
+  String get columnUser;
+  String get columnRating;
+  String get columnQuestion;
+  String get columnFeedbackNote;
+  String get columnConfidence;
+  String showingFeedbacksCount(int count);
+  String get questionDetailLabel;
+  String get answerDetailLabel;
   String get dateRange;
   String get createUser;
   String get createUserTitle;
@@ -705,6 +722,40 @@ class AppStringsVi implements AppStrings {
   String get feedbackNoteLabel => 'Nội dung góp ý';
   @override
   String get feedbackUserLabel => 'Người dùng';
+  @override
+  String get totalFeedbacks => 'Tổng đánh giá';
+  @override
+  String get helpfulCountLabel => 'Hữu ích (👍)';
+  @override
+  String get notHelpfulCountLabel => 'Không hữu ích (👎)';
+  @override
+  String get satisfactionRate => 'Tỷ lệ hài lòng';
+  @override
+  String get searchFeedbackPlaceholder => 'Tìm theo câu hỏi, câu trả lời, người dùng hoặc ghi chú...';
+  @override
+  String get filterAllRatings => 'Tất cả đánh giá';
+  @override
+  String get filterHelpfulOnly => '👍 Chỉ hữu ích';
+  @override
+  String get filterNotHelpfulOnly => '👎 Chỉ không hữu ích';
+  @override
+  String get columnTime => 'Thời gian';
+  @override
+  String get columnUser => 'Người dùng';
+  @override
+  String get columnRating => 'Đánh giá';
+  @override
+  String get columnQuestion => 'Câu hỏi';
+  @override
+  String get columnFeedbackNote => 'Ghi chú góp ý';
+  @override
+  String get columnConfidence => 'Độ tin cậy';
+  @override
+  String showingFeedbacksCount(int count) => 'Hiển thị $count phản hồi (Nhấn vào hàng để xem chi tiết)';
+  @override
+  String get questionDetailLabel => 'Câu hỏi:';
+  @override
+  String get answerDetailLabel => 'Câu trả lời AI:';
   @override
   String get dateRange => 'Khoảng thời gian';
   @override
@@ -1200,6 +1251,40 @@ class AppStringsEn implements AppStrings {
   @override
   String get feedbackUserLabel => 'User';
   @override
+  String get totalFeedbacks => 'Total Feedbacks';
+  @override
+  String get helpfulCountLabel => 'Helpful (👍)';
+  @override
+  String get notHelpfulCountLabel => 'Not Helpful (👎)';
+  @override
+  String get satisfactionRate => 'Satisfaction Rate';
+  @override
+  String get searchFeedbackPlaceholder => 'Search by question, answer, user, or note...';
+  @override
+  String get filterAllRatings => 'All Ratings';
+  @override
+  String get filterHelpfulOnly => '👍 Helpful only';
+  @override
+  String get filterNotHelpfulOnly => '👎 Not Helpful only';
+  @override
+  String get columnTime => 'Time';
+  @override
+  String get columnUser => 'User';
+  @override
+  String get columnRating => 'Rating';
+  @override
+  String get columnQuestion => 'Question';
+  @override
+  String get columnFeedbackNote => 'Feedback Note';
+  @override
+  String get columnConfidence => 'Confidence';
+  @override
+  String showingFeedbacksCount(int count) => 'Showing $count feedback entries (Click any row for full details)';
+  @override
+  String get questionDetailLabel => 'Question:';
+  @override
+  String get answerDetailLabel => 'AI Answer:';
+  @override
   String get dateRange => 'Date Range';
   @override
   String get createUser => 'Create User';
@@ -1694,6 +1779,40 @@ class AppStringsHi implements AppStrings {
   @override
   String get feedbackUserLabel => 'उपयोगकर्ता';
   @override
+  String get totalFeedbacks => 'कुल प्रतिक्रियाएं';
+  @override
+  String get helpfulCountLabel => 'उपयोगी (👍)';
+  @override
+  String get notHelpfulCountLabel => 'अनुपयोगी (👎)';
+  @override
+  String get satisfactionRate => 'संतुष्टि दर';
+  @override
+  String get searchFeedbackPlaceholder => 'प्रश्न, उत्तर, उपयोगकर्ता या नोट द्वारा खोजें...';
+  @override
+  String get filterAllRatings => 'सभी रेटिंग';
+  @override
+  String get filterHelpfulOnly => '👍 केवल उपयोगी';
+  @override
+  String get filterNotHelpfulOnly => '👎 केवल अनुपयोगी';
+  @override
+  String get columnTime => 'समय';
+  @override
+  String get columnUser => 'उपयोगकर्ता';
+  @override
+  String get columnRating => 'रेटिंग';
+  @override
+  String get columnQuestion => 'प्रश्न';
+  @override
+  String get columnFeedbackNote => 'प्रतिक्रिया नोट';
+  @override
+  String get columnConfidence => 'विश्वसनीयता';
+  @override
+  String showingFeedbacksCount(int count) => '$count प्रतिक्रियाएं प्रदर्शित (विवरण देखने के लिए किसी भी पंक्ति पर क्लिक करें)';
+  @override
+  String get questionDetailLabel => 'प्रश्न:';
+  @override
+  String get answerDetailLabel => 'AI उत्तर:';
+  @override
   String get dateRange => 'तिथि सीमा';
   @override
   String get createUser => 'उपयोगकर्ता बनाएं';
@@ -2187,6 +2306,40 @@ class AppStringsJa implements AppStrings {
   String get feedbackNoteLabel => 'コメント';
   @override
   String get feedbackUserLabel => 'ユーザー';
+  @override
+  String get totalFeedbacks => '総フィードバック数';
+  @override
+  String get helpfulCountLabel => '役に立った (👍)';
+  @override
+  String get notHelpfulCountLabel => '役に立たなかった (👎)';
+  @override
+  String get satisfactionRate => '満足度';
+  @override
+  String get searchFeedbackPlaceholder => '質問、回答、ユーザー、メモで検索...';
+  @override
+  String get filterAllRatings => 'すべての評価';
+  @override
+  String get filterHelpfulOnly => '👍 役に立ったのみ';
+  @override
+  String get filterNotHelpfulOnly => '👎 役に立たなかったのみ';
+  @override
+  String get columnTime => '日時';
+  @override
+  String get columnUser => 'ユーザー';
+  @override
+  String get columnRating => '評価';
+  @override
+  String get columnQuestion => '質問';
+  @override
+  String get columnFeedbackNote => 'フィードバックメモ';
+  @override
+  String get columnConfidence => '信頼度';
+  @override
+  String showingFeedbacksCount(int count) => '$count 件のフィードバックを表示中（行をクリックして詳細を表示）';
+  @override
+  String get questionDetailLabel => '質問:';
+  @override
+  String get answerDetailLabel => 'AIの回答:';
   @override
   String get dateRange => '期間';
   @override

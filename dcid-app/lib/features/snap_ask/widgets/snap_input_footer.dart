@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/locale_controller.dart';
@@ -212,31 +213,50 @@ class _SnapInputFooterState extends ConsumerState<SnapInputFooter> {
           ),
           const SizedBox(width: 4),
           Expanded(
-            child: TextField(
-              controller: widget.questionController,
-              focusNode: widget.questionFocusNode,
-              enabled: hasSnap && !widget.isAsking,
-              maxLines: 5,
-              minLines: 1,
-              style: const TextStyle(fontSize: 14, height: 1.5),
-              decoration: InputDecoration(
-                hintText: hasSnap
-                    ? strings.askAboutDevicePhoto
-                    : strings.addImageFirstToAsk,
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: scheme.onSurface.withValues(alpha: 0.35),
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.enter): () {
+                  if (hasSnap && !widget.isAsking && widget.questionController.text.trim().isNotEmpty) {
+                    widget.onAskQuestion();
+                  }
+                },
+                const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
+                  if (hasSnap && !widget.isAsking && widget.questionController.text.trim().isNotEmpty) {
+                    widget.onAskQuestion();
+                  }
+                },
+              },
+              child: TextField(
+                controller: widget.questionController,
+                focusNode: widget.questionFocusNode,
+                enabled: hasSnap && !widget.isAsking,
+                maxLines: 5,
+                minLines: 1,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+                decoration: InputDecoration(
+                  hintText: hasSnap
+                      ? strings.askAboutDevicePhoto
+                      : strings.addImageFirstToAsk,
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onSurface.withValues(alpha: 0.35),
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  isDense: true,
                 ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                isDense: true,
+                onSubmitted: (hasSnap && !widget.isAsking)
+                    ? (_) {
+                        if (widget.questionController.text.trim().isNotEmpty) {
+                          widget.onAskQuestion();
+                        }
+                      }
+                    : null,
               ),
-              onSubmitted: (hasSnap && !widget.isAsking)
-                  ? (_) => widget.onAskQuestion()
-                  : null,
             ),
           ),
           const SizedBox(width: 8),
