@@ -60,24 +60,27 @@ class _AnalyticsContent extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'System Analytics & KPIs',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Real-time metrics, guardrail adherence, and query performance.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
-                      ),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'System Analytics & KPIs',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Real-time metrics, guardrail adherence, and query performance.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 12),
                   FilledButton.tonalIcon(
                     onPressed: () => ref.invalidate(analyticsFutureProvider),
                     icon: const Icon(Icons.refresh, size: 18),
