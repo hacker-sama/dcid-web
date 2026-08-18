@@ -242,9 +242,17 @@ abstract class AppStrings {
         return const AppStringsVi();
       case AppLocale.en:
         return const AppStringsEn();
+      case AppLocale.hi:
+        return const AppStringsHi();
+      case AppLocale.ja:
+        return const AppStringsJa();
     }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vietnamese (Tiếng Việt)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AppStringsVi implements AppStrings {
   const AppStringsVi();
@@ -302,7 +310,7 @@ class AppStringsVi implements AppStrings {
   @override
   String get switchToDark => 'Chuyển sang Giao diện Tối';
   @override
-  String get switchLanguage => 'Chuyển đổi ngôn ngữ (Tiếng Việt / English)';
+  String get switchLanguage => 'Chuyển đổi ngôn ngữ';
   @override
   String get currentLanguage => 'Ngôn ngữ: Tiếng Việt';
 
@@ -684,6 +692,10 @@ class AppStringsVi implements AppStrings {
   String get unknown => 'Không xác định';
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// English
+// ─────────────────────────────────────────────────────────────────────────────
+
 class AppStringsEn implements AppStrings {
   const AppStringsEn();
 
@@ -740,7 +752,7 @@ class AppStringsEn implements AppStrings {
   @override
   String get switchToDark => 'Switch to Dark Mode';
   @override
-  String get switchLanguage => 'Switch Language (Tiếng Việt / English)';
+  String get switchLanguage => 'Switch Language';
   @override
   String get currentLanguage => 'Language: English';
 
@@ -1120,4 +1132,888 @@ class AppStringsEn implements AppStrings {
   String get loading => 'Loading...';
   @override
   String get unknown => 'Unknown';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hindi (हिन्दी)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class AppStringsHi implements AppStrings {
+  const AppStringsHi();
+
+  @override
+  String get appTitle => 'DCID';
+  @override
+  String get appSubtitle => 'Docs';
+  @override
+  String get appFullName => 'DCID डिजिटल कॉग्निटिव इंडस्ट्रियल सिस्टम';
+  @override
+  String get appTagline => 'औद्योगिक एआई ज्ञान आधार';
+
+  @override
+  String get loginHeadline => 'तकनीकी दस्तावेज़ और एआई सहायक तक पहुँचने के लिए साइन इन करें';
+  @override
+  String get username => 'उपयोगकर्ता नाम';
+  @override
+  String get password => 'पासवर्ड';
+  @override
+  String get signIn => 'साइन इन करें';
+  @override
+  String get authFailed => 'प्रमाणीकरण विफल रहा';
+  @override
+  String get usernameRequired => 'कृपया उपयोगकर्ता नाम दर्ज करें';
+  @override
+  String get passwordRequired => 'कृपया पासवर्ड दर्ज करें';
+
+  @override
+  String get navDocuMind => 'DocuMind';
+  @override
+  String get navSnapAsk => 'Snap & Ask';
+  @override
+  String get navDocuments => 'दस्तावेज़';
+  @override
+  String get navAdmin => 'व्यवस्थापक';
+  @override
+  String get newChat => 'नई चैट';
+  @override
+  String get recents => 'हाल की चैट';
+  @override
+  String get profileTooltip => 'उपयोगकर्ता प्रोफ़ाइल';
+  @override
+  String get profileMenuTooltip => 'उपयोगकर्ता प्रोफ़ाइल और पासवर्ड बदलें';
+  @override
+  String get historyTooltip => 'प्रश्नोत्तरी इतिहास';
+  @override
+  String get logoutTooltip => 'साइन आउट';
+  @override
+  String get expandSidebar => 'साइडबार विस्तृत करें';
+  @override
+  String get collapseSidebar => 'साइडबार संक्षिप्त करें';
+  @override
+  String get switchToLight => 'लाइट मोड में बदलें';
+  @override
+  String get switchToDark => 'डार्क मोड में बदलें';
+  @override
+  String get switchLanguage => 'भाषा बदलें';
+  @override
+  String get currentLanguage => 'भाषा: हिन्दी';
+
+  @override
+  String get roleOperator => 'ऑपरेटर (Operator)';
+  @override
+  String get roleEngineer => 'इंजीनियर (Engineer)';
+  @override
+  String get roleQaAdmin => 'क्यूए / व्यवस्थापक (QA / Admin)';
+  @override
+  String get roleAdmin => 'मुख्य व्यवस्थापक (Admin)';
+
+  @override
+  String get searchHeroTitle => 'DCID Docs';
+  @override
+  String get searchHeroSubtitle => 'एआई-संचालित औद्योगिक ज्ञान और एसओपी सहायक';
+  @override
+  String get searchPlaceholderAll => 'एसओपी, विनिर्देशों, आरेखों के बारे में पूछें (सभी दस्तावेज़)…';
+  @override
+  String searchPlaceholderSelected(int count) => 'चयनित $count दस्तावेज़(ओं) में पूछें…';
+  @override
+  String get insufficientConfidenceBanner => '⚠ अपर्याप्त डेटा सटीकता।\nउत्तर कम विश्वास के साथ तैयार किया गया है। कृपया संचालन से पहले आधिकारिक दस्तावेज़ों से सत्यापित करें।';
+  @override
+  String get lockedAnswerWarning => '⚠ डेटा विश्वसनीयता अपर्याप्त है। कम विश्वसनीयता के कारण उत्तर लॉक किया गया है। कृपया आधिकारिक दस्तावेज़ देखें।';
+  @override
+  String get directDataExtraction => 'प्रत्यक्ष डेटा निष्कर्षण';
+  @override
+  String get reasoningMode => 'विस्तृत तर्क मोड';
+  @override
+  String get referenceSources => 'संदर्भ स्रोत';
+  @override
+  String get copy => 'कॉपी करें';
+  @override
+  String get copied => 'कॉपी किया गया';
+  @override
+  String get copyAnswerSuccess => 'उत्तर क्लिपबोर्ड पर कॉपी हो गया';
+  @override
+  String get copySuccessSnackbar => 'उत्तर क्लिपबोर्ड पर कॉपी हो गया';
+  @override
+  String get wasAnswerHelpful => 'क्या यह उत्तर उपयोगी था?';
+  @override
+  String get feedbackThanks => 'आपकी प्रतिक्रिया के लिए धन्यवाद!';
+  @override
+  String get thankYouFeedback => 'आपकी प्रतिक्रिया के लिए धन्यवाद!';
+  @override
+  String get helpful => 'मददगार';
+  @override
+  String get notHelpful => 'मददगार नहीं';
+  @override
+  String get citations => 'उद्धरण (Citations)';
+  @override
+  String get confidence => 'विश्वसनीयता';
+  @override
+  String get aiDisclaimer => 'एआई ज्ञान आधार  •  एआई-जनित सामग्री, कृपया संचालन से पहले आधिकारिक दस्तावेज़ों से जांचें';
+  @override
+  String get allDocsScope => 'सभी दस्तावेज़';
+  @override
+  String get clearScope => 'चयन साफ़ करें';
+  @override
+  String get scopeAllDocs => 'दायरा: सभी दस्तावेज़ (Global RAG)';
+  @override
+  String scopeSelectedDocs(int count) => 'दायरा: $count दस्तावेज़ चयनित';
+  @override
+  String docProcessingWarning(String title) => 'दस्तावेज़ "$title" अभी संसाधित हो रहा है और प्रश्नों के लिए उपलब्ध नहीं है।';
+  @override
+  String get errorLoadingDocVersion => 'दस्तावेज़ संस्करण लोड नहीं हो सका। कृपया पुनः प्रयास करें।';
+  @override
+  String get sessionExpired => 'सत्र समाप्त हो गया, कृपया पुनः साइन इन करें।';
+  @override
+  String get queryError => 'क्वेरी पूरी करने में असमर्थ। कृपया बैकएंड/एआई कनेक्शन जांचें।';
+
+  @override
+  String get snapHeroTitle => 'दृश्य निदान और एआई प्रश्नोत्तर';
+  @override
+  String get snapHeroSubtitle => 'तुरंत एसओपी खोजने के लिए मशीन प्लेट, त्रुटियों या आरेखों की फ़ोटो लें या अपलोड करें';
+  @override
+  String get snapUploadPhoto => 'उपकरण फ़ोटो अपलोड करें';
+  @override
+  String get snapCapturePhoto => 'फ़ोटो लें / अपलोड करें';
+  @override
+  String get snapLoading => 'अपलोड और विश्लेषण हो रहा है...';
+  @override
+  String get snapInputPlaceholder => 'इस उपकरण की फ़ोटो के बारे में पूछें…';
+  @override
+  String get snapAddPhotoFirst => 'पूछने से पहले कृपया एक छवि जोड़ें…';
+  @override
+  String get snapMachineCodeHint => 'मशीन कोड (वैकल्पिक — उदा. CNC-01)';
+  @override
+  String get snapSessionExpired => '⚠️ **सत्र समाप्त हो गया।** छवि विश्लेषण से पहले कृपया पुनः साइन इन करें।';
+  @override
+  String get snapServiceUnavailable => '⚠️ **छवि विश्लेषण सेवा से कनेक्ट नहीं हो सका।** कृपया बैकएंड जांचें और पुनः प्रयास करें।';
+  @override
+  String get snapAnalysisFailed => '⚠️ **छवि विश्लेषण विफल रहा।** सर्वर ने अमान्य परिणाम दिया; कृपया पुनः प्रयास करें।';
+  @override
+  String get snapMockWarning => 'कोई वास्तविक ओसीआर या विनिर्देश नहीं मिले।';
+  @override
+  String get qrComingSoon => 'क्यूआर स्कैनर जल्द आ रहा है — अभी के लिए मशीन कोड मैन्युअल रूप से दर्ज करें।';
+  @override
+  String get selectImageBeforeAsking => 'कृपया पूछने से पहले एक छवि चुनें';
+  @override
+  String get scanQrDesc => 'मशीन की पहचान के लिए क्यूआर कोड स्कैन करें';
+  @override
+  String get addDevicePhoto => 'उपकरण छवि जोड़ें';
+  @override
+  String get takePhoto => 'फ़ोटो लें';
+  @override
+  String get takePhotoDesc => 'उपकरण की फ़ोटो लेने के लिए कैमरा खोलें';
+  @override
+  String get uploadPhoto => 'फ़ोटो अपलोड करें';
+  @override
+  String get uploadPhotoDescWeb => 'अपने कंप्यूटर से एक छवि फ़ाइल चुनें';
+  @override
+  String get uploadPhotoDescMobile => 'अपनी गैलरी से फ़ोटो चुनें';
+  @override
+  String get scanQrCode => 'मशीन क्यूआर स्कैन करें';
+  @override
+  String get noSnapPhotos => 'अभी तक कोई उपकरण फ़ोटो नहीं';
+  @override
+  String get noSnapPhotosDesc => 'फ़ोटो लेने, गैलरी से अपलोड करने या क्यूआर स्कैन करने के लिए नीचे दिए गए + बटन पर टैप करें।';
+  @override
+  String get selectImageToAsk => 'प्रश्न पूछने के लिए एक छवि चुनें';
+  @override
+  String get noQuestionsYet => 'इस छवि के लिए अभी कोई प्रश्न नहीं';
+  @override
+  String get typeQuestionBelow => 'विश्लेषण शुरू करने के लिए नीचे अपना प्रश्न लिखें';
+  @override
+  String get machineCodeHint => 'मशीन कोड (वैकल्पिक — उदा. CNC-01)';
+  @override
+  String get snapTooltip => 'छवि जोड़ें या क्यूआर स्कैन करें';
+  @override
+  String get askAboutDevicePhoto => 'इस उपकरण फ़ोटो के बारे में पूछें…';
+  @override
+  String get addImageFirstToAsk => 'पूछना शुरू करने के लिए पहले एक छवि जोड़ें…';
+
+  @override
+  String get documentsTitle => 'औद्योगिक दस्तावेज़ प्रबंधन';
+  @override
+  String get documentsSubtitle => 'ओसीआर और संस्करण ट्रैकिंग के साथ एसओपी, ब्लूप्रिंट, तकनीकी निर्देश';
+  @override
+  String get uploadNewDocument => 'नया दस्तावेज़ अपलोड करें';
+  @override
+  String get uploadDocDesc => 'DCID में एसओपी, तकनीकी आरेख या नियमावली जोड़ें';
+  @override
+  String get searchDocsPlaceholder => 'शीर्षक, मशीन कोड, श्रेणी के आधार पर खोजें…';
+  @override
+  String get sortBy => 'इसके अनुसार क्रमबद्ध करें';
+  @override
+  String get sortNewest => 'नवीनतम पहले';
+  @override
+  String get sortOldest => 'पुरातन पहले';
+  @override
+  String get sortTitleAZ => 'शीर्षक A→Z';
+  @override
+  String get sortTitleZA => 'शीर्षक Z→A';
+  @override
+  String get sortCategory => 'श्रेणी / मशीन कोड';
+  @override
+  String get allCategories => 'सभी श्रेणियां';
+  @override
+  String get allRoles => 'सभी भूमिकाएं';
+  @override
+  String get docTableTitle => 'दस्तावेज़ शीर्षक';
+  @override
+  String get docTableCategory => 'श्रेणी';
+  @override
+  String get docTableMachineCode => 'मशीन कोड';
+  @override
+  String get docTableMinRole => 'न्यूनतम भूमिका';
+  @override
+  String get docTableUpdated => 'अंतिम अपडेट';
+  @override
+  String get docTableActions => 'क्रियाएं';
+  @override
+  String get docTableVersions => 'संस्करण';
+  @override
+  String get noDocsFound => 'कोई दस्तावेज़ नहीं मिला';
+  @override
+  String get noDocsFoundDesc => 'अपनी खोज या फ़िल्टर समायोजित करने का प्रयास करें।';
+  @override
+  String get uploadSuccessSnackbar => 'अपलोड हो गया — ओसीआर प्रसंस्करण शुरू...';
+  @override
+  String get fileRequired => 'कृपया एक पीडीएफ दस्तावेज़ फ़ाइल चुनें';
+  @override
+  String get titleRequired => 'दस्तावेज़ का शीर्षक आवश्यक है';
+  @override
+  String get categoryRequired => 'श्रेणी आवश्यक है';
+  @override
+  String get selectPdfFile => 'पीडीएफ दस्तावेज़ चुनें';
+  @override
+  String get changeFile => 'फ़ाइल बदलें';
+  @override
+  String get uploading => 'अपलोड हो रहा है...';
+  @override
+  String get submitUpload => 'अपलोड करें और ओसीआर संसाधित करें';
+
+  @override
+  String get documentDetail => 'दस्तावेज़ विवरण';
+  @override
+  String get deleteDocument => 'दस्तावेज़ हटाएं';
+  @override
+  String get confirmDelete => 'दस्तावेज़ हटाने की पुष्टि करें';
+  @override
+  String deleteConfirmDesc(String title) => 'क्या आप वाकई "$title" को हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।';
+  @override
+  String get deleteSuccess => 'दस्तावेज़ सफलतापूर्वक हटा दिया गया।';
+  @override
+  String deleteFailed(String err) => 'दस्तावेज़ हटाने में विफल: $err';
+  @override
+  String get loadDetailFailed => 'दस्तावेज़ विवरण लोड करने में विफल।';
+  @override
+  String get versionsList => 'संस्करण सूची';
+  @override
+  String get noVersions => 'कोई संस्करण उपलब्ध नहीं है।';
+  @override
+  String versionNumber(int v) => 'संस्करण $v';
+  @override
+  String get viewOriginalPdf => 'मूल पीडीएफ देखें';
+  @override
+  String get viewOcrText => 'ओसीआर टेक्स्ट देखें';
+  @override
+  String get loadingPdf => 'पीडीएफ डाउनलोड हो रही है...';
+  @override
+  String get invalidBinaryData => 'अमान्य बाइनरी डेटा प्राप्त हुआ';
+  @override
+  String downloadPdfFailed(String err) => 'पीडीएफ फ़ाइल लोड नहीं हो सकी: $err';
+  @override
+  String ocrDialogTitle(String name) => 'ओसीआर टेक्स्ट ($name)';
+  @override
+  String get loadingOcrData => 'ओसीआर डेटा लोड हो रहा है...';
+  @override
+  String loadOcrFailed(String err) => 'ओसीआर डेटा लोड करने में विफल:\n$err';
+  @override
+  String get noOcrData => 'इस संस्करण के लिए कोई ओसीआर डेटा नहीं मिला।';
+  @override
+  String get searchOcrKeyword => 'ओसीआर सामग्री में कीवर्ड खोजें...';
+  @override
+  String get noOcrPagesMatch => 'आपके खोज कीवर्ड से कोई पृष्ठ मेल नहीं खाता।';
+  @override
+  String copyPage(int page) => 'पृष्ठ $page कॉपी करें';
+  @override
+  String pageCopied(int page) => 'पृष्ठ $page कॉपी हो गया';
+  @override
+  String get blankPageNotice => '(खाली पृष्ठ / कोई टेक्स्ट नहीं)';
+  @override
+  String get copyAllOcr => 'सभी कॉपी करें';
+  @override
+  String get allOcrCopied => 'सभी ओसीआर टेक्स्ट क्लिपबोर्ड पर कॉपी हो गए';
+  @override
+  String pageNumber(int page) => 'पृष्ठ $page';
+  @override
+  String get machineCode => 'मशीन कोड';
+  @override
+  String get category => 'श्रेणी';
+  @override
+  String get minRole => 'न्यूनतम भूमिका';
+  @override
+  String get description => 'विवरण';
+  @override
+  String get createdAt => 'बनाया गया';
+  @override
+  String get updatedAt => 'अपडेट किया गया';
+
+  @override
+  String get profileTitle => 'उपयोगकर्ता प्रोफ़ाइल';
+  @override
+  String get usernameLabel => 'उपयोगकर्ता नाम';
+  @override
+  String get fullNameLabel => 'पूरा नाम';
+  @override
+  String get emailLabel => 'ईमेल';
+  @override
+  String get roleLabel => 'भूमिका';
+  @override
+  String get changePassword => 'पासवर्ड बदलें';
+  @override
+  String get currentPassword => 'वर्तमान पासवर्ड';
+  @override
+  String get newPassword => 'नया पासवर्ड';
+  @override
+  String get confirmNewPassword => 'नए पासवर्ड की पुष्टि करें';
+  @override
+  String get currentPasswordRequired => 'कृपया वर्तमान पासवर्ड दर्ज करें';
+  @override
+  String get newPasswordMinLength => 'नया पासवर्ड कम से कम 6 अक्षरों का होना चाहिए';
+  @override
+  String get passwordsDoNotMatch => 'पुष्टि पासवर्ड मेल नहीं खाता';
+  @override
+  String get changePasswordSuccess => 'पासवर्ड सफलतापूर्वक बदल दिया गया।';
+  @override
+  String get changePasswordError => 'पासवर्ड बदलने में विफल';
+  @override
+  String get saveChanges => 'परिवर्तन सहेजें';
+
+  @override
+  String get historyTitle => 'प्रश्नोत्तरी इतिहास';
+  @override
+  String get refresh => 'ताज़ा करें';
+  @override
+  String get noHistoryTitle => 'अभी तक कोई प्रश्न नहीं';
+  @override
+  String get noHistorySubtitle => 'एआई सहायक से आपके द्वारा पूछे गए प्रश्न यहां दिखाई देंगे।';
+  @override
+  String get feedbackRecordedHelpful => '👍 आपकी प्रतिक्रिया के लिए धन्यवाद!';
+  @override
+  String get feedbackRecordedUnhelpful => '👎 प्रतिक्रिया दर्ज की गई।';
+  @override
+  String get feedbackFailed => 'प्रतिक्रिया भेजने में विफल। बाद में पुनः प्रयास करें।';
+  @override
+  String get photoSource => 'फ़ोटो स्रोत';
+
+  @override
+  String get adminManagement => 'सिस्टम प्रशासन';
+  @override
+  String get adminSubtitle => 'उपयोगकर्ता खाते, भूमिका असाइनमेंट और एक्सेस नियंत्रण';
+  @override
+  String get adminUserManagement => 'उपयोगकर्ता प्रबंधन';
+  @override
+  String get adminAnalytics => 'सिस्टम एनालिटिक्स और केपीआई';
+  @override
+  String get createUser => 'उपयोगकर्ता बनाएं';
+  @override
+  String get createUserTitle => 'नया उपयोगकर्ता खाता बनाएं';
+  @override
+  String get createUserDialogTitle => 'नया उपयोगकर्ता खाता बनाएं';
+  @override
+  String get analyticsTab => 'एनालिटिक्स और केपीआई';
+  @override
+  String get usersTab => 'उपयोगकर्ता खाते';
+  @override
+  String get searchUsersPlaceholder => 'नाम, उपयोगकर्ता नाम, ईमेल द्वारा खोजें…';
+  @override
+  String get totalUsers => 'कुल उपयोगकर्ता';
+  @override
+  String get activeUsers => 'सक्रिय';
+  @override
+  String get userCreatedSuccess => 'उपयोगकर्ता सफलतापूर्वक बनाया गया';
+  @override
+  String get analyticsHeadline => 'सिस्टम एनालिटिक्स और केपीआई';
+  @override
+  String get analyticsSubtitle => 'रीयल-टाइम मेट्रिक्स, गार्डरेल्स अनुपालन और क्वेरी प्रदर्शन।';
+  @override
+  String get queriesTotal => 'कुल प्रश्न';
+  @override
+  String get totalQueriesTitle => 'कुल प्रश्न';
+  @override
+  String get avgConfidence => 'औसत विश्वसनीयता';
+  @override
+  String get avgConfidenceTitle => 'औसत विश्वसनीयता';
+  @override
+  String get avgLatencyTitle => 'औसत विलंबता';
+  @override
+  String get guardrailLockedTitle => 'गार्डरेल लॉक';
+  @override
+  String get guardrailInterventions => 'गार्डरेल हस्तक्षेप';
+  @override
+  String get activeSessions => 'सक्रिय सत्र';
+
+  @override
+  String get forbiddenTitle => 'पहुंच प्रतिबंधित';
+  @override
+  String get forbiddenDesc => 'आपको इस अनुभाग को देखने की अनुमति नहीं है।';
+  @override
+  String get backToSearch => 'DocuMind पर वापस जाएं';
+  @override
+  String get cancel => 'रद्द करें';
+  @override
+  String get clear => 'साफ़ करें';
+  @override
+  String get delete => 'हटाएं';
+  @override
+  String get close => 'बंद करें';
+  @override
+  String get retry => 'पुनः प्रयास करें';
+  @override
+  String get error => 'त्रुटि';
+  @override
+  String get loading => 'लोड हो रहा है...';
+  @override
+  String get unknown => 'अज्ञात';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Japanese (日本語)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class AppStringsJa implements AppStrings {
+  const AppStringsJa();
+
+  @override
+  String get appTitle => 'DCID';
+  @override
+  String get appSubtitle => 'Docs';
+  @override
+  String get appFullName => 'DCID デジタル認識産業システム';
+  @override
+  String get appTagline => '産業用AIナレッジベース';
+
+  @override
+  String get loginHeadline => '技術文書とAIアシスタントにアクセスするにはログインしてください';
+  @override
+  String get username => 'ユーザー名';
+  @override
+  String get password => 'パスワード';
+  @override
+  String get signIn => 'ログイン';
+  @override
+  String get authFailed => '認証に失敗しました';
+  @override
+  String get usernameRequired => 'ユーザー名を入力してください';
+  @override
+  String get passwordRequired => 'パスワードを入力してください';
+
+  @override
+  String get navDocuMind => 'DocuMind';
+  @override
+  String get navSnapAsk => 'Snap & Ask';
+  @override
+  String get navDocuments => '文書管理';
+  @override
+  String get navAdmin => 'システム管理';
+  @override
+  String get newChat => '新規チャット';
+  @override
+  String get recents => '最近の履歴';
+  @override
+  String get profileTooltip => 'ユーザープロファイル';
+  @override
+  String get profileMenuTooltip => 'プロファイル設定・パスワード変更';
+  @override
+  String get historyTooltip => '質問履歴';
+  @override
+  String get logoutTooltip => 'ログアウト';
+  @override
+  String get expandSidebar => 'サイドバーを展開';
+  @override
+  String get collapseSidebar => 'サイドバーを折りたたむ';
+  @override
+  String get switchToLight => 'ライトモードに切り替え';
+  @override
+  String get switchToDark => 'ダークモードに切り替え';
+  @override
+  String get switchLanguage => '言語の切り替え';
+  @override
+  String get currentLanguage => '言語: 日本語';
+
+  @override
+  String get roleOperator => 'オペレーター (Operator)';
+  @override
+  String get roleEngineer => 'エンジニア (Engineer)';
+  @override
+  String get roleQaAdmin => 'QA / 管理者 (QA / Admin)';
+  @override
+  String get roleAdmin => 'システム管理者 (Admin)';
+
+  @override
+  String get searchHeroTitle => 'DCID Docs';
+  @override
+  String get searchHeroSubtitle => 'AI搭載 産業用技術文書・ナレッジアシスタント';
+  @override
+  String get searchPlaceholderAll => 'SOP、仕様書、図面について質問する（全文書対象）…';
+  @override
+  String searchPlaceholderSelected(int count) => '選択中の $count 件の文書から質問…';
+  @override
+  String get insufficientConfidenceBanner => '⚠ データの信頼度が不十分です。\n回答は低い信頼度で生成されました。作業前に公式文書と照合して確認してください。';
+  @override
+  String get lockedAnswerWarning => '⚠ データの信頼度が不十分です。信頼度が低いため回答がロックされています。公式文書をご確認ください。';
+  @override
+  String get directDataExtraction => '直接データ抽出';
+  @override
+  String get reasoningMode => '詳細推論モード';
+  @override
+  String get referenceSources => '参照ソース';
+  @override
+  String get copy => 'コピー';
+  @override
+  String get copied => 'コピー完了';
+  @override
+  String get copyAnswerSuccess => '回答内容をクリップボードにコピーしました';
+  @override
+  String get copySuccessSnackbar => '回答内容をクリップボードにコピーしました';
+  @override
+  String get wasAnswerHelpful => 'この回答は役に立ちましたか？';
+  @override
+  String get feedbackThanks => 'フィードバックありがとうございます！';
+  @override
+  String get thankYouFeedback => 'フィードバックありがとうございます！';
+  @override
+  String get helpful => '役に立った';
+  @override
+  String get notHelpful => '不正確';
+  @override
+  String get citations => '引用文献 (Citations)';
+  @override
+  String get confidence => '信頼度';
+  @override
+  String get aiDisclaimer => 'AIナレッジベース  •  AI生成コンテンツです。操作前に必ず公式文書で確認してください';
+  @override
+  String get allDocsScope => 'すべての文書';
+  @override
+  String get clearScope => '選択解除';
+  @override
+  String get scopeAllDocs => 'スコープ: すべての文書 (Global RAG)';
+  @override
+  String scopeSelectedDocs(int count) => 'スコープ: $count 件の文書を選択中';
+  @override
+  String docProcessingWarning(String title) => '文書「$title」は現在処理中のため、AI検索にはまだ使用できません。';
+  @override
+  String get errorLoadingDocVersion => '文書のバージョンを読み込めませんでした。再試行してください。';
+  @override
+  String get sessionExpired => 'セッションの有効期限が切れました。再度ログインしてください。';
+  @override
+  String get queryError => 'クエリを完了できませんでした。バックエンド・AIの接続を確認してください。';
+
+  @override
+  String get snapHeroTitle => '画像診断・AI Q&A';
+  @override
+  String get snapHeroSubtitle => '機械銘板やエラー画面、図面の写真を撮影・アップロードして即座にSOPを検索';
+  @override
+  String get snapUploadPhoto => '機器写真をアップロード';
+  @override
+  String get snapCapturePhoto => '写真を撮影 / アップロード';
+  @override
+  String get snapLoading => 'アップロード・分析中...';
+  @override
+  String get snapInputPlaceholder => 'この機器の写真について質問する…';
+  @override
+  String get snapAddPhotoFirst => '質問する前に機器の画像を追加してください…';
+  @override
+  String get snapMachineCodeHint => '機械コード（任意 — 例: CNC-01）';
+  @override
+  String get snapSessionExpired => '⚠️ **セッションが切れました。** 画像分析を行う前に再度ログインしてください。';
+  @override
+  String get snapServiceUnavailable => '⚠️ **画像分析サービスに接続できません。** バックエンドとAIサービスを確認して再試行してください。';
+  @override
+  String get snapAnalysisFailed => '⚠️ **画像分析に失敗しました。** サーバーから有効な応答がありませんでした。';
+  @override
+  String get snapMockWarning => 'OCRデータまたは仕様情報が見つかりませんでした。';
+  @override
+  String get qrComingSoon => 'QRスキャナーは近日公開予定です — 機械コードを手動で入力してください。';
+  @override
+  String get selectImageBeforeAsking => '質問する前に画像を選択または撮影してください';
+  @override
+  String get scanQrDesc => '機械を識別するためにQRコードをスキャン';
+  @override
+  String get addDevicePhoto => '機器画像を追加';
+  @override
+  String get takePhoto => '写真を撮影';
+  @override
+  String get takePhotoDesc => 'カメラを起動して機器や銘板を撮影';
+  @override
+  String get uploadPhoto => '写真をアップロード';
+  @override
+  String get uploadPhotoDescWeb => 'コンピューターから画像ファイルを選択';
+  @override
+  String get uploadPhotoDescMobile => 'ギャラリーから写真を選択';
+  @override
+  String get scanQrCode => '機械QRコードをスキャン';
+  @override
+  String get noSnapPhotos => '機器の写真がまだありません';
+  @override
+  String get noSnapPhotosDesc => '下の + ボタンをタップして写真を撮影、\nギャラリーからアップロード、またはQRコードをスキャンしてください。';
+  @override
+  String get selectImageToAsk => '画像を選択して質問を開始してください';
+  @override
+  String get noQuestionsYet => 'この画像に関する質問はまだありません';
+  @override
+  String get typeQuestionBelow => '分析を開始するには下に質問を入力してください';
+  @override
+  String get machineCodeHint => '機械コード（任意 — 例: CNC-01）';
+  @override
+  String get snapTooltip => '画像を追加またはQRをスキャン';
+  @override
+  String get askAboutDevicePhoto => 'この機器の写真について質問する…';
+  @override
+  String get addImageFirstToAsk => '質問を始める前に画像を追加してください…';
+
+  @override
+  String get documentsTitle => '技術文書管理';
+  @override
+  String get documentsSubtitle => 'OCRおよびバージョン追跡対応のSOP、設計図面、エンジニアリング仕様書';
+  @override
+  String get uploadNewDocument => '新規文書をアップロード';
+  @override
+  String get uploadDocDesc => 'DCIDにSOP、図面、マニュアル、技術仕様を追加';
+  @override
+  String get searchDocsPlaceholder => 'タイトル、機械コード、カテゴリで検索…';
+  @override
+  String get sortBy => '並べ替え';
+  @override
+  String get sortNewest => '新しい順';
+  @override
+  String get sortOldest => '古い順';
+  @override
+  String get sortTitleAZ => 'タイトル昇順 (A→Z)';
+  @override
+  String get sortTitleZA => 'タイトル降順 (Z→A)';
+  @override
+  String get sortCategory => 'カテゴリ / 機械コード';
+  @override
+  String get allCategories => 'すべてのカテゴリ';
+  @override
+  String get allRoles => 'すべての権限';
+  @override
+  String get docTableTitle => '文書タイトル';
+  @override
+  String get docTableCategory => 'カテゴリ';
+  @override
+  String get docTableMachineCode => '機械コード';
+  @override
+  String get docTableMinRole => '最小必要権限';
+  @override
+  String get docTableUpdated => '更新日時';
+  @override
+  String get docTableActions => '操作';
+  @override
+  String get docTableVersions => 'バージョン';
+  @override
+  String get noDocsFound => '文書が見つかりませんでした';
+  @override
+  String get noDocsFoundDesc => '検索キーワードやカテゴリ・権限フィルターを変更してお試しください。';
+  @override
+  String get uploadSuccessSnackbar => 'アップロード完了 — OCR処理を開始しました...';
+  @override
+  String get fileRequired => 'PDF文書ファイルを選択してください';
+  @override
+  String get titleRequired => '文書タイトルを入力してください';
+  @override
+  String get categoryRequired => 'カテゴリを選択してください';
+  @override
+  String get selectPdfFile => 'PDF文書を選択';
+  @override
+  String get changeFile => 'ファイルを変更';
+  @override
+  String get uploading => 'アップロード中...';
+  @override
+  String get submitUpload => 'アップロードしてOCR処理を開始';
+
+  @override
+  String get documentDetail => '文書詳細';
+  @override
+  String get deleteDocument => '文書を削除';
+  @override
+  String get confirmDelete => '文書削除の確認';
+  @override
+  String deleteConfirmDesc(String title) => '本当に「$title」を削除しますか？この操作は取り消せません。';
+  @override
+  String get deleteSuccess => '文書を正常に削除しました。';
+  @override
+  String deleteFailed(String err) => '文書の削除に失敗しました: $err';
+  @override
+  String get loadDetailFailed => '文書詳細の読み込みに失敗しました。';
+  @override
+  String get versionsList => 'バージョン一覧';
+  @override
+  String get noVersions => 'バージョンがまだありません。';
+  @override
+  String versionNumber(int v) => 'バージョン $v';
+  @override
+  String get viewOriginalPdf => '元のPDFを表示';
+  @override
+  String get viewOcrText => 'OCRテキストを表示';
+  @override
+  String get loadingPdf => 'PDFファイルをダウンロード中...';
+  @override
+  String get invalidBinaryData => '受信データが有効なバイナリ形式ではありません';
+  @override
+  String downloadPdfFailed(String err) => 'PDFファイルの読み込みに失敗しました: $err';
+  @override
+  String ocrDialogTitle(String name) => 'OCRテキスト ($name)';
+  @override
+  String get loadingOcrData => 'OCRデータを読み込み中...';
+  @override
+  String loadOcrFailed(String err) => 'OCRデータの読み込みに失敗しました:\n$err';
+  @override
+  String get noOcrData => 'このバージョンのOCRデータは見つかりませんでした。';
+  @override
+  String get searchOcrKeyword => 'OCRテキスト内のキーワードを検索...';
+  @override
+  String get noOcrPagesMatch => '検索キーワードに一致するページがありません。';
+  @override
+  String copyPage(int page) => 'ページ $page をコピー';
+  @override
+  String pageCopied(int page) => 'ページ $page の内容をコピーしました';
+  @override
+  String get blankPageNotice => '(空白ページ / テキストなし)';
+  @override
+  String get copyAllOcr => 'すべてコピー';
+  @override
+  String get allOcrCopied => 'すべてのOCRテキストをクリップボードにコピーしました';
+  @override
+  String pageNumber(int page) => 'ページ $page';
+  @override
+  String get machineCode => '機械コード';
+  @override
+  String get category => 'カテゴリ';
+  @override
+  String get minRole => '最小必要権限';
+  @override
+  String get description => '説明';
+  @override
+  String get createdAt => '作成日時';
+  @override
+  String get updatedAt => '更新日時';
+
+  @override
+  String get profileTitle => 'ユーザープロファイル';
+  @override
+  String get usernameLabel => 'ユーザー名';
+  @override
+  String get fullNameLabel => '氏名';
+  @override
+  String get emailLabel => 'メールアドレス';
+  @override
+  String get roleLabel => '役割・権限';
+  @override
+  String get changePassword => 'パスワード変更';
+  @override
+  String get currentPassword => '現在のパスワード';
+  @override
+  String get newPassword => '新しいパスワード';
+  @override
+  String get confirmNewPassword => '新しいパスワード（確認）';
+  @override
+  String get currentPasswordRequired => '現在のパスワードを入力してください';
+  @override
+  String get newPasswordMinLength => '新しいパスワードは6文字以上で入力してください';
+  @override
+  String get passwordsDoNotMatch => '確認用パスワードが一致しません';
+  @override
+  String get changePasswordSuccess => 'パスワードを正常に変更しました。';
+  @override
+  String get changePasswordError => 'パスワードの変更に失敗しました';
+  @override
+  String get saveChanges => '変更を保存';
+
+  @override
+  String get historyTitle => '質問履歴';
+  @override
+  String get refresh => '更新';
+  @override
+  String get noHistoryTitle => '質問履歴がありません';
+  @override
+  String get noHistorySubtitle => 'AIアシスタントに質問した履歴がここに表示されます。';
+  @override
+  String get feedbackRecordedHelpful => '👍 フィードバックありがとうございます！';
+  @override
+  String get feedbackRecordedUnhelpful => '👎 フィードバックを記録しました。';
+  @override
+  String get feedbackFailed => 'フィードバックを送信できませんでした。';
+  @override
+  String get photoSource => '画像ソース';
+
+  @override
+  String get adminManagement => 'システム管理';
+  @override
+  String get adminSubtitle => 'ユーザーアカウント、役割の割り当て、アクセス権限の管理';
+  @override
+  String get adminUserManagement => 'ユーザー管理';
+  @override
+  String get adminAnalytics => 'システム分析 & KPI';
+  @override
+  String get createUser => 'ユーザー作成';
+  @override
+  String get createUserTitle => '新規ユーザーアカウント作成';
+  @override
+  String get createUserDialogTitle => '新規ユーザーアカウント作成';
+  @override
+  String get analyticsTab => '分析 & KPI';
+  @override
+  String get usersTab => 'ユーザーアカウント';
+  @override
+  String get searchUsersPlaceholder => '名前、ユーザー名、メールで検索…';
+  @override
+  String get totalUsers => '総ユーザー数';
+  @override
+  String get activeUsers => 'アクティブ';
+  @override
+  String get userCreatedSuccess => 'ユーザーが正常に作成されました';
+  @override
+  String get analyticsHeadline => 'システム分析 & KPI';
+  @override
+  String get analyticsSubtitle => 'リアルタイム指標、ガードレール遵守状況、クエリパフォーマンス。';
+  @override
+  String get queriesTotal => '総クエリ数';
+  @override
+  String get totalQueriesTitle => '総クエリ数';
+  @override
+  String get avgConfidence => '平均信頼度';
+  @override
+  String get avgConfidenceTitle => '平均信頼度';
+  @override
+  String get avgLatencyTitle => '平均レイテンシ';
+  @override
+  String get guardrailLockedTitle => 'ガードレール遮断 (Guardrail Locked)';
+  @override
+  String get guardrailInterventions => 'ガードレール介入';
+  @override
+  String get activeSessions => 'アクティブセッション';
+
+  @override
+  String get forbiddenTitle => 'アクセス拒否';
+  @override
+  String get forbiddenDesc => 'このセクションを閲覧する権限がありません。';
+  @override
+  String get backToSearch => 'DocuMindに戻る';
+  @override
+  String get cancel => 'キャンセル';
+  @override
+  String get clear => 'クリア';
+  @override
+  String get delete => '削除';
+  @override
+  String get close => '閉じる';
+  @override
+  String get retry => '再試行';
+  @override
+  String get error => 'エラー';
+  @override
+  String get loading => '読み込み中...';
+  @override
+  String get unknown => '不明';
 }
