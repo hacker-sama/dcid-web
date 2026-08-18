@@ -9,18 +9,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('SnapAskScreen Widget Tests', () {
-    testWidgets('renders empty state when no photos are uploaded',
-        (WidgetTester tester) async {
+    testWidgets('renders empty state when no photos are uploaded', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             docsRepositoryProvider.overrideWithValue(MockDocsRepository()),
           ],
-          child: const MaterialApp(
-            home: Scaffold(
-              body: SnapAskScreen(),
-            ),
-          ),
+          child: const MaterialApp(home: Scaffold(body: SnapAskScreen())),
         ),
       );
 
@@ -32,8 +29,9 @@ void main() {
   });
 
   group('AnswerView Widget Tests', () {
-    testWidgets('renders Markdown content (bold, code, headers)',
-        (WidgetTester tester) async {
+    testWidgets('renders Markdown content (bold, code, headers)', (
+      WidgetTester tester,
+    ) async {
       const result = AnswerResult(
         answer: '''**Phân tích kỹ thuật**
 - Linh kiện: `MR-J4`
@@ -56,13 +54,14 @@ void main() {
       );
 
       expect(find.textContaining('Phân tích kỹ thuật'), findsOneWidget);
-      expect(find.textContaining('Confidence: 95%'), findsOneWidget);
+      expect(find.textContaining('Confidence:'), findsNothing);
       expect(find.textContaining('Direct Data Extraction'), findsOneWidget);
       expect(find.textContaining('Reasoning mode'), findsOneWidget);
     });
 
-    testWidgets('renders locked guardrail red banner when locked is true',
-        (WidgetTester tester) async {
+    testWidgets('renders locked guardrail red banner when locked is true', (
+      WidgetTester tester,
+    ) async {
       const result = AnswerResult(
         answer: 'Thấp hơn ngưỡng tin cậy',
         confidence: 0.35,
@@ -81,12 +80,16 @@ void main() {
         ),
       );
 
-      expect(find.textContaining('Insufficient data confidence'), findsOneWidget);
+      expect(
+        find.textContaining('Insufficient data confidence'),
+        findsOneWidget,
+      );
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
     });
 
-    testWidgets('renders copy answer button and allows tapping',
-        (WidgetTester tester) async {
+    testWidgets('renders copy answer button and allows tapping', (
+      WidgetTester tester,
+    ) async {
       const result = AnswerResult(
         answer: 'Nội dung trả lời cần sao chép',
         confidence: 0.9,

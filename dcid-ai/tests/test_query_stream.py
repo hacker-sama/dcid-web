@@ -62,7 +62,8 @@ def test_stream_returns_best_effort_for_unrelated_low_memory_result(monkeypatch)
 
     assert [event["event"] for event in events] == ["meta", "delta", "done"]
     assert events[0]["guard"]["locked"] is False
-    assert "80%" in events[1]["text"]
+    assert events[1]["text"].startswith("**Câu trả lời tham khảo.**")
+    assert "%" not in events[1]["text"]
     llm_stream.assert_called_once()
     get_settings.cache_clear()
 
@@ -89,8 +90,8 @@ def test_stream_returns_answer_below_80_percent_with_warning():
     assert events[0]["confidence"] == 0.79
     published_text = "".join(event.get("text", "") for event in events)
     assert "".join(raw_tokens) in published_text
-    assert "80%" in published_text
-    assert "79%" in published_text
+    assert published_text.startswith("**Câu trả lời tham khảo.**")
+    assert "%" not in published_text
 
 def test_stream_reports_llm_error_after_metadata():
     hit = {
