@@ -99,8 +99,12 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
             fileBytes: _fileBytes!,
             fileName: _fileName ?? 'document.pdf',
           );
-      if (detail.versions.isNotEmpty) {
-        ref.read(ingestProgressProvider.notifier).track(detail.versions.first.id);
+      try {
+        if (detail.versions.isNotEmpty) {
+          ref.read(ingestProgressProvider.notifier).track(detail.versions.first.id);
+        }
+      } catch (stompError) {
+        debugPrint('STOMP progress tracking init warning: $stompError');
       }
       if (mounted) Navigator.of(context).pop(detail.document.id);
     } catch (e) {
