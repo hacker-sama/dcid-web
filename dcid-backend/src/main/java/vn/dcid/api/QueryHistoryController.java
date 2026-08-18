@@ -52,7 +52,10 @@ public class QueryHistoryController {
                 log.getLocked(),
                 log.getNumericRuleHit(),
                 log.getLatencyMs(),
-                log.getCreatedAt()
+                log.getCreatedAt(),
+                log.getFeedback(),
+                log.getFeedbackNote(),
+                log.getFeedbackAt()
         );
     }
 }
