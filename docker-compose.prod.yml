@@ -28,13 +28,13 @@ services:
     environment:
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:3b}
 
   ai-worker:
     environment:
       AI_INTERNAL_TOKEN: ${AI_INTERNAL_TOKEN}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+      LM_STUDIO_MODEL: ${LLM_MODEL:-qwen2.5:3b}
 
   ai-ocr:
     ports: !reset []

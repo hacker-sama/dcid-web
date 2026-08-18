@@ -120,7 +120,7 @@ numeric rule-extraction) → LLM sinh câu trả lời khi không bị khóa.
     }
   ],
   "latencyMs": 2100,
-  "model": "deepseek-r1-distill-qwen-1.5b"
+  "model": "qwen2.5:3b"
 }
 ```
 

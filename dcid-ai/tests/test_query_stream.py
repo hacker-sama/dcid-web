@@ -3,7 +3,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from app.schemas import QueryRequest
-from app.services.query_service import LOCKED_ANSWER, run_query_stream
+from app.services.query_service import run_query_stream
 
 
 def _events(lines):
@@ -42,7 +42,7 @@ def test_stream_emits_meta_deltas_and_done_in_order():
     assert "".join(event.get("text", "") for event in events) == "220 VAC"
 
 
-def test_stream_locks_unrelated_low_memory_result_without_calling_llm(monkeypatch):
+def test_stream_returns_best_effort_for_unrelated_low_memory_result(monkeypatch):
     unrelated_hit = {
         "text": "Quy trinh thay dau hop so.",
         "version_id": str(uuid4()),
@@ -61,11 +61,36 @@ def test_stream_locks_unrelated_low_memory_result_without_calling_llm(monkeypatc
         events = _events(run_query_stream(_request()))
 
     assert [event["event"] for event in events] == ["meta", "delta", "done"]
-    assert events[0]["guard"]["locked"] is True
-    assert events[1]["text"] == LOCKED_ANSWER
-    llm_stream.assert_not_called()
+    assert events[0]["guard"]["locked"] is False
+    assert "80%" in events[1]["text"]
+    llm_stream.assert_called_once()
     get_settings.cache_clear()
 
+
+def test_stream_returns_answer_below_80_percent_with_warning():
+    hit = {
+        "text": "Tai lieu co noi dung lien quan mot phan.",
+        "version_id": str(uuid4()),
+        "page_no": 2,
+        "chunk_index": 0,
+        "score": 0.79,
+    }
+    raw_tokens = ["Cau tra loi ", "chua du tin cay"]
+
+    with (
+        patch("app.services.query_service.index_pipeline.search", return_value=[hit]),
+        patch("app.services.query_service.llm_client.get_model_name", return_value="test-model"),
+        patch("app.services.query_service.llm_client.generate_answer_stream", return_value=iter(raw_tokens)),
+    ):
+        events = _events(run_query_stream(_request("noi dung tai lieu la gi")))
+
+    assert [event["event"] for event in events] == ["meta", "delta", "done"]
+    assert events[0]["guard"]["locked"] is False
+    assert events[0]["confidence"] == 0.79
+    published_text = "".join(event.get("text", "") for event in events)
+    assert "".join(raw_tokens) in published_text
+    assert "80%" in published_text
+    assert "79%" in published_text
 
 def test_stream_reports_llm_error_after_metadata():
     hit = {
