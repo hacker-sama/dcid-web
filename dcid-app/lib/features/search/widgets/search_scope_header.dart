@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/document_summary.dart';
 
 /// Scope selection banner, document filter chips, and chat actions.
-class SearchScopeHeader extends StatelessWidget {
+class SearchScopeHeader extends ConsumerWidget {
   const SearchScopeHeader({
     super.key,
     required this.selectedVersionIdsByDocId,
@@ -28,14 +30,15 @@ class SearchScopeHeader extends StatelessWidget {
   final VoidCallback onClearChat;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final accent = accentFor(context);
+    final strings = ref.watch(appStringsProvider);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildScopeBar(context, colorScheme, accent),
+        _buildScopeBar(context, colorScheme, accent, strings),
         if (availableDocs.isNotEmpty)
           _buildDocChips(context, colorScheme, accent),
       ],
@@ -46,6 +49,7 @@ class SearchScopeHeader extends StatelessWidget {
     BuildContext context,
     ColorScheme colorScheme,
     Color accent,
+    dynamic strings,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -62,8 +66,8 @@ class SearchScopeHeader extends StatelessWidget {
           Expanded(
             child: Text(
               selectedVersionIdsByDocId.isEmpty
-                  ? 'Scope: All Documents (Global RAG)'
-                  : 'Scope: ${selectedVersionIdsByDocId.length} document(s) selected',
+                  ? strings.scopeAllDocs
+                  : strings.scopeSelectedDocs(selectedVersionIdsByDocId.length),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -74,14 +78,14 @@ class SearchScopeHeader extends StatelessWidget {
           if (selectedVersionIdsByDocId.isNotEmpty)
             _SmallAction(
               icon: Icons.close_rounded,
-              label: 'Clear',
+              label: strings.clear,
               colorScheme: colorScheme,
               onTap: onClearDocSelection,
             ),
           if (hasChatMessages)
             _SmallAction(
               icon: Icons.refresh_rounded,
-              label: 'New chat',
+              label: strings.newChat,
               colorScheme: colorScheme,
               onTap: loading ? null : onClearChat,
             ),

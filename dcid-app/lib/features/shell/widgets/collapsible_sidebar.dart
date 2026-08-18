@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/language_toggle_button.dart';
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/responsive.dart';
 import '../../../state/auth_controller.dart';
 import '../../../state/chat_sessions_provider.dart';
@@ -43,6 +45,7 @@ class CollapsibleSidebar extends ConsumerWidget {
     final bool isExpanded =
         forceExpanded ?? ref.watch(isSidebarExpandedProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final strings = ref.watch(appStringsProvider);
     final user = ref.watch(authControllerProvider).user;
     final sessions = ref.watch(chatSessionsProvider);
     final activeSessionId = ref.watch(activeChatSessionIdProvider);
@@ -99,7 +102,6 @@ class CollapsibleSidebar extends ConsumerWidget {
     }
 
     // COLLAPSED layout (68 px wide, icon-only, zero text)
-    // COLLAPSED layout (68 px wide, icon-only, zero text)
     // Uses mainAxisAlignment: spaceBetween — no Spacer/Expanded needed,
     // so it works even when the parent provides unbounded height.
     Widget buildCollapsedChild(double totalHeight) => SizedBox(
@@ -135,7 +137,7 @@ class CollapsibleSidebar extends ConsumerWidget {
               IconButton(
                 onPressed: newChat,
                 icon: const Icon(Icons.add_rounded),
-                tooltip: 'New Chat',
+                tooltip: strings.newChat,
               ),
             ],
           ),
@@ -172,7 +174,7 @@ class CollapsibleSidebar extends ConsumerWidget {
                   children: [
                     if (user != null)
                       IconButton(
-                        tooltip: 'Hồ sơ cá nhân (${user.fullName ?? user.username})',
+                        tooltip: '${strings.profileTooltip} (${user.fullName ?? user.username})',
                         icon: CircleAvatar(
                           radius: 13,
                           backgroundColor: colorScheme.primaryContainer,
@@ -188,18 +190,19 @@ class CollapsibleSidebar extends ConsumerWidget {
                         onPressed: () => context.push('/profile'),
                       ),
                     IconButton(
-                      tooltip: 'Lịch sử câu hỏi',
+                      tooltip: strings.historyTooltip,
                       icon: const Icon(Icons.history_rounded),
                       onPressed: () => context.push('/history'),
                     ),
+                    const LanguageToggleButton(),
                     themeToggleButton,
                     IconButton(
-                      tooltip: 'Đăng xuất',
+                      tooltip: strings.logoutTooltip,
                       icon: const Icon(Icons.logout_rounded),
                       onPressed: onLogout,
                     ),
                     IconButton(
-                      tooltip: 'Mở rộng thanh bên',
+                      tooltip: strings.expandSidebar,
                       icon: const Icon(Icons.chevron_right_rounded),
                       onPressed: expand,
                     ),
@@ -244,7 +247,7 @@ class CollapsibleSidebar extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'DCID',
+                          strings.appTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -255,7 +258,7 @@ class CollapsibleSidebar extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          'Docs',
+                          strings.appSubtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -276,11 +279,11 @@ class CollapsibleSidebar extends ConsumerWidget {
             child: FilledButton.icon(
               onPressed: newChat,
               icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text(
-                'New Chat',
+              label: Text(
+                strings.newChat,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               style: FilledButton.styleFrom(
                 alignment: Alignment.centerLeft,
@@ -293,7 +296,7 @@ class CollapsibleSidebar extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
               child: Text(
-                'Recents',
+                strings.recents,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -383,7 +386,7 @@ class CollapsibleSidebar extends ConsumerWidget {
           if (user != null) ...[
             const Divider(height: 1),
             Tooltip(
-              message: 'Hồ sơ cá nhân & Đổi mật khẩu',
+              message: strings.profileMenuTooltip,
               child: ListTile(
                 leading: CircleAvatar(
                   radius: 16,
@@ -404,7 +407,7 @@ class CollapsibleSidebar extends ConsumerWidget {
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 subtitle: Text(
-                  user.role.label,
+                  user.role.localized(strings),
                   style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 18),
@@ -420,18 +423,19 @@ class CollapsibleSidebar extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  tooltip: 'Lịch sử câu hỏi',
+                  tooltip: strings.historyTooltip,
                   icon: const Icon(Icons.history_rounded),
                   onPressed: () => context.push('/history'),
                 ),
+                const LanguageToggleButton(),
                 themeToggleButton,
                 IconButton(
-                  tooltip: 'Đăng xuất',
+                  tooltip: strings.logoutTooltip,
                   icon: const Icon(Icons.logout_rounded),
                   onPressed: onLogout,
                 ),
                 IconButton(
-                  tooltip: 'Thu gọn thanh bên',
+                  tooltip: strings.collapseSidebar,
                   icon: const Icon(Icons.chevron_left_rounded),
                   onPressed: collapse,
                 ),

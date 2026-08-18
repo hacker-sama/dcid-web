@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/localization/locale_controller.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'state/theme_controller.dart';
@@ -17,6 +18,7 @@ class DcidApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final currentLocale = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: 'DCID: Digital Cognitive InDustrial System',
@@ -24,6 +26,7 @@ class DcidApp extends ConsumerWidget {
       theme: _lightTheme,
       darkTheme: _darkTheme,
       themeMode: themeMode,
+      locale: currentLocale.flutterLocale,
       // Instant theme toggle to eliminate GPU lag
       themeAnimationDuration: Duration.zero,
       routerConfig: router,

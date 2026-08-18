@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/localization/locale_controller.dart';
 import '../../data/models/query_history_item.dart';
 import '../../state/providers.dart';
 
@@ -20,15 +21,16 @@ class HistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final historyAsync = ref.watch(_historyProvider);
+    final strings = ref.watch(appStringsProvider);
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lịch sử câu hỏi'),
+        title: Text(strings.historyTitle),
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'Làm mới',
+            tooltip: strings.refresh,
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(_historyProvider),
           ),
@@ -36,10 +38,14 @@ class HistoryScreen extends ConsumerWidget {
       ),
       body: historyAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorState(message: e.toString(), onRetry: () => ref.invalidate(_historyProvider)),
+        error: (e, _) => _ErrorState(
+          message: e.toString(),
+          onRetry: () => ref.invalidate(_historyProvider),
+          strings: strings,
+        ),
         data: (items) {
           if (items.isEmpty) {
-            return _EmptyState(scheme: scheme);
+            return _EmptyState(scheme: scheme, strings: strings);
           }
           return ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -48,6 +54,7 @@ class HistoryScreen extends ConsumerWidget {
             itemBuilder: (context, index) => _HistoryTile(
               item: items[index],
               scheme: scheme,
+              strings: strings,
               onFeedback: (helpful, note) => _submitFeedback(
                 context, ref, items[index].id, helpful, note,
               ),
@@ -65,12 +72,13 @@ class HistoryScreen extends ConsumerWidget {
     bool helpful,
     String? note,
   ) async {
+    final strings = ref.read(appStringsProvider);
     try {
       await ref.read(docsRepositoryProvider).submitFeedback(id, helpful: helpful, note: note);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(helpful ? '👍 Cảm ơn phản hồi!' : '👎 Đã ghi nhận phản hồi.'),
+            content: Text(helpful ? strings.feedbackRecordedHelpful : strings.feedbackRecordedUnhelpful),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -80,7 +88,7 @@ class HistoryScreen extends ConsumerWidget {
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không gửi được phản hồi. Thử lại sau.')),
+          SnackBar(content: Text(strings.feedbackFailed)),
         );
       }
     }
@@ -95,11 +103,13 @@ class _HistoryTile extends StatelessWidget {
   const _HistoryTile({
     required this.item,
     required this.scheme,
+    required this.strings,
     required this.onFeedback,
   });
 
   final QueryHistoryItem item;
   final ColorScheme scheme;
+  final dynamic strings;
   final void Function(bool helpful, String? note) onFeedback;
 
   @override
@@ -199,7 +209,7 @@ class _HistoryTile extends StatelessWidget {
                   )
                 else
                   _SmallBadge(
-                    label: item.feedback == 1 ? '👍 Hữu ích' : '👎 Không hữu ích',
+                    label: item.feedback == 1 ? '👍 ${strings.helpful}' : '👎 ${strings.notHelpful}',
                     color: item.feedback == 1 ? Colors.green : Colors.red,
                     scheme: scheme,
                   ),
@@ -222,21 +232,21 @@ class _HistoryTile extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(helpful ? '👍 Hữu ích' : '👎 Không hữu ích'),
+        title: Text(helpful ? '👍 ${strings.helpful}' : '👎 ${strings.notHelpful}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               helpful
-                  ? 'Đánh dấu câu trả lời này là hữu ích?'
-                  : 'Đánh dấu câu trả lời này là không hữu ích?',
+                  ? strings.wasAnswerHelpful
+                  : strings.notHelpful,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: noteCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Ghi chú (tuỳ chọn)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: strings.description,
+                border: const OutlineInputBorder(),
                 isDense: true,
               ),
               maxLines: 2,
@@ -244,13 +254,13 @@ class _HistoryTile extends StatelessWidget {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Huỷ')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(strings.cancel)),
           FilledButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               onFeedback(helpful, noteCtrl.text.isEmpty ? null : noteCtrl.text);
             },
-            child: const Text('Xác nhận'),
+            child: Text(strings.close),
           ),
         ],
       ),
@@ -314,8 +324,9 @@ class _FeedbackButton extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.scheme});
+  const _EmptyState({required this.scheme, required this.strings});
   final ColorScheme scheme;
+  final dynamic strings;
 
   @override
   Widget build(BuildContext context) {
@@ -326,12 +337,12 @@ class _EmptyState extends StatelessWidget {
           Icon(Icons.history_rounded, size: 56, color: scheme.outlineVariant),
           const SizedBox(height: 16),
           Text(
-            'Chưa có câu hỏi nào',
+            strings.noHistoryTitle,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Text(
-            'Các câu hỏi bạn đặt sẽ xuất hiện ở đây.',
+            strings.noHistorySubtitle,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
@@ -341,9 +352,10 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({required this.message, required this.onRetry, required this.strings});
   final String message;
   final VoidCallback onRetry;
+  final dynamic strings;
 
   @override
   Widget build(BuildContext context) {
@@ -353,9 +365,9 @@ class _ErrorState extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
           const SizedBox(height: 12),
-          const Text('Không tải được lịch sử'),
+          Text('${strings.error}: $message'),
           const SizedBox(height: 16),
-          OutlinedButton(onPressed: onRetry, child: const Text('Thử lại')),
+          OutlinedButton(onPressed: onRetry, child: Text(strings.retry)),
         ],
       ),
     );

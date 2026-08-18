@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/localization/locale_controller.dart';
 
 /// Standard disclaimer banner displayed beneath AI-generated responses.
-class AiDisclaimerFooter extends StatelessWidget {
+class AiDisclaimerFooter extends ConsumerWidget {
   const AiDisclaimerFooter({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final strings = ref.watch(appStringsProvider);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -32,7 +36,7 @@ class AiDisclaimerFooter extends StatelessWidget {
           const SizedBox(width: 6),
           Flexible(
             child: Text(
-              'AI Knowledge Base  •  AI-generated content, please double-check with official documents before operating',
+              strings.aiDisclaimer,
               style: TextStyle(
                 fontSize: 11,
                 color: colorScheme.onSurfaceVariant.withValues(alpha: 0.85),
