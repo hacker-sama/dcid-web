@@ -1,9 +1,9 @@
-# CLAUDE.md — Smart KCN Docs Backend
+# CLAUDE.md — DCID: Digital Cognitive InDustrial System Backend
 
 ## Project Overview
 
-Smart KCN Docs backend is the **on-premise governance / control plane** for an industrial
-document assistant used inside factories (KCN = Khu Công Nghiệp). Built with Spring Boot 3.3.x
+DCID backend is the **on-premise governance / control plane** for the **DCID: Digital Cognitive InDustrial System**
+(industrial document assistant & knowledge engine). Built with Spring Boot 3.3.x
 on Java 21. It owns everything that is *not* AI inference:
 
 - **AuthN/AuthZ** — self-issued JWT (HMAC) + role-based access control (no external IdP).

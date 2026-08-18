@@ -4,11 +4,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.dcid.common.ApiResponse;
 import vn.dcid.domain.entity.User;
+import vn.dcid.dto.request.ChangePasswordRequest;
 import vn.dcid.dto.request.LoginRequest;
 import vn.dcid.dto.response.LoginResponse;
 import vn.dcid.dto.response.UserProfileDTO;
@@ -48,5 +50,13 @@ public class AuthController {
                 user.getUpdatedAt()
         );
         return ResponseEntity.ok(ApiResponse.of(dto));
+    }
+
+    /** User tự đổi mật khẩu. Yêu cầu xác minh mật khẩu hiện tại. */
+    @PutMapping("/me/password")
+    public ResponseEntity<ApiResponse<Void>> changeOwnPassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changeOwnPassword(request);
+        return ResponseEntity.ok(ApiResponse.of(null));
     }
 }

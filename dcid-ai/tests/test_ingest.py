@@ -1,8 +1,7 @@
 """POST /ai/ingest — 202 + callback payload đúng shape (mock MinIO + OCR + backend client).
 
-TestClient chạy BackgroundTasks đồng bộ ngay sau response → assert được callback.
-OCR (PaddleOCR) được mock — model thật nặng/cần mạng lần đầu, không phù hợp unit test
-(xem dcid-ai/README.md: "Test không cần mạng/MinIO/backend thật").
+TestClient chạy Celery task đồng bộ (eager mode) -> assert được callback.
+OCR (PaddleOCR) được mock — model thật nặng/cần mạng lần đầu, không phù hợp unit test.
 """
 
 import io
@@ -12,7 +11,7 @@ from pypdf import PdfWriter
 
 from app.pipeline.ocr import PageOcr
 from app.schemas import IngestCallback
-from app.services import ingest_service
+from app.workers import embed_worker
 
 VERSION_ID = "11111111-1111-1111-1111-111111111111"
 INGEST_BODY = {
@@ -48,24 +47,33 @@ def test_ingest_success_sends_ready_callback(
     client: TestClient, auth_headers: dict[str, str], monkeypatch
 ) -> None:
     sent: list[IngestCallback] = []
+    monkeypatch.setattr("celery.Task.update_state", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        ingest_service.ocr_client,
+        embed_worker.ocr_client,
         "extract_pages",
         lambda storage_key, langs, **_kwargs: _fake_extract_pages(_make_pdf(3), langs),
     )
     monkeypatch.setattr(
-        ingest_service.index_pipeline,
+        embed_worker.index_pipeline,
         "upsert_chunks",
-        lambda version_id, chunks: len(chunks),
+        lambda *args, **kwargs: 3,
     )
     monkeypatch.setattr(
-        ingest_service.backend_client, "post_ingest_callback", sent.append
+        embed_worker.embed_pipeline,
+        "embed_texts",
+        lambda texts: [[0.1] * 384 for _ in texts],
+    )
+    monkeypatch.setattr(
+        embed_worker.backend_client, "post_ingest_callback", sent.append
+    )
+    monkeypatch.setattr(
+        embed_worker.backend_client, "post_ingest_status", lambda payload: None
     )
 
     response = client.post("/ai/ingest", json=INGEST_BODY, headers=auth_headers)
 
     assert response.status_code == 202
-    assert response.json() == {"accepted": True}
+    assert response.json()["accepted"] is True
 
     assert len(sent) == 1
     cb = sent[0]
@@ -89,12 +97,16 @@ def test_ingest_minio_error_sends_failed_callback(
     client: TestClient, auth_headers: dict[str, str], monkeypatch
 ) -> None:
     def boom(storage_key: str, langs: list[str], **_kwargs) -> list[PageOcr]:
-        raise ConnectionError("MinIO unreachable")
+        raise ValueError("Corrupt PDF file")
 
     sent: list[IngestCallback] = []
-    monkeypatch.setattr(ingest_service.ocr_client, "extract_pages", boom)
+    monkeypatch.setattr("celery.Task.update_state", lambda *args, **kwargs: None)
+    monkeypatch.setattr(embed_worker.ocr_client, "extract_pages", boom)
     monkeypatch.setattr(
-        ingest_service.backend_client, "post_ingest_callback", sent.append
+        embed_worker.backend_client, "post_ingest_callback", sent.append
+    )
+    monkeypatch.setattr(
+        embed_worker.backend_client, "post_ingest_status", lambda payload: None
     )
 
     response = client.post("/ai/ingest", json=INGEST_BODY, headers=auth_headers)
@@ -105,7 +117,7 @@ def test_ingest_minio_error_sends_failed_callback(
     assert cb.status == "FAILED"
     assert cb.pageCount is None
     assert cb.pages == []
-    assert cb.error is not None and "MinIO unreachable" in cb.error
+    assert cb.error is not None and "Corrupt PDF file" in cb.error
 
 
 def test_ingest_callback_failure_does_not_crash(
@@ -116,14 +128,28 @@ def test_ingest_callback_failure_does_not_crash(
     def callback_boom(payload: IngestCallback) -> None:
         raise ConnectionError("backend down")
 
+    monkeypatch.setattr("celery.Task.update_state", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        ingest_service.ocr_client,
+        embed_worker.ocr_client,
         "extract_pages",
         lambda storage_key, langs, **_kwargs: _fake_extract_pages(_make_pdf(1), langs),
     )
     monkeypatch.setattr(
-        ingest_service.backend_client, "post_ingest_callback", callback_boom
+        embed_worker.index_pipeline,
+        "upsert_chunks",
+        lambda *args, **kwargs: 1,
+    )
+    monkeypatch.setattr(
+        embed_worker.embed_pipeline,
+        "embed_texts",
+        lambda texts: [[0.1] * 384 for _ in texts],
+    )
+    monkeypatch.setattr(
+        embed_worker.backend_client, "post_ingest_callback", callback_boom
+    )
+    monkeypatch.setattr(
+        embed_worker.backend_client, "post_ingest_status", lambda payload: None
     )
 
     response = client.post("/ai/ingest", json=INGEST_BODY, headers=auth_headers)
-    assert response.status_code == 202  # không exception nào thoát ra ngoài
+    assert response.status_code == 202

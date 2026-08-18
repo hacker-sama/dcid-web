@@ -1,74 +1,85 @@
-# Smart KCN Docs
+# DCID — Digital Cognitive InDustrial System
 
-Trợ lý kỹ thuật số & quản trị tri thức **on-premise** cho khu công nghiệp (KCN).
+[![CI](https://github.com/hacker-sama/dcid-web/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/hacker-sama/dcid-web/actions/workflows/ci.yml)
+[![Deploy](https://github.com/hacker-sama/dcid-web/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/hacker-sama/dcid-web/actions/workflows/deploy.yml)
 
-Monorepo:
+An on-premise digital assistant and industrial knowledge management system built on a local RAG architecture.
 
-| Thư mục | Vai trò |
+## Repository Structure
+
+This is a monorepo containing three primary packages:
+
+| Directory | Role |
 |---|---|
-| [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, quản lý tài liệu & version, API Xóa tài liệu, audit ISO, storage MinIO, WebSocket STOMP. |
-| [`dcid-app`](dcid-app) | Frontend **Flutter** đa nền tảng — Web (Kiosk/Admin) + Mobile (Android). Đã có Tra cứu RAG, Upload tài liệu, Xóa tài liệu (AlertDialog xác nhận). |
-| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) — OCR/RAG/LLM, Qdrant vector DB, Celery/Redis và SSE Streaming. |
+| [`dcid-backend`](dcid-backend) | Governance / control plane (Spring Boot 3.3, Java 21): auth/RBAC, document management & versioning, audit trail (ISO), MinIO storage, WebSocket STOMP. |
+| [`dcid-app`](dcid-app) | Cross-platform **Flutter** frontend — Web (Kiosk/Admin) + Mobile (Android). Includes RAG search, document upload, and document deletion with confirmation dialog. |
+| [`dcid-ai`](dcid-ai) | AI plane (Python / FastAPI) — OCR/RAG/LLM, Qdrant vector DB, Celery/Redis, SSE streaming. |
 
+## System Overview
 
-## Các Phân hệ Hệ thống AI Hỏi đáp Local
+The system follows a **Dual-Plane Local RAG** architecture with full on-premise isolation.
 
-Hệ thống được thiết kế theo kiến trúc **Dual-Plane Local RAG** độc lập tuyệt đối:
+### Plane A — Official Document Governance
 
-### Phân hệ A — Tra cứu Kho tài liệu chính thức (Official Document Governance)
-- **Mục tiêu**: Quản lý các tài liệu quy trình SOP, bản vẽ kỹ thuật, nội quy nhà máy theo chuẩn ISO.
-- **Phân quyền RBAC**: So sánh mức độ phân quyền `min_role` (`OPERATOR` < `ENGINEER` < `QA_ADMIN` < `ADMIN`). Tự động lọc bỏ các tài liệu vượt quá cấp bậc người dùng.
-- **Quản lý Vòng đời Version**: Upload phiên bản mới (v2, v3...), duyệt phát hành `ACTIVE` (tự động chuyển version active cũ thành `SUPERSEDED`), và đánh dấu lỗi thời `OBSOLETE`.
+Manages structured internal documents such as SOPs, technical drawings, and factory regulations under ISO standards.
 
-### Phân hệ B — Hỏi đáp Tài liệu Công khai Ẩn danh (`/ask`)
-- **Mục tiêu**: Khách chưa đăng nhập có thể dùng thử hỏi đáp riêng với các file PDF cá nhân tải lên.
-- **Bảo mật & Cô lập Dữ liệu**:
-  - Không cần JWT Bearer header. Xác thực qua **Session Token** ngẫu nhiên.
-  - File tạm lưu tại thư mục riêng `sessions/{sessionId}/` trên MinIO.
-  - Vector tạm được cô lập hoàn toàn theo `sessionId` trên Qdrant.
-- **Tự động Tiêu hủy (TTL Cleanup Job)**: Tiến trình `@Scheduled` chạy định kỳ 10 phút/lần tự động xóa sạch Vector Qdrant ➔ File MinIO ➔ DB Record của các phiên quá hạn 2 giờ.
+- **RBAC**: Role hierarchy `OPERATOR < ENGINEER < QA_ADMIN < ADMIN`. Documents are filtered based on the requesting user's minimum required role (`min_role`).
+- **Version lifecycle**: Upload new versions (v2, v3, ...), publish as `ACTIVE` (automatically supersedes the previous active version), and mark outdated versions as `OBSOLETE`.
 
----
+### Plane B — Anonymous Public Q&A (`/ask`)
 
-## Tài liệu
+Allows unauthenticated users to perform Q&A against their own uploaded PDF files without requiring a login.
 
-- **[Cài đặt & chạy dự án](docs/SETUP.md)** — hướng dẫn đầy đủ cho người mới clone repo. ← **bắt đầu ở đây**
-- **[Kiến trúc dự án](docs/ARCHITECTURE.md)** — sơ đồ tổng thể, luồng nghiệp vụ, data model, API.
-- **[ERD & Database](docs/ERD.md)** — schema quan hệ, phân tách Postgres/Qdrant/MinIO, vòng đời version.
-- **[API Contract BE↔AI](docs/API-CONTRACT.md)** — nguồn sự thật ranh giới ingest/query/callback.
-- [Work order: dựng khung dcid-ai](docs/PLAN-DCID-AI.md) — plan tự chứa cho agent thực thi. ✅ đã xong
-- [Work order: Flutter màn Tài liệu + Upload](docs/PLAN-FLUTTER-DOCS.md) — plan tự chứa cho agent thực thi. ✅ đã xong
-- **[Kế hoạch Khóa luận 8 tuần (nhóm 5 người)](docs/PLAN-THESIS.md)** — đóng khung đề tài, dataset, thực nghiệm, lịch tuần. ← **dùng cái này**
-- [Kế hoạch 6 tuần (product)](docs/PLAN-6-WEEKS.md) — bản định hướng sản phẩm, đã thay thế.
-- [Roadmap 18 tuần](docs/ROADMAP.md) — 5 milestone, phân công, rủi ro.
-- [Frontend (Flutter)](docs/FRONTEND.md) — kiến trúc `dcid-app`, web (kiosk/admin) + mobile.
-- [Backend dev guide](dcid-backend/CLAUDE.md) — cách chạy, quy ước, auth.
+- **Authentication**: No JWT Bearer header required. Sessions are authenticated via a randomly generated session token.
+- **Data isolation**: Temporary files are stored under `sessions/{sessionId}/` in MinIO. Vectors are scoped to `sessionId` in Qdrant.
+- **TTL cleanup**: A `@Scheduled` job runs every 10 minutes and purges expired sessions (older than 2 hours) — Qdrant vectors, MinIO files, and DB records.
 
-## Chạy nhanh
+## Documentation
 
-Hướng dẫn đầy đủ (yêu cầu công cụ, từng bước, kiểm tra, troubleshooting):
-**[docs/SETUP.md](docs/SETUP.md)**. Tóm tắt các luồng khởi chạy chính:
+| Document | Description |
+|---|---|
+| [Setup Guide](docs/SETUP.md) | Full setup instructions for new contributors — **start here** |
+| [Architecture](docs/ARCHITECTURE.md) | System diagram, business flows, data model, API overview |
+| [ERD & Database](docs/ERD.md) | Relational schema, Postgres/Qdrant/MinIO separation, version lifecycle |
+| [API Contract BE↔AI](docs/API-CONTRACT.md) | Source of truth for ingest/query/callback boundaries |
+| [VPS & Access Handover](docs/VPS-TEAM-HANDOVER.md) | Linux/PostgreSQL accounts, SSH tunnel, access revocation |
+| [Deploy Runbook](docs/DEPLOY-RUNBOOK.md) | CI/CD operations, manual deploy, rollback, incident handling |
+| [Thesis Plan (8 weeks)](docs/PLAN-THESIS.md) | Thesis framing, dataset, experiments, weekly schedule |
+| [6-week Product Plan](docs/PLAN-6-WEEKS.md) | Product roadmap — superseded |
+| [18-week Roadmap](docs/ROADMAP.md) | 5 milestones, team assignments, risk register |
+| [Frontend Guide](docs/FRONTEND.md) | `dcid-app` architecture — web (kiosk/admin) + mobile |
+| [Backend Dev Guide](dcid-backend/CLAUDE.md) | How to run, conventions, auth |
+
+Work orders (completed):
+- [Work order: dcid-ai setup](docs/PLAN-DCID-AI.md)
+- [Work order: Flutter document screen + upload](docs/PLAN-FLUTTER-DOCS.md)
+
+## Quick Start
+
+See [docs/SETUP.md](docs/SETUP.md) for full prerequisites and step-by-step instructions. The following is a summary of the main startup sequence.
 
 ```bash
-# 1. Hạ tầng
+# 1. Infrastructure
 docker compose up -d postgres minio qdrant ai-ocr redis
 
-# 2. Backend — terminal riêng
+# 2. Backend (separate terminal)
 cd dcid-backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 # Login: POST http://localhost:8080/api/auth/login  {"username":"admin","password":"admin123"}
 
-# 3. AI service — terminal riêng (mở 2 tab)
-# Tab 1: API Server
+# 3. AI service (two terminals)
+# Terminal 1 — API server
 cd dcid-ai && python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt && copy .env.example .env
 uvicorn app.main:app --port 8000
-# Tab 2: Celery Worker (chạy task nền)
+
+# Terminal 2 — Celery worker
 cd dcid-ai && .venv\Scripts\activate
 celery -A app.celery_app.celery_app worker --loglevel=info -Q ingest,default
 
-# 4. Frontend — terminal riêng
+# 4. Frontend (separate terminal)
 cd dcid-app && flutter pub get
-flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080   # web (kiosk/admin)
-flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080                             # mobile (Android)
+# Web (kiosk/admin)
+flutter run -d chrome --web-port=3000 --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
+# Mobile (Android)
+flutter run --dart-define=USE_MOCK_DATA=false --dart-define=API_BASE_URL=http://localhost:8080
 ```
-

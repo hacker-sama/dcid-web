@@ -57,7 +57,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean isSubmissionEndpoint(String method, String path) {
-        // TODO(Smart KCN Docs): wire this to the write-heavy endpoints that need throttling
+        // TODO(DCID): wire this to the write-heavy endpoints that need throttling
         //  (e.g. document upload, /api/query). Disabled until the new domain exists.
         return false;
     }

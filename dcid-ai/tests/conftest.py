@@ -75,7 +75,16 @@ def mock_chroma_and_llm(monkeypatch):
     # Most query-service tests exercise the vector branch with deterministic
     # mocks. Dedicated low-memory tests cover the lexical branch.
     monkeypatch.setenv("LOW_MEMORY_QUERY_MODE", "false")
+    monkeypatch.setenv("AI_RESOURCE_GATE_ENABLED", "false")
     get_settings.cache_clear()
+    
+    from app.celery_app import celery_app
+    celery_app.conf.update(
+        task_always_eager=True,
+        task_eager_propagates=False,
+        result_backend="cache+memory://",
+    )
+    
     monkeypatch.setattr("app.pipeline.embed.embed_query", lambda _question: [0.1] * 384)
     monkeypatch.setattr("app.pipeline.index.search", _mock_search_side_effect)
     monkeypatch.setattr("app.clients.llm_client.generate_answer", _mock_generate_answer)

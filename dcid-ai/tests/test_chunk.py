@@ -111,8 +111,8 @@ class TestChunkPages:
         chunks = chunk_pages([_page(text)], max_words=max_words, overlap_words=overlap)
         assert len(chunks) >= 2
         # Từ cuối chunk 0 phải xuất hiện ở đầu chunk 1
-        tail_chunk0 = chunks[0].text.split()[-overlap:]
-        head_chunk1 = chunks[1].text.split()[:overlap]
+        tail_chunk0 = [w for w in chunks[0].text.split() if w.startswith("w")][-overlap:]
+        head_chunk1 = [w for w in chunks[1].text.split() if w.startswith("w")][:overlap]
         assert tail_chunk0 == head_chunk1
 
     def test_multi_page_chunk_index_continuous(self):

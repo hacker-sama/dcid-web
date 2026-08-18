@@ -1,4 +1,4 @@
-# Smart KCN Docs — ERD & Database
+# DCID: Digital Cognitive InDustrial System — ERD & Database
 
 > Schema quan hệ (PostgreSQL) cho `dcid-backend`. Vector/chunk sống ở **Qdrant**, file ở **MinIO**;
 > Postgres chỉ giữ **metadata + audit**. Xem kiến trúc: [`ARCHITECTURE.md`](ARCHITECTURE.md) §B3.

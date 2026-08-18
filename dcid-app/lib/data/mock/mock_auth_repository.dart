@@ -131,4 +131,13 @@ class MockAuthRepository implements IAuthRepository {
       email: '$username@factory.local',
     );
   }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    // Mock: accept any password change
+  }
 }

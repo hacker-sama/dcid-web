@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme.dart';
 import '../../../data/models/snap_entry.dart';
+import '../../common/ai_disclaimer_footer.dart';
 import '../../search/answer_view.dart';
 
 /// Single Q&A chat bubble rendered in the Snap & Ask conversation list.
@@ -101,7 +102,7 @@ class ChatBubble extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Inline header: icon + "Smart KCN Docs"
+              // Inline header: icon + "DCID Docs"
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -126,7 +127,7 @@ class ChatBubble extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Smart KCN Docs',
+                    'DCID Docs',
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
@@ -187,26 +188,8 @@ class ChatBubble extends StatelessWidget {
 
               const SizedBox(height: 8),
 
-              // Subtle AI metadata chip at the bottom
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 11,
-                    color: scheme.onSurface.withValues(alpha: 0.35),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'AI Knowledge Base  •  Smart KCN',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      color: scheme.onSurface.withValues(alpha: 0.35),
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
-              ),
+              // AI Knowledge Base disclaimer chip
+              const AiDisclaimerFooter(),
             ],
           ),
         ],

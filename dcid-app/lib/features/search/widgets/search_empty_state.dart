@@ -65,7 +65,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
                   return Transform(
                     transform: Matrix4.identity()
                       ..rotateZ(angle)
-                      ..scale(scale, scale, 1.0),
+                      ..scaleByDouble(scale, scale, 1.0, 1.0),
                     alignment: Alignment.center,
                     child: child,
                   );
@@ -103,7 +103,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
 
             // Bold title
             Text(
-              'Smart KCN Docs',
+              'DCID Docs',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.displayMedium?.copyWith(
                     fontWeight: FontWeight.w800,

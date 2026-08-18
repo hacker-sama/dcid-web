@@ -50,5 +50,11 @@ abstract class IDocsRepository {
 
   /// `DELETE /api/documents/{id}` — delete document (QA_ADMIN/ADMIN only).
   Future<void> deleteDocument(String id);
+
+  /// `GET /api/query/history` — lịch sử câu hỏi của user đang đăng nhập.
+  Future<List<dynamic>> getQueryHistory({int page = 0, int size = 20});
+
+  /// `POST /api/query/{id}/feedback` — gửi phản hồi hữu ích/không hữu ích.
+  Future<void> submitFeedback(String queryId, {required bool helpful, String? note});
 }
 

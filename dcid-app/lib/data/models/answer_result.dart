@@ -32,6 +32,7 @@ class AnswerResult {
     this.reasoningMode = false,
     this.isOfflineFallback = false,
     required this.citations,
+    this.queryLogId,
   });
 
   final String answer;
@@ -49,6 +50,9 @@ class AnswerResult {
   /// True when backend/AI network request failed and fallback response is returned.
   final bool isOfflineFallback;
   final List<Citation> citations;
+
+  /// ID của QueryLog được tạo khi hỏi — dùng để gửi feedback.
+  final String? queryLogId;
 
   factory AnswerResult.fromJson(Map<String, dynamic> json) {
     final guard = (json['guard'] as Map<String, dynamic>?) ?? const {};
@@ -71,6 +75,7 @@ class AnswerResult {
       reasoningMode: parseBool(json['reasoningMode'] ?? guard['reasoningMode']),
       isOfflineFallback: parseBool(json['isOfflineFallback']),
       citations: citations,
+      queryLogId: json['queryLogId'] as String?,
     );
   }
 

@@ -7,6 +7,7 @@ import '../../core/responsive.dart';
 import '../../core/constrained_content.dart';
 import '../../data/models/document_summary.dart';
 import '../../state/documents_providers.dart';
+import '../../state/ingest_progress_provider.dart';
 import '../../state/providers.dart';
 import '../../state/role_filter.dart';
 import 'upload_document_sheet.dart';
@@ -366,6 +367,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 final listBody = Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const _IngestProgressBannerList(),
                     _buildSortBar(scheme, isMobile: isMobile),
                     Expanded(
                       child: ListView.separated(
@@ -552,6 +554,7 @@ class _DesktopView extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
+                  const _IngestProgressBannerList(),
                   SizedBox(
                     height: 600,
                     child: DataTable2(
@@ -695,6 +698,113 @@ class _ErrorState extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Live Ingestion Progress Banners (STOMP WebSocket)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _IngestProgressBannerList extends ConsumerWidget {
+  const _IngestProgressBannerList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progressMap = ref.watch(ingestProgressProvider);
+    if (progressMap.isEmpty) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      children: progressMap.entries.map((entry) {
+        final versionId = entry.key;
+        final msg = entry.value;
+
+        Color cardColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF);
+        Color accentColor = Colors.blue.shade700;
+        IconData statusIcon = Icons.hourglass_top_rounded;
+
+        if (msg.isDone) {
+          cardColor = isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5);
+          accentColor = Colors.green.shade700;
+          statusIcon = Icons.check_circle_rounded;
+        } else if (msg.isFailed) {
+          cardColor = isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEF2F2);
+          accentColor = Colors.red.shade700;
+          statusIcon = Icons.error_outline_rounded;
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(statusIcon, color: accentColor, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      msg.message.isNotEmpty
+                          ? msg.message
+                          : 'Processing document pipeline...',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${msg.step} (${msg.progress}%)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor,
+                      ),
+                    ),
+                  ),
+                  if (msg.isDone || msg.isFailed) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        ref.read(ingestProgressProvider.notifier).untrack(versionId);
+                        ref.invalidate(documentsProvider);
+                      },
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: msg.progress > 0 ? (msg.progress / 100.0) : null,
+                  backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                  valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                  minHeight: 6,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

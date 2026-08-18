@@ -1,4 +1,4 @@
-# Smart KCN Docs — Kế hoạch 6 tuần cho team 3–4 người
+# DCID: Digital Cognitive InDustrial System — Kế hoạch 6 tuần cho team 3–4 người
 
 > ⚠️ **ĐÃ THAY THẾ:** dự án được tái định hướng thành **khóa luận cuối kỳ** — dùng
 > [`PLAN-THESIS.md`](PLAN-THESIS.md) (8 tuần, 5 người, có trục thực nghiệm). File này giữ lại

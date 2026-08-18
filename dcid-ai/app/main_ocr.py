@@ -42,7 +42,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="dcid-ai-ocr",
-    description="Dedicated OCR worker service for Smart KCN Docs.",
+    description="Dedicated OCR worker service for DCID.",
     version="0.1.0",
     lifespan=lifespan,
 )

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0EA5E9"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded squircle with subtle border -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bgGrad)" stroke="url(#ringGrad)" stroke-width="4"/>
+
+  <!-- Precision Manufacturing / Robotic Arm Icon -->
+  <g fill="url(#armGrad)">
+    <!-- Base -->
+    <path d="M26 102 C26 99 28 97 31 97 L97 97 C100 97 102 99 102 102 C102 105 100 107 97 107 L31 107 C28 107 26 105 26 102 Z"/>
+    <!-- Lower pillar -->
+    <path d="M48 97 L40 68 C39.5 66 40.5 64 42.5 63 L55 58 C57 57 59.5 58 60 60 L65 77 L57 97 Z"/>
+    <!-- Lower joint -->
+    <circle cx="48" cy="66" r="6" fill="#38BDF8"/>
+    <!-- Arm segment -->
+    <path d="M58 64 L79 40 C80.5 38.5 83 38.5 84.5 40 L88 43.5 C89.5 45 89.5 47.5 88 49 L67 73 Z"/>
+    <!-- Upper joint -->
+    <circle cx="83" cy="44" r="6" fill="#38BDF8"/>
+    <!-- Claw mount -->
+    <circle cx="89" cy="38" r="4.5" fill="#7DD3FC"/>
+    <!-- Claw fingers -->
+    <path d="M91 35 L101 27 C102.5 25.8 104.5 26.5 105 28.3 C105.3 29.5 104.8 30.8 103.8 31.5 L97 37 L103.8 42.5 C104.8 43.2 105.3 44.5 105 45.7 C104.5 47.5 102.5 48.2 101 47 L91 39 Z"/>
+  </g>
+</svg>

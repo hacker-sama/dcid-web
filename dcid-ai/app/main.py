@@ -41,7 +41,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="dcid-ai",
-    description="AI plane cho Smart KCN Docs — Decoupled Async Architecture (Celery + Redis). Contract: docs/API-CONTRACT.md",
+    description="AI plane cho DCID: Digital Cognitive InDustrial System — Decoupled Async Architecture (Celery + Redis). Contract: docs/API-CONTRACT.md",
     version="0.2.0",
     lifespan=lifespan,
 )

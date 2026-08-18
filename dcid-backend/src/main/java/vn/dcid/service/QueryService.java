@@ -87,11 +87,12 @@ public class QueryService {
         List<AiCitation> citations = ai.citations() != null ? ai.citations() : List.of();
         UUID matchedVersionId = citations.isEmpty() ? null : citations.getFirst().versionId();
 
-        saveLog(actorId, request.question(), matchedVersionId,
+        UUID logId = saveLog(actorId, request.question(), matchedVersionId,
                 BigDecimal.valueOf(ai.confidence()).setScale(3, RoundingMode.HALF_UP),
                 numericFlag, lockedFlag, ai.answer(), latencyMs);
 
         return new AnswerDTO(
+                logId,
                 ai.answer(),
                 ai.confidence(),
                 new AnswerDTO.Guard(lockedFlag, numericFlag, reasoningFlag),
@@ -142,11 +143,12 @@ public class QueryService {
         List<AiCitation> citations = ai.citations() != null ? ai.citations() : List.of();
         UUID matchedVersionId = citations.isEmpty() ? null : citations.getFirst().versionId();
 
-        saveLog(actorId, question, matchedVersionId,
+        UUID logId = saveLog(actorId, question, matchedVersionId,
                 BigDecimal.valueOf(ai.confidence()).setScale(3, RoundingMode.HALF_UP),
                 numericFlag, lockedFlag, ai.answer(), latencyMs);
 
         return new AnswerDTO(
+                logId,
                 ai.answer(),
                 ai.confidence(),
                 new AnswerDTO.Guard(lockedFlag, numericFlag, reasoningFlag),
@@ -168,7 +170,7 @@ public class QueryService {
         return versionRepository.findVersionIdsByStatusAndMinRoles(VersionStatus.ACTIVE, minRoles);
     }
 
-    private void saveLog(UUID actorId, String question, UUID matchedVersionId, BigDecimal confidence,
+    private UUID saveLog(UUID actorId, String question, UUID matchedVersionId, BigDecimal confidence,
                          boolean numericRule, boolean locked, String answer, int latencyMs) {
         QueryLog logEntry = new QueryLog();
         logEntry.setActorId(actorId);
@@ -179,7 +181,7 @@ public class QueryService {
         logEntry.setLocked(locked);
         logEntry.setAnswerPreview(answer != null && answer.length() > 500 ? answer.substring(0, 500) : answer);
         logEntry.setLatencyMs(latencyMs);
-        queryLogRepository.save(logEntry);
+        return queryLogRepository.save(logEntry).getId();
     }
 
     private static int elapsedMs(long startNanos) {

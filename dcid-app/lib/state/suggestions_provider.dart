@@ -156,8 +156,12 @@ List<SearchSuggestionItem> generateSuggestionsForRole({
 final searchSuggestionsProvider = Provider<List<SearchSuggestionItem>>((ref) {
   final auth = ref.watch(authControllerProvider);
   final role = auth.user?.role;
-  final docsAsync = ref.watch(documentsProvider);
-  final docs = docsAsync.value;
+  // Protected document data must not be requested while session restoration
+  // is still in progress. SearchScreen also watches this same provider, so
+  // Riverpod shares one in-flight GET /api/documents request between both UIs.
+  final docs = auth.isAuthenticated
+      ? ref.watch(documentsProvider).value
+      : null;
 
   return generateSuggestionsForRole(role: role, documents: docs);
 });
