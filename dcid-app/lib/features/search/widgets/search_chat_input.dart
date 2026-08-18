@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/locale_controller.dart';
@@ -115,28 +116,47 @@ class SearchChatInput extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              onSubmitted: (_) => onAsk(),
-              textInputAction: TextInputAction.send,
-              maxLines: 5,
-              minLines: 1,
-              style: const TextStyle(fontSize: 14, height: 1.5),
-              decoration: InputDecoration(
-                hintText: selectedVersionIdsByDocId.isEmpty
-                    ? strings.searchPlaceholderAll
-                    : strings.searchPlaceholderSelected(selectedVersionIdsByDocId.length),
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.enter): () {
+                  if (!loading && controller.text.trim().isNotEmpty) {
+                    onAsk();
+                  }
+                },
+                const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
+                  if (!loading && controller.text.trim().isNotEmpty) {
+                    onAsk();
+                  }
+                },
+              },
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                onSubmitted: (_) {
+                  if (!loading && controller.text.trim().isNotEmpty) {
+                    onAsk();
+                  }
+                },
+                textInputAction: TextInputAction.send,
+                maxLines: 5,
+                minLines: 1,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+                decoration: InputDecoration(
+                  hintText: selectedVersionIdsByDocId.isEmpty
+                      ? strings.searchPlaceholderAll
+                      : strings.searchPlaceholderSelected(selectedVersionIdsByDocId.length),
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  isDense: true,
                 ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                isDense: true,
               ),
             ),
           ),

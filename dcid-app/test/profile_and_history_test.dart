@@ -1,3 +1,5 @@
+import 'package:dcid_app/core/localization/app_locale.dart';
+import 'package:dcid_app/core/localization/app_strings.dart';
 import 'package:dcid_app/data/mock/mock_auth_repository.dart';
 import 'package:dcid_app/data/mock/mock_docs_repository.dart';
 import 'package:dcid_app/data/models/answer_result.dart';
@@ -157,6 +159,31 @@ void main() {
       expect(find.text('👍 Đã thích'), findsOneWidget);
       expect(find.text('👎 Không thích'), findsOneWidget);
       expect(find.text('🔒 Bị khóa'), findsOneWidget);
+    });
+  });
+
+  group('i18n Multi-language Synchronization Tests', () {
+    test('all 4 language implementations provide valid feedback strings', () {
+      for (final locale in AppLocale.values) {
+        final strings = AppStrings.of(locale);
+        expect(strings.totalFeedbacks.isNotEmpty, isTrue);
+        expect(strings.helpfulCountLabel.isNotEmpty, isTrue);
+        expect(strings.notHelpfulCountLabel.isNotEmpty, isTrue);
+        expect(strings.satisfactionRate.isNotEmpty, isTrue);
+        expect(strings.searchFeedbackPlaceholder.isNotEmpty, isTrue);
+        expect(strings.filterAllRatings.isNotEmpty, isTrue);
+        expect(strings.filterHelpfulOnly.isNotEmpty, isTrue);
+        expect(strings.filterNotHelpfulOnly.isNotEmpty, isTrue);
+        expect(strings.columnTime.isNotEmpty, isTrue);
+        expect(strings.columnUser.isNotEmpty, isTrue);
+        expect(strings.columnRating.isNotEmpty, isTrue);
+        expect(strings.columnQuestion.isNotEmpty, isTrue);
+        expect(strings.columnFeedbackNote.isNotEmpty, isTrue);
+        expect(strings.columnConfidence.isNotEmpty, isTrue);
+        expect(strings.showingFeedbacksCount(5).isNotEmpty, isTrue);
+        expect(strings.questionDetailLabel.isNotEmpty, isTrue);
+        expect(strings.answerDetailLabel.isNotEmpty, isTrue);
+      }
     });
   });
 }

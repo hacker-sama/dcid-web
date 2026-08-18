@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 
 class Breakpoints {
   static const double compact = 600;   // phone
-  static const double medium = 840;    // tablet dọc
+  static const double medium = 768;    // tablet dọc (iPad/iPad Air standard)
   static const double expanded = 1200; // desktop/web thường
   static const double large = 1600;    // ultra-wide / kiosk màn lớn
 }
