@@ -15,10 +15,12 @@ import vn.dcid.domain.entity.DocumentVersion;
 import vn.dcid.domain.enums.UserRole;
 import vn.dcid.domain.enums.VersionStatus;
 import vn.dcid.dto.request.CreateDocumentRequest;
+import vn.dcid.dto.request.CreateVersionRequest;
 import vn.dcid.dto.response.DocumentDTO;
 import vn.dcid.dto.response.DocumentDetailDTO;
 import vn.dcid.dto.response.DocumentPageDTO;
 import vn.dcid.dto.response.DocumentVersionDTO;
+import vn.dcid.exception.ForbiddenException;
 import vn.dcid.exception.NotFoundException;
 import vn.dcid.exception.PolicyViolationException;
 import vn.dcid.repository.DocumentPageRepository;
@@ -34,6 +36,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -111,17 +114,107 @@ public class DocumentService {
         return new DocumentDetailDTO(DocumentDTO.from(doc), List.of(DocumentVersionDTO.from(version)));
     }
 
+    /** Upload phiên bản mới (v2, v3...) của tài liệu đã có. */
+    @Transactional
+    public DocumentVersionDTO createNewVersion(UUID documentId, CreateVersionRequest req, UUID actorId) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new NotFoundException("Document", documentId.toString()));
+
+        MultipartFile file = req.getFile();
+        if (file == null || file.isEmpty()) {
+            throw new PolicyViolationException("File rỗng hoặc không hợp lệ.");
+        }
+        final byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException e) {
+            throw new PolicyViolationException("Không đọc được file: " + e.getMessage());
+        }
+
+        int nextVersionNo = versionRepository.findMaxVersionNo(documentId) + 1;
+        String storageKey = "documents/" + doc.getId() + "/v" + nextVersionNo + "/original.pdf";
+        String contentType = file.getContentType() != null ? file.getContentType() : "application/pdf";
+        minioService.upload(storageKey, new ByteArrayInputStream(bytes), bytes.length, contentType);
+
+        DocumentVersion version = new DocumentVersion();
+        version.setDocumentId(doc.getId());
+        version.setVersionNo(nextVersionNo);
+        version.setStorageKey(storageKey);
+        version.setOriginalFilename(file.getOriginalFilename());
+        version.setContentType(contentType);
+        version.setFileSize((long) bytes.length);
+        version.setChecksum(sha256(bytes));
+        version.setLang(req.getLang());
+        version.setStatus(VersionStatus.PROCESSING);
+        version.setCreatedBy(actorId);
+        version = versionRepository.save(version);
+
+        auditLogService.log(actorId, "DOCUMENT_VERSION_CREATE", "DOCUMENT_VERSION", version.getId(), null, null);
+        triggerIngest(doc, version);
+
+        return DocumentVersionDTO.from(version);
+    }
+
+    /** Phát hành phiên bản (ACTIVE). Phiên bản ACTIVE cũ tự động đổi thành SUPERSEDED. */
+    @Transactional
+    public DocumentVersionDTO publishVersion(UUID documentId, UUID versionId, UUID actorId) {
+        DocumentVersion version = getVersionEntity(documentId, versionId);
+
+        // Chuyển phiên bản ACTIVE cũ (nếu có) thành SUPERSEDED
+        Optional<DocumentVersion> currentActive = versionRepository
+                .findFirstByDocumentIdAndStatus(documentId, VersionStatus.ACTIVE);
+        if (currentActive.isPresent() && !currentActive.get().getId().equals(versionId)) {
+            DocumentVersion oldActive = currentActive.get();
+            oldActive.setStatus(VersionStatus.SUPERSEDED);
+            versionRepository.save(oldActive);
+            log.info("Phiên bản cũ v{} (id={}) đã chuyển thành SUPERSEDED", oldActive.getVersionNo(), oldActive.getId());
+        }
+
+        version.setStatus(VersionStatus.ACTIVE);
+        version = versionRepository.save(version);
+
+        auditLogService.log(actorId, "DOCUMENT_VERSION_PUBLISH", "DOCUMENT_VERSION", versionId, null, null);
+        log.info("Đã phát hành phiên bản v{} (id={}) của documentId={}", version.getVersionNo(), versionId, documentId);
+
+        return DocumentVersionDTO.from(version);
+    }
+
+    /** Đánh dấu lỗi thời (OBSOLETE) một phiên bản tài liệu. */
+    @Transactional
+    public DocumentVersionDTO obsoleteVersion(UUID documentId, UUID versionId, UUID actorId) {
+        DocumentVersion version = getVersionEntity(documentId, versionId);
+
+        version.setStatus(VersionStatus.OBSOLETE);
+        version = versionRepository.save(version);
+
+        auditLogService.log(actorId, "DOCUMENT_VERSION_OBSOLETE", "DOCUMENT_VERSION", versionId, null, null);
+        log.info("Đã chuyển phiên bản v{} (id={}) sang OBSOLETE", version.getVersionNo(), versionId);
+
+        return DocumentVersionDTO.from(version);
+    }
+
     @Transactional(readOnly = true)
-    public PagedResponse<DocumentDTO> list(PageRequest pageRequest) {
-        Page<Document> page = documentRepository.findAll(pageRequest.toSpringPageRequest());
+    public PagedResponse<DocumentDTO> list(PageRequest pageRequest, UserRole actorRole) {
+        Page<Document> page;
+        if (actorRole != null) {
+            List<UserRole> allowedRoles = Arrays.stream(UserRole.values())
+                    .filter(r -> r.getLevel() <= actorRole.getLevel())
+                    .toList();
+            page = documentRepository.findByMinRoleIn(allowedRoles, pageRequest.toSpringPageRequest());
+        } else {
+            page = documentRepository.findAll(pageRequest.toSpringPageRequest());
+        }
         List<DocumentDTO> items = page.getContent().stream().map(DocumentDTO::from).toList();
         return PagedResponse.of(items, page.getNumber(), page.getSize(), page.getTotalElements());
     }
 
     @Transactional(readOnly = true)
-    public DocumentDetailDTO getDetail(UUID id) {
+    public DocumentDetailDTO getDetail(UUID id, UserRole actorRole) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Document", id.toString()));
+        if (actorRole != null && doc.getMinRole().getLevel() > actorRole.getLevel()) {
+            throw new ForbiddenException("Bạn không có quyền truy cập tài liệu này.");
+        }
         List<DocumentVersionDTO> versions = versionRepository.findByDocumentIdOrderByVersionNoDesc(id)
                 .stream().map(DocumentVersionDTO::from).toList();
         return new DocumentDetailDTO(DocumentDTO.from(doc), versions);
@@ -138,13 +231,23 @@ public class DocumentService {
     }
 
     @Transactional(readOnly = true)
-    public InputStream downloadVersionFile(UUID documentId, UUID versionId) {
+    public InputStream downloadVersionFile(UUID documentId, UUID versionId, UserRole actorRole) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new NotFoundException("Document", documentId.toString()));
+        if (actorRole != null && doc.getMinRole().getLevel() > actorRole.getLevel()) {
+            throw new ForbiddenException("Bạn không có quyền tải file từ tài liệu này.");
+        }
         DocumentVersion version = getVersionEntity(documentId, versionId);
         return minioService.download(version.getStorageKey());
     }
 
     @Transactional(readOnly = true)
-    public List<DocumentPageDTO> getVersionPages(UUID documentId, UUID versionId) {
+    public List<DocumentPageDTO> getVersionPages(UUID documentId, UUID versionId, UserRole actorRole) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new NotFoundException("Document", documentId.toString()));
+        if (actorRole != null && doc.getMinRole().getLevel() > actorRole.getLevel()) {
+            throw new ForbiddenException("Bạn không có quyền xem các trang của tài liệu này.");
+        }
         getVersionEntity(documentId, versionId);
         return pageRepository.findByVersionIdOrderByPageNo(versionId)
                 .stream().map(DocumentPageDTO::from).toList();

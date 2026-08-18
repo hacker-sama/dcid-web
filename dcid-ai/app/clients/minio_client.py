@@ -32,9 +32,10 @@ def get_object(storage_key: str) -> bytes:
         response.release_conn()
 
 
-def get_object_base64(storage_key: str, max_side: int = 672) -> str:
-    """Tải object ảnh từ MinIO và chuyển đổi thành Data URI Base64 JPEG siêu nhẹ.
-    Tự động nén/resize cạnh tối đa về 672px và nén JPEG 75% để tiết kiệm token cho Vision LLM (~576 tokens).
+def get_object_base64(storage_key: str, max_side: int = 800) -> str:
+    """Tải object ảnh từ MinIO và chuyển thành Data URI tối ưu.
+    Resize cạnh tối đa về 800px; giữ PNG cho bản vẽ nét mảnh, còn ảnh
+    thông thường dùng JPEG 90 để cân bằng độ rõ và chi phí Vision.
     """
     import base64
     import io
@@ -44,15 +45,20 @@ def get_object_base64(storage_key: str, max_side: int = 672) -> str:
     try:
         from PIL import Image
         img = Image.open(io.BytesIO(data))
+        source_format = (img.format or "").upper()
         if img.mode in ("RGBA", "P", "LA"):
             img = img.convert("RGB")
         if max(img.width, img.height) > max_side:
             img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
         
         out_buf = io.BytesIO()
-        img.save(out_buf, format="JPEG", quality=75, optimize=True)
+        if source_format == "PNG":
+            img.save(out_buf, format="PNG", optimize=True)
+            mime_type = "image/png"
+        else:
+            img.save(out_buf, format="JPEG", quality=90, optimize=True)
+            mime_type = "image/jpeg"
         data = out_buf.getvalue()
-        mime_type = "image/jpeg"
     except Exception:
         mime_type = "image/png"
 
@@ -79,7 +85,7 @@ def get_or_render_page_base64(
     version_id: str | None = None,
     document_id: str | None = None,
     page_no: int = 1,
-    max_side: int = 1280,
+    max_side: int = 800,
 ) -> str | None:
     """Tải Base64 ảnh trang từ MinIO; nếu chưa có (tài liệu cũ) → tự động lấy PDF gốc, render trang PNG và lưu lại MinIO."""
     import logging
@@ -129,16 +135,16 @@ def get_or_render_page_base64(
         mat = fitz.Matrix(scale, scale)
         pix = page.get_pixmap(matrix=mat)
         
-        # Nén JPEG chất lượng 75% cho kích thước file siêu nhẹ (~80KB - 120KB)
-        jpg_bytes = pix.tobytes("jpg", jpg_quality=75)
+        # PNG giữ các đường mảnh và nhãn kích thước rõ hơn cho bản vẽ.
+        image_bytes = pix.tobytes("png")
         doc.close()
 
-        put_object(page_img_key, jpg_bytes, content_type="image/jpeg")
-        logger.info("Đã tự động render và lưu ảnh trang %s (%d bytes) lên MinIO", page_img_key, len(jpg_bytes))
+        put_object(page_img_key, image_bytes, content_type="image/png")
+        logger.info("Đã tự động render và lưu ảnh trang %s (%d bytes) lên MinIO", page_img_key, len(image_bytes))
 
         import base64
-        b64 = base64.b64encode(jpg_bytes).decode("utf-8")
-        return f"data:image/jpeg;base64,{b64}"
+        b64 = base64.b64encode(image_bytes).decode("utf-8")
+        return f"data:image/png;base64,{b64}"
     except Exception as exc:
         logger.warning("Không thể auto-render ảnh trang cho key %s: %s", page_img_key, exc)
         return None

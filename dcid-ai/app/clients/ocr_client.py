@@ -7,6 +7,7 @@ import httpx
 from app.config import get_settings
 from app.pipeline.ocr import PageOcr
 from app.security import INTERNAL_TOKEN_HEADER
+from app.services.resource_gate import serialized_heavy
 
 logger = logging.getLogger("dcid-ai.ocr_client")
 
@@ -14,6 +15,7 @@ OCR_PATH = "/ocr"
 TIMEOUT_SECONDS = 300.0  # OCR có thể chậm với PDF nhiều trang
 
 
+@serialized_heavy("ocr")
 def extract_pages(
     storage_key: str,
     langs: list[str] | None = None,

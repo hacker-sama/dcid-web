@@ -28,7 +28,7 @@ _TABLE_ROW_RE = re.compile(r"(\|.*\|)|(^[-─+|]{3,}$)", re.MULTILINE)
 
 @dataclass
 class Chunk:
-    """Một chunk văn bản kèm vị trí nguồn và cấu trúc không gian (dùng để sinh metadata Chroma & citation)."""
+    """Một chunk văn bản kèm vị trí nguồn và cấu trúc không gian (dùng để sinh metadata Qdrant & citation)."""
 
     text: str
     page_no: int

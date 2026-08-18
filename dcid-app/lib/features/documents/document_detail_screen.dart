@@ -1,6 +1,6 @@
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constrained_content.dart';
 import '../../core/file_viewer/file_viewer.dart';
@@ -72,6 +72,7 @@ class DocumentDetailScreen extends ConsumerWidget {
       ),
 
       body: detailAsync.when(
+        skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
           child: Column(
@@ -218,7 +219,7 @@ class _VersionTile extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
-                    onPressed: () => _viewOcr(context, ref),
+                    onPressed: () => _viewOcr(context),
                     icon: const Icon(Icons.description, size: 18),
                     label: const Text('Xem chữ OCR'),
                   ),
@@ -234,14 +235,25 @@ class _VersionTile extends ConsumerWidget {
   Future<void> _viewPdf(BuildContext context, WidgetRef ref) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đang tải file PDF...')),
+        const SnackBar(
+          content: Text('Đang tải file PDF...'),
+          duration: Duration(seconds: 2),
+        ),
       );
       final dio = ref.read(apiClientProvider).dio;
       final response = await dio.get(
         '/api/documents/$documentId/versions/${version.id}/download',
         options: Options(responseType: ResponseType.bytes),
       );
-      final bytes = response.data as Uint8List;
+      final dynamic rawData = response.data;
+      final Uint8List bytes;
+      if (rawData is Uint8List) {
+        bytes = rawData;
+      } else if (rawData is List<int>) {
+        bytes = Uint8List.fromList(rawData);
+      } else {
+        throw Exception('Dữ liệu trả về không đúng định dạng binary');
+      }
       openOrDownloadFile(
         bytes,
         version.originalFilename ?? 'v${version.versionNo}.pdf',
@@ -256,69 +268,258 @@ class _VersionTile extends ConsumerWidget {
     }
   }
 
-  Future<void> _viewOcr(BuildContext context, WidgetRef ref) async {
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
-      );
-      final dio = ref.read(apiClientProvider).dio;
-      final response =
-          await dio.get('/api/documents/$documentId/versions/${version.id}/pages');
-      if (context.mounted) Navigator.pop(context); // close progress
+  void _viewOcr(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => _OcrViewerDialog(
+        documentId: documentId,
+        version: version,
+      ),
+    );
+  }
+}
 
-      final data = (response.data?['data'] as List<dynamic>?) ?? [];
-      if (!context.mounted) return;
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(
-              'Văn bản OCR (${version.originalFilename ?? 'v${version.versionNo}'})'),
-          content: SizedBox(
-            width: 600,
-            height: 400,
-            child: data.isEmpty
+/// Dialog hiển thị nội dung văn bản OCR cho phiên bản tài liệu.
+class _OcrViewerDialog extends ConsumerStatefulWidget {
+  const _OcrViewerDialog({
+    required this.documentId,
+    required this.version,
+  });
+
+  final String documentId;
+  final VersionSummary version;
+
+  @override
+  ConsumerState<_OcrViewerDialog> createState() => _OcrViewerDialogState();
+}
+
+class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _pages = [];
+  String _filterQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOcr();
+  }
+
+  Future<void> _fetchOcr() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final dio = ref.read(apiClientProvider).dio;
+      final response = await dio.get(
+        '/api/documents/${widget.documentId}/versions/${widget.version.id}/pages',
+      );
+      final rawList = (response.data?['data'] as List<dynamic>?) ?? [];
+      final pages = rawList
+          .map((e) => e is Map<String, dynamic> ? e : <String, dynamic>{})
+          .toList();
+      if (mounted) {
+        setState(() {
+          _pages = pages;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  void _copyAllText() {
+    final buffer = StringBuffer();
+    for (var i = 0; i < _pages.length; i++) {
+      final item = _pages[i];
+      final pageNo = item['pageNo'] ?? (i + 1);
+      final text = item['ocrText'] ?? '';
+      buffer.writeln('--- Trang $pageNo ---');
+      buffer.writeln(text);
+      buffer.writeln();
+    }
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã sao chép toàn bộ nội dung OCR vào clipboard'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title =
+        'Văn bản OCR (${widget.version.originalFilename ?? 'v${widget.version.versionNo}'})';
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget body;
+    if (_loading) {
+      body = const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Đang tải dữ liệu OCR...'),
+          ],
+        ),
+      );
+    } else if (_error != null) {
+      body = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, color: scheme.error, size: 40),
+              const SizedBox(height: 12),
+              Text(
+                'Không tải được dữ liệu OCR:\n$_error',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: scheme.error),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _fetchOcr,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Thử lại'),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (_pages.isEmpty) {
+      body = const Center(
+        child: Text('Chưa có dữ liệu OCR cho phiên bản này.'),
+      );
+    } else {
+      final filteredPages = _filterQuery.trim().isEmpty
+          ? _pages
+          : _pages.where((item) {
+              final text = (item['ocrText'] as String? ?? '').toLowerCase();
+              return text.contains(_filterQuery.toLowerCase());
+            }).toList();
+
+      body = Column(
+        children: [
+          if (_pages.length > 1) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Tìm từ khóa trong nội dung...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  suffixIcon: _filterQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => setState(() => _filterQuery = ''),
+                        )
+                      : null,
+                ),
+                onChanged: (val) => setState(() => _filterQuery = val),
+              ),
+            ),
+          ],
+          Expanded(
+            child: filteredPages.isEmpty
                 ? const Center(
-                    child: Text('Chưa có dữ liệu OCR cho phiên bản này.'))
+                    child: Text('Không tìm thấy trang nào khớp với từ khóa.'),
+                  )
                 : ListView.separated(
-                    itemCount: data.length,
-                    separatorBuilder: (context, index) => const Divider(),
-                    itemBuilder: (_, index) {
-                      final item = data[index] as Map<String, dynamic>;
+                    itemCount: filteredPages.length,
+                    separatorBuilder: (_, _) => const Divider(height: 24),
+                    itemBuilder: (ctx, index) {
+                      final item = filteredPages[index];
                       final pageNo = item['pageNo'] ?? (index + 1);
-                      final text = item['ocrText'] ?? '';
+                      final text = item['ocrText'] as String? ?? '';
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Trang $pageNo',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16)),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Trang $pageNo',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              if (text.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(Icons.copy, size: 16),
+                                  tooltip: 'Sao chép trang $pageNo',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: text),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Đã sao chép nội dung trang $pageNo',
+                                        ),
+                                        duration: const Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
                           const SizedBox(height: 6),
-                          SelectableText(text.isEmpty
-                              ? '(Trang trắng / không có chữ)'
-                              : text),
+                          SelectableText(
+                            text.isEmpty
+                                ? '(Trang trắng / không có chữ)'
+                                : text,
+                            style: TextStyle(
+                              color: text.isEmpty ? scheme.outline : null,
+                            ),
+                          ),
                         ],
                       );
                     },
                   ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Đóng'),
-            ),
-          ],
-        ),
+        ],
       );
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context); // close progress if open
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không tải được dữ liệu OCR: $e')),
-        );
-      }
     }
+
+    return AlertDialog(
+      title: Text(title, style: const TextStyle(fontSize: 18)),
+      content: SizedBox(
+        width: 650,
+        height: 480,
+        child: body,
+      ),
+      actions: [
+        if (!_loading && _error == null && _pages.isNotEmpty)
+          OutlinedButton.icon(
+            onPressed: _copyAllText,
+            icon: const Icon(Icons.copy_all, size: 16),
+            label: const Text('Sao chép tất cả'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Đóng'),
+        ),
+      ],
+    );
   }
 }
 

@@ -1,4 +1,4 @@
-"""Celery Worker — Ingest Pipeline: OCR → Chunk → Embed → ChromaDB → Callback.
+"""Celery Worker — Ingest Pipeline: OCR → Chunk → Embed → Qdrant → Callback.
 
 Worker này được chạy như một tiến trình riêng biệt (container `ai-worker`),
 tách hoàn toàn khỏi FastAPI API server. Việc tách giúp:
@@ -99,7 +99,7 @@ def run_ingest_task(
 
     Side effects:
         - Push trạng thái về BE tại mỗi bước (callback push).
-        - Upsert vectors vào ChromaDB.
+        - Upsert vectors vào Qdrant.
         - Gửi IngestCallback READY/FAILED về BE khi hoàn tất.
     """
     task_id = self.request.id
@@ -143,6 +143,16 @@ def run_ingest_task(
             task_id, version_id, chunk_count,
         )
 
+        # ── Data Quality Gate ─────────────────────────────────────────────────
+        # Nếu không trích xuất được chunk nào sau OCR → file không dùng được.
+        # Raise ngay để worker FAILED + callback về BE, thay vì READY với 0 chunks
+        # (version bị index rỗng → query luôn trả confidence 0.0, gây nhầm lẫn).
+        if chunk_count == 0:
+            raise ValueError(
+                f"Không trích xuất được nội dung từ tài liệu (0 chunks sau {page_count} trang OCR). "
+                "Kiểm tra lại file: PDF bị mã hóa, scan chất lượng thấp, hoặc nội dung không phải văn bản."
+            )
+
         # ── Bước 3: Embed ────────────────────────────────────────────────────
         embeddings = embed_pipeline.embed_texts(texts)
         logger.info(
@@ -152,10 +162,10 @@ def run_ingest_task(
         )
         _push_status(version_id, "PROCESSING_INDEX", "INDEX", page_count=page_count, chunk_count=chunk_count)
 
-        # ── Bước 4: Upsert ChromaDB ──────────────────────────────────────────
+        # ── Bước 4: Upsert Qdrant ────────────────────────────────────────────
         self.update_state(
             state="PROCESSING_INDEX",
-            meta={"step": "Upsert ChromaDB", "version_id": version_id, "chunks": chunk_count},
+            meta={"step": "Upsert Qdrant", "version_id": version_id, "chunks": chunk_count},
         )
 
         index_pipeline.upsert_chunks(

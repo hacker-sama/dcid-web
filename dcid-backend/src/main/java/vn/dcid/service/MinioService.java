@@ -2,6 +2,7 @@ package vn.dcid.service;
 
 import io.minio.*;
 import io.minio.http.Method;
+import io.minio.messages.Item;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -74,6 +75,25 @@ public class MinioService {
             );
         } catch (Exception e) {
             throw new IllegalStateException("Lỗi xóa file khỏi MinIO: " + e.getMessage(), e);
+        }
+    }
+
+    public void deletePrefix(String prefix) {
+        try {
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(bucketName)
+                            .prefix(prefix)
+                            .recursive(true)
+                            .build()
+            );
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                delete(item.objectName());
+            }
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(MinioService.class)
+                    .warn("Lỗi dọn dẹp prefix MinIO {}: {}", prefix, e.getMessage());
         }
     }
 

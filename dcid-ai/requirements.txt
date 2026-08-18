@@ -15,8 +15,9 @@ torchvision==0.18.1+cpu
 # --- Embedding pipeline (app/pipeline/embed.py) ---
 sentence-transformers>=3.0,<4.0
 
-# --- Vector index (app/pipeline/index.py) ---
-chromadb>=1.5,<2.0
+# --- Vector index & Retrieval (app/pipeline/index.py, bm25.py) ---
+qdrant-client>=1.15,<1.17
+rank-bm25>=0.2,<1.0
 
 # --- LLM client — OpenAI-compatible, dùng cho LM Studio local server ---
 openai>=1.40,<2.0
@@ -29,7 +30,3 @@ opencv-python>=4.8,<5.0
 # --- Async task queue (Celery + Redis broker/backend) ---
 celery[redis]>=5.3,<6.0
 redis>=5.0,<6.0
-
-# --- Celery monitoring UI (optional, truy cập tại http://localhost:5555) ---
-flower>=2.0,<3.0
-

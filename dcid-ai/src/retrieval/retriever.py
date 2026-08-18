@@ -1,4 +1,4 @@
-"""Module Retriever: Hybrid Search / Semantic Search kết hợp ChromaDB."""
+"""Module Retriever: Hybrid Search / Semantic Search kết hợp Qdrant."""
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple
@@ -14,7 +14,7 @@ def retrieve_context(
     allowed_version_ids: List[str],
     top_k: int = 5,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Tạo embedding cho câu hỏi và truy vấn top_k chunks tương đồng từ ChromaDB."""
+    """Tạo embedding cho câu hỏi và truy vấn top_k chunks tương đồng từ Qdrant."""
     logger.info("Retrieve context cho cau hoi: '%.60s' top_k=%d", question, top_k)
 
     query_vec = embedder.embed_query(question)

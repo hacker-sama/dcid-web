@@ -1,4 +1,4 @@
-# Sơ Đồ PlantUML (`.puml`) — AI Processing Smart KCN Docs
+# Sơ Đồ PlantUML (`.puml`) — AI Processing DCID: Digital Cognitive InDustrial System
 
 Dưới đây là toàn bộ mã nguồn chuẩn **PlantUML** cho các sơ đồ luồng xử lý AI của dự án (đã tương thích 100% mọi phiên bản PlantUML, không cần khai báo theme ngoài). Bạn có thể copy trực tiếp vào [PlantText / PlantUML Web](https://www.planttext.com/) hoặc extension PlantUML trong VS Code để vẽ/xuất ảnh `.png`/`.svg`.
 

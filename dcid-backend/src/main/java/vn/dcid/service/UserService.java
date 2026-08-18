@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.dcid.common.PagedResponse;
 import vn.dcid.domain.entity.User;
 import vn.dcid.domain.enums.UserRole;
+import vn.dcid.dto.request.ChangePasswordRequest;
 import vn.dcid.dto.request.CreateUserRequest;
 import vn.dcid.dto.request.ResetPasswordRequest;
 import vn.dcid.dto.request.UpdateUserRequest;
@@ -27,10 +28,13 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                       AuditLogService auditLogService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditLogService = auditLogService;
     }
 
     public User getCurrentUser() {
@@ -76,12 +80,16 @@ public class UserService {
         user.setIsActive(true);
 
         User saved = userRepository.save(user);
+        UUID actorId = currentActorId();
+        auditLogService.log(actorId, "USER_CREATED", "USER", saved.getId(), null,
+                "{\"username\":\"" + saved.getUsername() + "\",\"role\":\"" + saved.getRole().name() + "\"}");
         return toUserProfileDTO(saved);
     }
 
     @Transactional
     public UserProfileDTO updateUser(UUID id, UpdateUserRequest request) {
         User user = getUserById(id);
+        UserRole oldRole = user.getRole();
         if (request.fullName() != null) {
             user.setFullName(request.fullName());
         }
@@ -92,6 +100,10 @@ public class UserService {
             user.setRole(request.role());
         }
         User updated = userRepository.save(user);
+        String detail = request.role() != null && !request.role().equals(oldRole)
+                ? "{\"userId\":\"" + id + "\",\"oldRole\":\"" + oldRole.name() + "\",\"newRole\":\"" + updated.getRole().name() + "\"}"
+                : "{\"userId\":\"" + id + "\"}";
+        auditLogService.log(currentActorId(), "USER_UPDATED", "USER", id, null, detail);
         return toUserProfileDTO(updated);
     }
 
@@ -100,14 +112,36 @@ public class UserService {
         User user = getUserById(id);
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
+        auditLogService.log(currentActorId(), "USER_PASSWORD_RESET", "USER", id, null,
+                "{\"targetUserId\":\"" + id + "\"}");
+    }
+
+    @Transactional
+    public void changeOwnPassword(ChangePasswordRequest request) {
+        User user = getCurrentUser();
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Mật khẩu hiện tại không đúng");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+        auditLogService.log(user.getId(), "USER_SELF_PASSWORD_CHANGE", "USER", user.getId(), null, null);
     }
 
     @Transactional
     public UserProfileDTO updateUserStatus(UUID id, UpdateUserStatusRequest request) {
         User user = getUserById(id);
+        boolean oldStatus = Boolean.TRUE.equals(user.getIsActive());
         user.setIsActive(request.isActive());
         User updated = userRepository.save(user);
+        auditLogService.log(currentActorId(), "USER_STATUS_CHANGE", "USER", id, null,
+                "{\"targetUserId\":\"" + id + "\",\"from\":" + oldStatus + ",\"to\":" + request.isActive() + "}");
         return toUserProfileDTO(updated);
+    }
+
+    /** Lấy actorId từ SecurityContext — null-safe (system task hoặc internal call). */
+    private UUID currentActorId() {
+        String id = SecurityContextHelper.getCurrentUserId();
+        return id != null ? UUID.fromString(id) : null;
     }
 
     public UserProfileDTO toUserProfileDTO(User user) {

@@ -1,5 +1,5 @@
 -- V1__init.sql
--- Smart KCN Docs — baseline schema (governance/control plane).
+-- DCID: Digital Cognitive InDustrial System — baseline schema (governance/control plane).
 -- Only cross-cutting tables live here; domain tables (documents, versions,
 -- query_logs, work_orders, ...) will be added in later migrations.
 

@@ -26,13 +26,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     s = get_settings()
     logger.info(
         "dcid-ai started | BE_BASE_URL=%s | MINIO_ENDPOINT=%s (secure=%s) | "
-        "MINIO_BUCKET=%s | CHROMA=%s:%s | REDIS=%s | AI_INTERNAL_TOKEN=%s",
+        "MINIO_BUCKET=%s | QDRANT=%s:%s | REDIS=%s | AI_INTERNAL_TOKEN=%s",
         s.be_base_url,
         s.minio_endpoint,
         s.minio_secure,
         s.minio_bucket,
-        s.chroma_host,
-        s.chroma_port,
+        s.qdrant_host,
+        s.qdrant_port,
         s.redis_url,
         "<set>" if s.ai_internal_token else "<EMPTY!>",
     )
@@ -41,7 +41,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="dcid-ai",
-    description="AI plane cho Smart KCN Docs — Decoupled Async Architecture (Celery + Redis). Contract: docs/API-CONTRACT.md",
+    description="AI plane cho DCID: Digital Cognitive InDustrial System — Decoupled Async Architecture (Celery + Redis). Contract: docs/API-CONTRACT.md",
     version="0.2.0",
     lifespan=lifespan,
 )

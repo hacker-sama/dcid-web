@@ -56,8 +56,8 @@ void main() {
       );
 
       expect(find.textContaining('Phân tích kỹ thuật'), findsOneWidget);
-      expect(find.textContaining('Tin cậy: 95%'), findsOneWidget);
-      expect(find.textContaining('Trích số liệu trực tiếp'), findsOneWidget);
+      expect(find.textContaining('Confidence: 95%'), findsOneWidget);
+      expect(find.textContaining('Direct Data Extraction'), findsOneWidget);
       expect(find.textContaining('Reasoning mode'), findsOneWidget);
     });
 
@@ -81,8 +81,39 @@ void main() {
         ),
       );
 
-      expect(find.textContaining('Không đủ dữ liệu chắc chắn'), findsOneWidget);
+      expect(find.textContaining('Insufficient data confidence'), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+    });
+
+    testWidgets('renders copy answer button and allows tapping',
+        (WidgetTester tester) async {
+      const result = AnswerResult(
+        answer: 'Nội dung trả lời cần sao chép',
+        confidence: 0.9,
+        locked: false,
+        numericRule: false,
+        citations: [],
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AnswerView(result: result, shrinkWrap: true),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Sao chép'), findsOneWidget);
+      expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('copy_answer_button')));
+      await tester.pumpAndSettle();
+
+      // After 2s animation & SnackBar timer settle, button returns to ready state
+      expect(find.text('Sao chép'), findsOneWidget);
+      expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     });
   });
 }

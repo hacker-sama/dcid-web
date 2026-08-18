@@ -13,7 +13,7 @@ VID = "11111111-1111-1111-1111-111111111111"
 # ── Mock ChromaDB hits — trả về giả lập kết quả search ──────────────────────
 _MOCK_HITS_DEFAULT = [
     {
-        "text": "Nội dung tài liệu mock.",
+        "text": "Nội dung tài liệu mock. Điện áp cấp cho servo là 24VDC.",
         "page_no": 1,
         "version_id": VID,
         "document_id": "22222222-2222-2222-2222-222222222222",
@@ -22,7 +22,7 @@ _MOCK_HITS_DEFAULT = [
         "snippet": "[mock snippet]",
         "title": "Tài liệu test",
         "category": "Test",
-        "score": 0.75,
+        "score": 0.85,
     }
 ]
 
@@ -34,9 +34,9 @@ _MOCK_HITS_NUMERIC = [
 ]
 
 
-def _mock_search_side_effect(query_embedding, allowed_version_ids, top_k=5):
+def _mock_search_side_effect(query_embedding, allowed_version_ids, top_k=5, machine_code=None):
     """Mock ChromaDB search: trả hits giả tùy ngữ cảnh."""
-    # Mặc định trả score 0.75 (dùng cho test_default_mock_answer)
+    # Mặc định trả score 0.85 để vượt confidence gate 80%.
     # score 0.90 dùng cho test_numeric_rule_keywords (query embedding không đọ được ở đây, dùng 0.90 nếu allowed rỗng thì mock không cần)
     # Logic tách hits dựa trên đặc điểm query (thông qua embedding mock hoặc state global nếu cần)
     # Ở đây dùng đơn giản: nếu query_embedding là một list giả định, ta có thể kiểm tra.
@@ -72,5 +72,21 @@ def auth_headers() -> dict[str, str]:
 @pytest.fixture(autouse=True)
 def mock_chroma_and_llm(monkeypatch):
     """Autouse: Mock ChromaDB search + LLM cho mọi test — không cần service thật."""
+    # Most query-service tests exercise the vector branch with deterministic
+    # mocks. Dedicated low-memory tests cover the lexical branch.
+    monkeypatch.setenv("LOW_MEMORY_QUERY_MODE", "false")
+    monkeypatch.setenv("AI_RESOURCE_GATE_ENABLED", "false")
+    get_settings.cache_clear()
+    
+    from app.celery_app import celery_app
+    celery_app.conf.update(
+        task_always_eager=True,
+        task_eager_propagates=False,
+        result_backend="cache+memory://",
+    )
+    
+    monkeypatch.setattr("app.pipeline.embed.embed_query", lambda _question: [0.1] * 384)
     monkeypatch.setattr("app.pipeline.index.search", _mock_search_side_effect)
     monkeypatch.setattr("app.clients.llm_client.generate_answer", _mock_generate_answer)
+    yield
+    get_settings.cache_clear()

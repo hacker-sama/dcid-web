@@ -20,6 +20,12 @@ class AuthState {
 class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
+    final subscription = ref.read(apiClientProvider).unauthorizedEvents.listen((
+      _,
+    ) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    });
+    ref.onDispose(subscription.cancel);
     _restore();
     return const AuthState(status: AuthStatus.unknown);
   }
@@ -43,7 +49,9 @@ class AuthController extends Notifier<AuthState> {
   Future<void> login(String username, String password) async {
     state = const AuthState(status: AuthStatus.loading);
     try {
-      final user = await ref.read(authRepositoryProvider).login(username, password);
+      final user = await ref
+          .read(authRepositoryProvider)
+          .login(username, password);
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (_) {
       state = const AuthState(
@@ -59,5 +67,6 @@ class AuthController extends Notifier<AuthState> {
   }
 }
 
-final authControllerProvider =
-    NotifierProvider<AuthController, AuthState>(AuthController.new);
+final authControllerProvider = NotifierProvider<AuthController, AuthState>(
+  AuthController.new,
+);

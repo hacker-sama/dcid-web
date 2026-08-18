@@ -1,4 +1,4 @@
-"""Test performance & accuracy of Smart KCN Docs RAG Web Pipeline with Chroma DB insertion into kcn_chunks."""
+"""Test performance & accuracy of DCID RAG Web Pipeline with Chroma DB insertion into kcn_chunks."""
 import os
 import time
 import json

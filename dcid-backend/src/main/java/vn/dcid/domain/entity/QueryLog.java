@@ -1,12 +1,6 @@
 package vn.dcid.domain.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -22,7 +16,7 @@ public class QueryLog {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "actor_id", nullable = false)
+    @Column(name = "actor_id")
     private UUID actorId;
 
     @Column(name = "question", nullable = false, columnDefinition = "TEXT")
@@ -49,12 +43,22 @@ public class QueryLog {
     @Column(name = "latency_ms")
     private Integer latencyMs;
 
+    @Column(name = "session_id")
+    private UUID sessionId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "query_scope", nullable = false, length = 20)
+    private vn.dcid.domain.enums.QueryScope queryScope = vn.dcid.domain.enums.QueryScope.OFFICIAL;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
+        if (queryScope == null) {
+            queryScope = vn.dcid.domain.enums.QueryScope.OFFICIAL;
+        }
     }
 
     public UUID getId() {
@@ -129,6 +133,22 @@ public class QueryLog {
         this.latencyMs = latencyMs;
     }
 
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public vn.dcid.domain.enums.QueryScope getQueryScope() {
+        return queryScope;
+    }
+
+    public void setQueryScope(vn.dcid.domain.enums.QueryScope queryScope) {
+        this.queryScope = queryScope;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -136,4 +156,21 @@ public class QueryLog {
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
+
+    /** Phản hồi người dùng: 1 = hữu ích, -1 = không hữu ích, null = chưa phản hồi. */
+    @Column(name = "feedback")
+    private Short feedback;
+
+    @Column(name = "feedback_note", columnDefinition = "TEXT")
+    private String feedbackNote;
+
+    @Column(name = "feedback_at")
+    private Instant feedbackAt;
+
+    public Short getFeedback() { return feedback; }
+    public void setFeedback(Short feedback) { this.feedback = feedback; }
+    public String getFeedbackNote() { return feedbackNote; }
+    public void setFeedbackNote(String feedbackNote) { this.feedbackNote = feedbackNote; }
+    public Instant getFeedbackAt() { return feedbackAt; }
+    public void setFeedbackAt(Instant feedbackAt) { this.feedbackAt = feedbackAt; }
 }

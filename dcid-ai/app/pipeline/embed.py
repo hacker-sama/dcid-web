@@ -14,17 +14,22 @@ Thiết kế:
 from __future__ import annotations
 
 import logging
+import threading
 from functools import lru_cache
+
+from app.services.resource_gate import serialized_heavy
 
 logger = logging.getLogger("dcid-ai.embed")
 
 MODEL_NAME = "intfloat/multilingual-e5-small"
 PASSAGE_PREFIX = "passage: "
 QUERY_PREFIX = "query: "
+_MODEL_LOAD_LOCK = threading.Lock()
+_ENCODE_LOCK = threading.Lock()
 
 
 @lru_cache(maxsize=1)
-def _get_model():
+def _load_model():
     """Load model 1 lần duy nhất (lazy, singleton per process).
 
     Import sentence_transformers bên trong để tránh import-time crash khi
@@ -47,6 +52,13 @@ def _get_model():
 # Public API
 # ────────────────────────────────────────────────────────────────
 
+def _get_model():
+    """Return the singleton model, serializing the first cache miss."""
+    with _MODEL_LOAD_LOCK:
+        return _load_model()
+
+
+@serialized_heavy("document-embedding")
 def embed_texts(texts: list[str]) -> list[list[float]]:
     """Embed danh sách *passage* (từ chunk văn bản tài liệu).
 
@@ -62,10 +74,12 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         return []
     model = _get_model()
     prefixed = [PASSAGE_PREFIX + t for t in texts]
-    embeddings = model.encode(prefixed, normalize_embeddings=True, show_progress_bar=False)
+    with _ENCODE_LOCK:
+        embeddings = model.encode(prefixed, normalize_embeddings=True, show_progress_bar=False)
     return [vec.tolist() for vec in embeddings]
 
 
+@serialized_heavy("query-embedding")
 def embed_query(question: str) -> list[float]:
     """Embed 1 câu hỏi (dùng trong pipeline query ở T3).
 
@@ -79,5 +93,6 @@ def embed_query(question: str) -> list[float]:
     """
     model = _get_model()
     prefixed = QUERY_PREFIX + question
-    vec = model.encode([prefixed], normalize_embeddings=True, show_progress_bar=False)
+    with _ENCODE_LOCK:
+        vec = model.encode([prefixed], normalize_embeddings=True, show_progress_bar=False)
     return vec[0].tolist()

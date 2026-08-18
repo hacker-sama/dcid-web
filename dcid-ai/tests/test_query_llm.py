@@ -124,17 +124,22 @@ class TestBuildSystemPrompt:
     def test_contains_base_instructions(self):
         from app.pipeline.prompts import build_system_prompt
         prompt = build_system_prompt(numeric_rule=False)
-        assert prompt == ""
+        assert prompt.strip()
+        assert "context" in prompt.lower()
 
     def test_numeric_rule_injection(self):
         from app.pipeline.prompts import build_system_prompt
         prompt = build_system_prompt(numeric_rule=True)
-        assert prompt == ""
+        base_prompt = build_system_prompt(numeric_rule=False)
+        assert len(prompt) > len(base_prompt)
+        assert prompt.startswith(base_prompt)
 
     def test_no_numeric_injection_when_false(self):
         from app.pipeline.prompts import build_system_prompt
         prompt = build_system_prompt(numeric_rule=False)
-        assert prompt == ""
+        numeric_prompt = build_system_prompt(numeric_rule=True)
+        assert prompt.strip()
+        assert prompt != numeric_prompt
 
     def test_user_prompt_hits_all_appear(self):
         from app.pipeline.prompts import build_user_prompt
@@ -170,8 +175,8 @@ class TestRunQuery:
         assert response.guard.locked is True
         assert response.confidence == 0.30
 
-    def test_guardrail_locked_when_low_score(self):
-        """Score < 0.25 (thấp hơn cả reasoning threshold) → locked, không gọi LLM."""
+    def test_low_score_returns_best_effort_with_warning(self):
+        """Even very weak evidence returns an answer, but never hides the true score."""
         from app.services.query_service import run_query
 
         with (
@@ -183,15 +188,17 @@ class TestRunQuery:
             req = self._make_req("Mã chi tiết?")
             response = run_query(req)
 
-        assert response.guard.locked is True
-        assert response.confidence == 0.30
+        assert response.guard.locked is False
+        assert response.confidence == 0.15
+        assert "80%" in response.answer
+        assert "15%" in response.answer
 
     def test_normal_question_calls_llm(self):
         """Score cao + câu hỏi bình thường → gọi LLM, trả answer thật."""
         from app.services.query_service import run_query
 
         fake_answer = "Máy CNC XK-500 dùng điều khiển Fanuc 0i-MF."
-        fake_model  = "deepseek-r1-distill-qwen-1.5b"
+        fake_model  = "qwen2.5:3b"
 
         with (
             patch("app.services.query_service.embed_pipeline.embed_query", return_value=[0.1] * 384),
@@ -211,6 +218,28 @@ class TestRunQuery:
         assert len(response.citations) == 1
         assert response.citations[0].pageNo == 3
 
+    def test_answer_below_80_percent_is_published_with_warning(self):
+        """A low-confidence answer is shown with its real score and target warning."""
+        from app.services.query_service import run_query
+
+        raw_answer = "Máy CNC sử dụng bộ điều khiển chưa được xác minh."
+        with (
+            patch("app.services.query_service.embed_pipeline.embed_query", return_value=[0.1] * 384),
+            patch("app.services.query_service.index_pipeline.search", return_value=[
+                _make_hit(3, 0.79, "Máy CNC có thông tin bộ điều khiển trong phụ lục."),
+            ]),
+            patch("app.services.query_service.llm_client.generate_answer",
+                  return_value=(raw_answer, "test-model")),
+        ):
+            response = run_query(self._make_req("Máy CNC dùng bộ điều khiển gì?"))
+
+        assert response.guard.locked is False
+        assert response.confidence == pytest.approx(0.79)
+        assert raw_answer in response.answer
+        assert "80%" in response.answer
+        assert "79%" in response.answer
+        assert response.citations[0].snippet is not None
+
     def test_numeric_rule_activated(self):
         """Câu hỏi điện áp → numericRule=True."""
         from app.services.query_service import run_query
@@ -221,7 +250,7 @@ class TestRunQuery:
                 _make_hit(12, 0.88, "Điện áp servo 220 VAC 3 pha."),
             ]),
             patch("app.services.query_service.llm_client.generate_answer",
-                  return_value=("Điện áp cấp cho servo là 220 VAC 3 pha (Trang 12).", "deepseek-r1-distill-qwen-1.5b")),
+                  return_value=("Điện áp cấp cho servo là 220 VAC 3 pha (Trang 12).", "qwen2.5:3b")),
         ):
             req = self._make_req("Điện áp cấp cho servo trục X là bao nhiêu?")
             response = run_query(req)
@@ -416,7 +445,8 @@ class TestVisionPrompts:
     def test_build_system_prompt_vision_mode(self):
         from app.pipeline.prompts import build_system_prompt
         sp = build_system_prompt(has_image=True)
-        assert sp == ""
+        assert sp.strip()
+        assert sp != build_system_prompt(has_image=False)
 
     def test_build_user_prompt_vision_mode(self):
         from app.pipeline.prompts import build_user_prompt

@@ -51,13 +51,13 @@ void main() {
         'y': 0.2,
         'width': 0.5,
         'height': 0.15,
-        'label': 'Điện áp vào',
+        'label': 'Dien ap vao',
       });
       expect(bbox.x, closeTo(0.1, 1e-9));
       expect(bbox.y, closeTo(0.2, 1e-9));
       expect(bbox.width, closeTo(0.5, 1e-9));
       expect(bbox.height, closeTo(0.15, 1e-9));
-      expect(bbox.label, 'Điện áp vào');
+      expect(bbox.label, 'Dien ap vao');
     });
 
     test('fromJson handles missing fields with zero defaults', () {
@@ -85,6 +85,138 @@ void main() {
       expect(UserRole.engineer.isAdminLevel, isFalse);
       expect(UserRole.qaAdmin.isAdminLevel, isTrue);
       expect(UserRole.admin.isAdminLevel, isTrue);
+    });
+  });
+
+  // -- RBAC: Upload & Delete permission gate --
+  group('RBAC - canUpload / canDelete (isAdminLevel)', () {
+    test('OPERATOR cannot upload or delete', () {
+      expect(UserRole.operatorRole.isAdminLevel, isFalse,
+          reason: 'OPERATOR must not have admin-level document permissions');
+    });
+
+    test('ENGINEER cannot upload or delete', () {
+      expect(UserRole.engineer.isAdminLevel, isFalse,
+          reason: 'ENGINEER must not have admin-level document permissions');
+    });
+
+    test('QA_ADMIN can upload and delete', () {
+      expect(UserRole.qaAdmin.isAdminLevel, isTrue,
+          reason: 'QA_ADMIN should have upload and delete permissions');
+    });
+
+    test('ADMIN can upload and delete', () {
+      expect(UserRole.admin.isAdminLevel, isTrue,
+          reason: 'ADMIN should have upload and delete permissions');
+    });
+  });
+
+  // -- RBAC: Admin tab visibility --
+  group('RBAC - Admin tab visibility logic', () {
+    bool isTabVisible({required bool adminOnly, required bool isAdmin}) {
+      return !(adminOnly && !isAdmin);
+    }
+
+    test('Non-admin tabs are always visible to all roles', () {
+      for (final role in UserRole.values) {
+        expect(
+          isTabVisible(adminOnly: false, isAdmin: role.isAdminLevel),
+          isTrue,
+          reason: 'Tab with adminOnly=false should be visible to ${role.label}',
+        );
+      }
+    });
+
+    test('Admin tab is visible to QA_ADMIN and ADMIN', () {
+      expect(isTabVisible(adminOnly: true, isAdmin: UserRole.qaAdmin.isAdminLevel), isTrue);
+      expect(isTabVisible(adminOnly: true, isAdmin: UserRole.admin.isAdminLevel), isTrue);
+    });
+
+    test('Admin tab is hidden from OPERATOR and ENGINEER', () {
+      expect(
+        isTabVisible(adminOnly: true, isAdmin: UserRole.operatorRole.isAdminLevel),
+        isFalse,
+        reason: 'OPERATOR should not see Admin tab',
+      );
+      expect(
+        isTabVisible(adminOnly: true, isAdmin: UserRole.engineer.isAdminLevel),
+        isFalse,
+        reason: 'ENGINEER should not see Admin tab',
+      );
+    });
+
+    test('Non-admin has 3 visible nav tabs (DocuMind, Snap, Documents)', () {
+      final allAdminOnly = [false, false, false, true];
+      for (final role in [UserRole.operatorRole, UserRole.engineer]) {
+        final visibleCount = allAdminOnly
+            .where((adminOnly) => isTabVisible(adminOnly: adminOnly, isAdmin: role.isAdminLevel))
+            .length;
+        expect(visibleCount, 3, reason: '${role.label} should see exactly 3 tabs');
+      }
+    });
+
+    test('Admin-level user has 4 visible nav tabs including Admin', () {
+      final allAdminOnly = [false, false, false, true];
+      for (final role in [UserRole.qaAdmin, UserRole.admin]) {
+        final visibleCount = allAdminOnly
+            .where((adminOnly) => isTabVisible(adminOnly: adminOnly, isAdmin: role.isAdminLevel))
+            .length;
+        expect(visibleCount, 4, reason: '${role.label} should see all 4 tabs');
+      }
+    });
+
+    test('branchIndices mapping: non-admin has indices [0,1,2]', () {
+      final allAdminOnly = [false, false, false, true];
+      final branchIndices = <int>[];
+      for (var i = 0; i < allAdminOnly.length; i++) {
+        if (isTabVisible(adminOnly: allAdminOnly[i], isAdmin: false)) {
+          branchIndices.add(i);
+        }
+      }
+      expect(branchIndices, [0, 1, 2]);
+    });
+
+    test('branchIndices mapping: admin has indices [0,1,2,3]', () {
+      final allAdminOnly = [false, false, false, true];
+      final branchIndices = <int>[];
+      for (var i = 0; i < allAdminOnly.length; i++) {
+        if (isTabVisible(adminOnly: allAdminOnly[i], isAdmin: true)) {
+          branchIndices.add(i);
+        }
+      }
+      expect(branchIndices, [0, 1, 2, 3]);
+    });
+  });
+
+  // -- RBAC: Router guard logic --
+  group('RBAC - /admin route guard logic', () {
+    String? routeGuard({required String path, required UserRole role}) {
+      if (path.startsWith('/admin') && !role.isAdminLevel) return '/403';
+      return null;
+    }
+
+    test('OPERATOR is blocked from /admin -> /403', () {
+      expect(routeGuard(path: '/admin', role: UserRole.operatorRole), '/403');
+    });
+
+    test('ENGINEER is blocked from /admin -> /403', () {
+      expect(routeGuard(path: '/admin', role: UserRole.engineer), '/403');
+    });
+
+    test('QA_ADMIN is allowed on /admin', () {
+      expect(routeGuard(path: '/admin', role: UserRole.qaAdmin), isNull);
+    });
+
+    test('ADMIN is allowed on /admin', () {
+      expect(routeGuard(path: '/admin', role: UserRole.admin), isNull);
+    });
+
+    test('Non-admin routes are allowed for all roles', () {
+      for (final role in UserRole.values) {
+        expect(routeGuard(path: '/search', role: role), isNull);
+        expect(routeGuard(path: '/documents', role: role), isNull);
+        expect(routeGuard(path: '/snap', role: role), isNull);
+      }
     });
   });
 }

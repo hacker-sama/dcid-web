@@ -112,4 +112,18 @@ class AuthRepository implements IAuthRepository {
     );
     return AppUser.fromJson(res.data!['data'] as Map<String, dynamic>);
   }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _api.dio.put<Map<String, dynamic>>(
+      '/api/auth/me/password',
+      data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+    );
+  }
 }

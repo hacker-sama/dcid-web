@@ -18,6 +18,7 @@ from functools import lru_cache
 from typing import Any
 
 from app.config import get_settings
+from app.services.resource_gate import serialized_heavy
 
 logger = logging.getLogger("dcid-ai.llm_client")
 
@@ -176,6 +177,13 @@ def _get_client():
 # Public API
 # ────────────────────────────────────────────────────────────────────────────
 
+def get_model_name(image_base64: str | None = None) -> str:
+    """Select the lightweight text model unless an image is actually attached."""
+    settings = get_settings()
+    return settings.vision_model if image_base64 else settings.lm_studio_model
+
+
+@serialized_heavy("llm-inference")
 def generate_answer(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None) -> tuple[str, str]:
     """Gọi local LLM để sinh câu trả lời (hỗ trợ cả Text LLM lẫn Vision VLM).
 
@@ -199,10 +207,11 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
 
     s = get_settings()
     client = _get_client()
+    model_name = get_model_name(image_base64)
 
     logger.debug(
         "Gọi LLM: model=%s max_tokens=%d temperature=%.2f",
-        s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
+        model_name, s.llm_max_tokens, s.llm_temperature,
     )
 
     messages = []
@@ -243,7 +252,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     messages = _fit_messages_to_context(messages, s)
 
     call_kwargs: dict[str, Any] = {
-        "model": s.lm_studio_model,
+        "model": model_name,
         "messages": messages,
         "temperature": s.llm_temperature,
         "max_tokens": s.llm_max_tokens,
@@ -282,7 +291,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     except APITimeoutError as exc:
         logger.error(
             "Ollama timeout sau %.1fs — model=%s. Thử tăng LLM_TIMEOUT hoặc kiểm tra RAM.",
-            s.llm_timeout, s.lm_studio_model,
+            s.llm_timeout, model_name,
         )
         raise LLMInferenceError(
             f"Ollama timeout sau {s.llm_timeout}s. "
@@ -297,7 +306,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         # Retry với params tối thiểu (chỉ messages + temperature + max_tokens)
         try:
             response = client.chat.completions.create(
-                model=s.lm_studio_model,
+                model=model_name,
                 messages=call_kwargs["messages"],
                 temperature=s.llm_temperature,
                 max_tokens=s.llm_max_tokens,
@@ -316,7 +325,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     raw_content = msg.content or ""
     reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
     answer = _clean_think_tags(raw_content, fallback_reasoning=reasoning_content)
-    model_used = response.model or s.lm_studio_model
+    model_used = response.model or model_name
 
     # Model nhỏ đôi khi bỏ qua context và yêu cầu người dùng gửi thêm tài liệu.
     # Thử lại một lần với chỉ dẫn trực tiếp, không mang theo sampling mở rộng.
@@ -324,7 +333,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
         logger.warning("LLM trả lời né tránh dù đã có RAG context; đang thử lại một lần.")
         try:
             retry_response = client.chat.completions.create(
-                model=s.lm_studio_model,
+                model=model_name,
                 messages=_fit_messages_to_context(_messages_for_direct_retry(messages), s),
                 temperature=min(s.llm_temperature, 0.2),
                 max_tokens=s.llm_max_tokens,
@@ -341,7 +350,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
             if retry_answer.strip():
                 answer = retry_answer
                 response = retry_response
-                model_used = retry_response.model or s.lm_studio_model
+                model_used = retry_response.model or model_name
         except Exception as retry_exc:  # noqa: BLE001
             logger.warning("Thử lại câu trả lời trực tiếp thất bại: %s", retry_exc)
 
@@ -375,6 +384,7 @@ def generate_answer(system_prompt: str, user_prompt: str, history: list | None =
     return answer, model_used
 
 
+@serialized_heavy("llm-stream")
 def generate_answer_stream(system_prompt: str, user_prompt: str, history: list | None = None, image_base64: str | None = None):
     """Generator: stream token từ local LLM về client qua SSE (hỗ trợ Vision VLM).
 
@@ -406,10 +416,11 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
 
     s = get_settings()
     client = _get_client()
+    model_name = get_model_name(image_base64)
 
     logger.debug(
         "Gọi LLM stream: model=%s max_tokens=%d temperature=%.2f",
-        s.lm_studio_model, s.llm_max_tokens, s.llm_temperature,
+        model_name, s.llm_max_tokens, s.llm_temperature,
     )
 
     messages = []
@@ -441,7 +452,7 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
     messages = _fit_messages_to_context(messages, s)
 
     stream_kwargs: dict = {
-        "model": s.lm_studio_model,
+        "model": model_name,
         "messages": messages,
         "temperature": s.llm_temperature,
         "max_tokens": s.llm_max_tokens,
@@ -523,7 +534,7 @@ def generate_answer_stream(system_prompt: str, user_prompt: str, history: list |
                 clean_think = re.sub(r"\[CHỈ THỊ[^\]]*\][:.]?\s*", "", clean_think, flags=re.IGNORECASE)
                 yield clean_think
 
-        logger.info("LLM stream OK: model=%s tokens_streamed=%d", s.lm_studio_model, token_count)
+        logger.info("LLM stream OK: model=%s tokens_streamed=%d", model_name, token_count)
 
     except APIConnectionError as exc:
         if image_base64:
@@ -705,7 +716,7 @@ def _remove_repetition_loops(text: str) -> str:
     # 1. PHÁT HIỆN LẶP CHUỖI ĐOẠN VĂN / KHỐI LỆNH (PARAGRAPH & BLOCK CYCLE TRUNCATION)
     # Tách thành các đoạn theo dòng trống (\n\n) hoặc xuống dòng (\n)
     paragraphs = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
-    if len(paragraphs) >= 3:
+    if len(paragraphs) >= 2:
         truncated_paragraphs = []
         cycle_found = False
         for i, p in enumerate(paragraphs):
@@ -741,7 +752,7 @@ def _remove_repetition_loops(text: str) -> str:
 
     # 2. PHÁT HIỆN LẶP DÒNG LIÊN TỤC TRONG CÙNG 1 ĐOẠN
     lines = [l.strip() for l in text.split("\n") if l.strip()]
-    if len(lines) >= 3:
+    if len(lines) >= 2:
         clean_lines = []
         for i, line in enumerate(lines):
             norm_l = re.sub(r'^[\#\*\_\-\.\s0-9]+', '', line).lower().strip()
@@ -759,7 +770,16 @@ def _remove_repetition_loops(text: str) -> str:
             clean_lines.append(line)
         text = "\n".join(clean_lines)
 
-    # 3. PHÁT HIỆN LẶP CỤM TỪ LIÊN TỤC (N-GRAM LOOP)
+    # 3. Xóa câu hoàn chỉnh bị lặp ngay cạnh nhau (kể cả chỉ lặp 2 lần).
+    # Giữ dấu câu và bố cục còn lại; chỉ mẫu trùng nguyên văn mới bị xóa để
+    # không làm mất các câu kỹ thuật gần giống nhưng khác số liệu.
+    duplicate_sentence = re.compile(
+        r"(?P<sentence>[^\n.!?]{15,}[.!?])(?:\s+(?P=sentence))+",
+        re.IGNORECASE,
+    )
+    text = duplicate_sentence.sub(lambda match: match.group("sentence"), text)
+
+    # 4. PHÁT HIỆN LẶP CỤM TỪ LIÊN TỤC (N-GRAM LOOP)
     loop_pattern = re.compile(r"((?:\b\w+[\s.,;:?!]+){2,25}?)\1{2,}", re.IGNORECASE)
     def _replace_loop(match: re.Match[str]) -> str:
         return match.group(1).strip()

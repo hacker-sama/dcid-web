@@ -1,6 +1,7 @@
 package vn.dcid.config;
 
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -43,6 +44,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, exception) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                        .accessDeniedHandler((request, response, exception) ->
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden")))
                 .authorizeHttpRequests(auth -> auth
                         // SSE completes through an ASYNC dispatch after the original
                         // authenticated request has already passed authorization.
@@ -50,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/health",
                                 "/api/auth/login",
+                                "/api/public/**",
                                 // Nội bộ BE↔AI: không dùng JWT, tự kiểm X-Internal-Token trong controller
                                 "/api/internal/**",
                                 "/actuator/prometheus",

@@ -7,6 +7,7 @@ import '../../core/responsive.dart';
 import '../../core/constrained_content.dart';
 import '../../data/models/document_summary.dart';
 import '../../state/documents_providers.dart';
+import '../../state/ingest_progress_provider.dart';
 import '../../state/providers.dart';
 import '../../state/role_filter.dart';
 import 'upload_document_sheet.dart';
@@ -183,7 +184,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     if (isMobile) {
       // ── Compact dropdown for narrow phone screens ─────────────────────────
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
         child: Row(
           children: [
             Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
@@ -303,7 +304,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   @override
   Widget build(BuildContext context) {
     final docsAsync = ref.watch(documentsProvider);
-    final isAdminLevel = ref.watch(canUploadProvider);
+    final canUpload = ref.watch(canUploadProvider);
+    final canDelete = ref.watch(canDeleteDocumentProvider);
     final visibleCategories = ref.watch(visibleCategoriesProvider);
     final scheme = Theme.of(context).colorScheme;
 
@@ -317,6 +319,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         return Scaffold(
           body: SafeArea(
             child: docsAsync.when(
+              skipLoadingOnRefresh: true,
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (_, _) => _ErrorState(
@@ -339,7 +342,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   return RefreshIndicator(
                     onRefresh: () => ref.refresh(documentsProvider.future),
                     child: _EmptyState(
-                      isAdminLevel: isAdminLevel,
+                      isAdminLevel: canUpload,
                       onUploadPressed: () => _openUploadSheet(context),
                     ),
                   );
@@ -348,7 +351,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 if (isDesktop) {
                   return _DesktopView(
                     docs: docs,
-                    isAdminLevel: isAdminLevel,
+                    canUpload: canUpload,
+                    canDelete: canDelete,
                     sort: _sort,
                     scheme: scheme,
                     onSortChanged: (s) => setState(() => _sort = s),
@@ -363,6 +367,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 final listBody = Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const _IngestProgressBannerList(),
                     _buildSortBar(scheme, isMobile: isMobile),
                     Expanded(
                       child: ListView.separated(
@@ -385,10 +390,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                 doc.updatedAt!.isNotEmpty)
                               'Updated: ${_formatRelative(doc.updatedAt)}',
                           ];
-                          return Card(
-                            margin: EdgeInsets.zero,
-                            child: ListTile(
-                              dense: isTablet,
+                          return RepaintBoundary(
+                            child: Card(
+                              margin: EdgeInsets.zero,
+                              child: ListTile(
                               minVerticalPadding: isTablet ? 10 : 14,
                               leading:
                                   const Icon(Icons.description_outlined),
@@ -403,7 +408,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isAdminLevel)
+                                  if (canDelete)
                                     IconButton(
                                       icon: const Icon(
                                           Icons.delete_outline,
@@ -421,7 +426,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                               onTap: () =>
                                   context.push('/documents/${doc.id}'),
                             ),
-                          );
+                          ),
+                        );
                         },
                       ),
                     ),
@@ -443,12 +449,15 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               },
             ),
           ),
-          floatingActionButton: (isAdminLevel &&
+          floatingActionButton: (canUpload &&
                   (!isDesktop || docsAsync.value?.isEmpty == true))
-              ? FloatingActionButton.extended(
-                  onPressed: () => _openUploadSheet(context),
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('Upload Document'),
+              ? Padding(
+                  padding: EdgeInsets.only(bottom: isMobile ? 16 : 0),
+                  child: FloatingActionButton.extended(
+                    onPressed: () => _openUploadSheet(context),
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Upload Document'),
+                  ),
                 )
               : null,
         );
@@ -464,7 +473,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 class _DesktopView extends StatelessWidget {
   const _DesktopView({
     required this.docs,
-    required this.isAdminLevel,
+    required this.canUpload,
+    required this.canDelete,
     required this.sort,
     required this.scheme,
     required this.onSortChanged,
@@ -474,7 +484,8 @@ class _DesktopView extends StatelessWidget {
   });
 
   final List<DocumentSummary> docs;
-  final bool isAdminLevel;
+  final bool canUpload;
+  final bool canDelete;
   final _SortOption sort;
   final ColorScheme scheme;
   final ValueChanged<_SortOption> onSortChanged;
@@ -530,7 +541,7 @@ class _DesktopView extends StatelessWidget {
                               if (v != null) onSortChanged(v);
                             },
                           ),
-                          if (isAdminLevel) ...[
+                          if (canUpload) ...[
                             const SizedBox(width: 12),
                             FilledButton.icon(
                               onPressed: onUpload,
@@ -543,6 +554,7 @@ class _DesktopView extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
+                  const _IngestProgressBannerList(),
                   SizedBox(
                     height: 600,
                     child: DataTable2(
@@ -588,7 +600,7 @@ class _DesktopView extends StatelessWidget {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isAdminLevel)
+                                  if (canDelete)
                                     IconButton(
                                       icon: const Icon(
                                           Icons.delete_outline,
@@ -686,6 +698,113 @@ class _ErrorState extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Live Ingestion Progress Banners (STOMP WebSocket)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _IngestProgressBannerList extends ConsumerWidget {
+  const _IngestProgressBannerList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progressMap = ref.watch(ingestProgressProvider);
+    if (progressMap.isEmpty) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      children: progressMap.entries.map((entry) {
+        final versionId = entry.key;
+        final msg = entry.value;
+
+        Color cardColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF);
+        Color accentColor = Colors.blue.shade700;
+        IconData statusIcon = Icons.hourglass_top_rounded;
+
+        if (msg.isDone) {
+          cardColor = isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5);
+          accentColor = Colors.green.shade700;
+          statusIcon = Icons.check_circle_rounded;
+        } else if (msg.isFailed) {
+          cardColor = isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEF2F2);
+          accentColor = Colors.red.shade700;
+          statusIcon = Icons.error_outline_rounded;
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(statusIcon, color: accentColor, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      msg.message.isNotEmpty
+                          ? msg.message
+                          : 'Processing document pipeline...',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${msg.step} (${msg.progress}%)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor,
+                      ),
+                    ),
+                  ),
+                  if (msg.isDone || msg.isFailed) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        ref.read(ingestProgressProvider.notifier).untrack(versionId);
+                        ref.invalidate(documentsProvider);
+                      },
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: msg.progress > 0 ? (msg.progress / 100.0) : null,
+                  backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                  valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                  minHeight: 6,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

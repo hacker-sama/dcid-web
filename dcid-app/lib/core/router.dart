@@ -7,6 +7,8 @@ import '../features/auth/login_screen.dart';
 import '../features/common/forbidden_screen.dart';
 import '../features/documents/document_detail_screen.dart';
 import '../features/documents/documents_screen.dart';
+import '../features/history/history_screen.dart';
+import '../features/profile/profile_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/shell/home_shell.dart';
 import '../features/snap_ask/snap_ask_screen.dart';
@@ -34,9 +36,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           auth.status == AuthStatus.loading) {
         return null;
       }
-      final loggingIn = state.matchedLocation == '/login';
-      if (!auth.isAuthenticated) return loggingIn ? null : '/login';
-      if (loggingIn) return '/search';
+      final isPublicRoute = state.matchedLocation == '/login';
+      if (!auth.isAuthenticated) return isPublicRoute ? null : '/login';
+      if (state.matchedLocation == '/login') return '/search';
       if (state.matchedLocation.startsWith('/admin') &&
           !(auth.user?.role.isAdminLevel ?? false)) {
         return '/403';
@@ -59,6 +61,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageNo: pageNo,
           );
         },
+      ),
+
+      // Profile — outside shell, full screen
+      GoRoute(
+        path: '/profile',
+        builder: (_, _) => const ProfileScreen(),
+      ),
+
+      // History — outside shell, full screen
+      GoRoute(
+        path: '/history',
+        builder: (_, _) => const HistoryScreen(),
       ),
 
       // ── Persistent tab shell ───────────────────────────────────────────────

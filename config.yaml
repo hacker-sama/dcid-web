@@ -10,7 +10,6 @@ app:
 paths:
   uploads_dir: "./uploads"
   crops_dir: "./uploads/crops"
-  chroma_db_dir: "./chroma_db"
   logs_dir: "./logs"
 
 models:
@@ -18,7 +17,7 @@ models:
   vision_model: "qwen2.5vl:3b"
   
   # Text LLM cho khâu Suy luận RAG
-  main_llm_model: "qwen2.5vl:3b"
+  main_llm_model: "qwen2.5:3b"
   
   # Embedding Model local
   embedding_model: "intfloat/multilingual-e5-small"
@@ -32,9 +31,13 @@ lm_studio:
   temperature: 0.2
   max_tokens: 2048
 
-chromadb:
-  collection_name: "dcid_document_chunks"
-  distance_space: "cosine"
+qdrant:
+  host: "localhost"
+  port: 6333
+  collection_name: "kcn_chunks"
+  vector_size: 384
+  distance: "cosine"
+  on_disk: true
 
 chunking:
   chunk_size: 600

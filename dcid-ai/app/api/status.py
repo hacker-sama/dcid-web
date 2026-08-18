@@ -35,7 +35,7 @@ def get_task_status(task_id: str) -> TaskStatusResponse:
         - PENDING:           Task chưa được xử lý (đang trong queue).
         - PROCESSING_OCR:    Đang OCR trang PDF qua ai-ocr service.
         - PROCESSING_EMBED:  Đang chunk text và tạo vector embedding.
-        - PROCESSING_INDEX:  Đang upsert vectors vào ChromaDB.
+        - PROCESSING_INDEX:  Đang upsert vectors vào Qdrant.
         - SUCCESS:           Hoàn tất — versionId đã sẵn sàng để query.
         - FAILURE:           Lỗi — xem trường `error` để biết nguyên nhân.
     """

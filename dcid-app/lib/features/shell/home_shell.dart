@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/responsive.dart';
 import '../../state/auth_controller.dart';
+import '../../state/theme_controller.dart';
+import 'widgets/collapsible_sidebar.dart';
 
 class _Dest {
   const _Dest(this.icon, this.label, {this.adminOnly = false});
@@ -15,10 +17,10 @@ class _Dest {
 /// Branch ordering must stay in sync with [routerProvider] in router.dart:
 ///   index 0 = /search, 1 = /snap, 2 = /documents, 3 = /admin
 const _allDestinations = <_Dest>[
-  _Dest(Icons.search, 'Lookup'),
-  _Dest(Icons.camera_alt, 'Snap & Ask'),
-  _Dest(Icons.folder, 'Documents'),
-  _Dest(Icons.admin_panel_settings, 'Admin', adminOnly: true),
+  _Dest(Icons.construction_rounded, 'DocuMind'),
+  _Dest(Icons.camera_alt_rounded, 'Snap & Ask'),
+  _Dest(Icons.folder_rounded, 'Documents'),
+  _Dest(Icons.admin_panel_settings_rounded, 'Admin', adminOnly: true),
 ];
 
 /// Adaptive shell: NavigationRail on wide (kiosk/desktop), NavigationBar on
@@ -38,87 +40,190 @@ class HomeShell extends ConsumerWidget {
     final isAdmin = role?.isAdminLevel ?? false;
     final isWide = Responsive.isWide(context);
 
-    // Filter destinations by role. Indices stay aligned with branch indices
-    // because admin is always the last entry in _allDestinations.
-    final dests = _allDestinations
-        .where((d) => !(d.adminOnly && !isAdmin))
-        .toList();
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
-    // Branch index (navigationShell.currentIndex) equals nav item index
-    // because the filtered list preserves order and admin is last.
-    final navIndex =
-        navigationShell.currentIndex.clamp(0, dests.length - 1);
+    // Build parallel lists: visible destinations and their true branch indices.
+    final dests = <_Dest>[];
+    final branchIndices = <int>[];
+    for (var i = 0; i < _allDestinations.length; i++) {
+      final d = _allDestinations[i];
+      if (!(d.adminOnly && !isAdmin)) {
+        dests.add(d);
+        branchIndices.add(i);
+      }
+    }
 
-    // Tapping the active tab again resets to the branch root; tapping a
-    // different tab resumes where the user left off.
+    final currentBranch = navigationShell.currentIndex;
+    final navIndex = branchIndices.contains(currentBranch)
+        ? branchIndices.indexOf(currentBranch)
+        : 0;
+
     void onSelect(int i) => navigationShell.goBranch(
-          i,
-          initialLocation: navigationShell.currentIndex == i,
+          branchIndices[i],
+          initialLocation: currentBranch == branchIndices[i],
         );
 
-    void logout() =>
-        ref.read(authControllerProvider.notifier).logout();
+    void logout() => ref.read(authControllerProvider.notifier).logout();
 
+    void toggleTheme() =>
+        ref.read(themeModeProvider.notifier).toggle();
+
+    final themeToggleButton = IconButton(
+      tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: Icon(
+          isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          key: ValueKey(isDark),
+        ),
+      ),
+      onPressed: toggleTheme,
+    );
+
+    // ── Wide layout: NavigationRail + content ─────────────────────────────
     if (isWide) {
       return Scaffold(
         body: Row(
           children: [
-            NavigationRail(
-              selectedIndex: navIndex,
-              onDestinationSelected: onSelect,
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                for (final d in dests)
-                  NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    label: Text(d.label),
-                  ),
-              ],
-              trailing: Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (role != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Chip(
-                              label: Text(role.label),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                        IconButton(
-                          tooltip: 'Logout',
-                          icon: const Icon(Icons.logout),
-                          onPressed: logout,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+            RepaintBoundary(
+              child: CollapsibleSidebar(
+                selectedIndex: navIndex,
+                onDestinationSelected: onSelect,
+                destinations: dests
+                    .map((d) => ShellDestination(d.icon, d.label))
+                    .toList(),
+                themeToggleButton: themeToggleButton,
+                onLogout: logout,
               ),
             ),
             const VerticalDivider(width: 1),
-            // navigationShell IS the IndexedStack body — all branches alive.
-            Expanded(child: navigationShell),
+            Expanded(
+              child: RepaintBoundary(
+                child: navigationShell,
+              ),
+            ),
           ],
         ),
       );
     }
 
+    // ── Narrow layout: AppBar + BottomNavigationBar ───────────────────────
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      body: navigationShell,
+      appBar: AppBar(
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.precision_manufacturing_rounded,
+                  size: 20, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text(
+                'DCID Docs',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          // Lịch sử câu hỏi
+          IconButton(
+            tooltip: 'Lịch sử câu hỏi',
+            icon: const Icon(Icons.history_rounded),
+            onPressed: () => context.push('/history'),
+          ),
+          themeToggleButton,
+          if (role != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Center(
+                child: Chip(
+                  label: Text(role.label, style: const TextStyle(fontSize: 11)),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ),
+          // User avatar → Profile
+          IconButton(
+            tooltip: 'Hồ sơ cá nhân',
+            icon: _UserAvatar(name: auth.user?.fullName ?? auth.user?.username),
+            onPressed: () => context.push('/profile'),
+          ),
+          IconButton(
+            tooltip: 'Logout',
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: logout,
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: CollapsibleSidebar(
+            forceExpanded: true,
+            selectedIndex: navIndex,
+            onDestinationSelected: (i) {
+              onSelect(i);
+              Navigator.of(context).pop(); // Close drawer
+            },
+            destinations: dests
+                .map((d) => ShellDestination(d.icon, d.label))
+                .toList(),
+            themeToggleButton: themeToggleButton,
+            onLogout: logout,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: RepaintBoundary(
+          child: navigationShell,
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navIndex,
         onDestinationSelected: onSelect,
         destinations: [
           for (final d in dests)
-            NavigationDestination(icon: Icon(d.icon), label: d.label),
+            NavigationDestination(
+              icon: Icon(d.icon),
+              label: d.label,
+            ),
         ],
       ),
     );
+  }
+}
+
+/// Avatar tròn hiển thị 1-2 chữ cái đầu tên user.
+class _UserAvatar extends StatelessWidget {
+  const _UserAvatar({this.name});
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final initials = _initials(name ?? '?');
+    return CircleAvatar(
+      radius: 13,
+      backgroundColor: scheme.primaryContainer,
+      child: Text(
+        initials,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: scheme.onPrimaryContainer,
+        ),
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    return name.substring(0, name.length.clamp(0, 2)).toUpperCase();
   }
 }
