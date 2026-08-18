@@ -2,25 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/localization/language_toggle_button.dart';
+import '../../core/localization/locale_controller.dart';
 import '../../core/responsive.dart';
 import '../../state/auth_controller.dart';
 import '../../state/theme_controller.dart';
 import 'widgets/collapsible_sidebar.dart';
 
 class _Dest {
-  const _Dest(this.icon, this.label, {this.adminOnly = false});
+  const _Dest(this.icon, this.labelKey, {this.adminOnly = false});
   final IconData icon;
-  final String label;
+  final String Function(dynamic strings) labelKey;
   final bool adminOnly;
 }
 
 /// Branch ordering must stay in sync with [routerProvider] in router.dart:
 ///   index 0 = /search, 1 = /snap, 2 = /documents, 3 = /admin
-const _allDestinations = <_Dest>[
-  _Dest(Icons.construction_rounded, 'DocuMind'),
-  _Dest(Icons.camera_alt_rounded, 'Snap & Ask'),
-  _Dest(Icons.folder_rounded, 'Documents'),
-  _Dest(Icons.admin_panel_settings_rounded, 'Admin', adminOnly: true),
+final _allDestinations = <_Dest>[
+  _Dest(Icons.construction_rounded, (s) => s.navDocuMind as String),
+  _Dest(Icons.camera_alt_rounded, (s) => s.navSnapAsk as String),
+  _Dest(Icons.folder_rounded, (s) => s.navDocuments as String),
+  _Dest(Icons.admin_panel_settings_rounded, (s) => s.navAdmin as String, adminOnly: true),
 ];
 
 /// Adaptive shell: NavigationRail on wide (kiosk/desktop), NavigationBar on
@@ -36,6 +38,7 @@ class HomeShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
+    final strings = ref.watch(appStringsProvider);
     final role = auth.user?.role;
     final isAdmin = role?.isAdminLevel ?? false;
     final isWide = Responsive.isWide(context);
@@ -46,12 +49,12 @@ class HomeShell extends ConsumerWidget {
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
     // Build parallel lists: visible destinations and their true branch indices.
-    final dests = <_Dest>[];
+    final dests = <ShellDestination>[];
     final branchIndices = <int>[];
     for (var i = 0; i < _allDestinations.length; i++) {
       final d = _allDestinations[i];
       if (!(d.adminOnly && !isAdmin)) {
-        dests.add(d);
+        dests.add(ShellDestination(d.icon, d.labelKey(strings)));
         branchIndices.add(i);
       }
     }
@@ -72,7 +75,7 @@ class HomeShell extends ConsumerWidget {
         ref.read(themeModeProvider.notifier).toggle();
 
     final themeToggleButton = IconButton(
-      tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+      tooltip: isDark ? strings.switchToLight : strings.switchToDark,
       icon: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         child: Icon(
@@ -92,9 +95,7 @@ class HomeShell extends ConsumerWidget {
               child: CollapsibleSidebar(
                 selectedIndex: navIndex,
                 onDestinationSelected: onSelect,
-                destinations: dests
-                    .map((d) => ShellDestination(d.icon, d.label))
-                    .toList(),
+                destinations: dests,
                 themeToggleButton: themeToggleButton,
                 onLogout: logout,
               ),
@@ -123,9 +124,9 @@ class HomeShell extends ConsumerWidget {
               Icon(Icons.precision_manufacturing_rounded,
                   size: 20, color: colorScheme.primary),
               const SizedBox(width: 8),
-              const Text(
-                'DCID Docs',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+              Text(
+                '${strings.appTitle} ${strings.appSubtitle}',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
             ],
           ),
@@ -133,29 +134,30 @@ class HomeShell extends ConsumerWidget {
         actions: [
           // Lịch sử câu hỏi
           IconButton(
-            tooltip: 'Lịch sử câu hỏi',
+            tooltip: strings.historyTooltip,
             icon: const Icon(Icons.history_rounded),
             onPressed: () => context.push('/history'),
           ),
+          const LanguageToggleButton(),
           themeToggleButton,
           if (role != null)
             Padding(
               padding: const EdgeInsets.only(right: 4),
               child: Center(
                 child: Chip(
-                  label: Text(role.label, style: const TextStyle(fontSize: 11)),
+                  label: Text(role.localized(strings), style: const TextStyle(fontSize: 11)),
                   visualDensity: VisualDensity.compact,
                 ),
               ),
             ),
           // User avatar → Profile
           IconButton(
-            tooltip: 'Hồ sơ cá nhân',
+            tooltip: strings.profileTooltip,
             icon: _UserAvatar(name: auth.user?.fullName ?? auth.user?.username),
             onPressed: () => context.push('/profile'),
           ),
           IconButton(
-            tooltip: 'Logout',
+            tooltip: strings.logoutTooltip,
             icon: const Icon(Icons.logout_rounded),
             onPressed: logout,
           ),
@@ -170,9 +172,7 @@ class HomeShell extends ConsumerWidget {
               onSelect(i);
               Navigator.of(context).pop(); // Close drawer
             },
-            destinations: dests
-                .map((d) => ShellDestination(d.icon, d.label))
-                .toList(),
+            destinations: dests,
             themeToggleButton: themeToggleButton,
             onLogout: logout,
           ),

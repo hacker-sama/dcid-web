@@ -1,3 +1,5 @@
+import 'package:dcid_app/core/localization/app_strings.dart';
+import 'package:dcid_app/core/localization/locale_controller.dart';
 import 'package:dcid_app/data/mock/mock_docs_repository.dart';
 import 'package:dcid_app/data/models/answer_result.dart';
 import 'package:dcid_app/features/search/answer_view.dart';
@@ -15,6 +17,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            appStringsProvider.overrideWithValue(const AppStringsEn()),
             docsRepositoryProvider.overrideWithValue(MockDocsRepository()),
           ],
           child: const MaterialApp(home: Scaffold(body: SnapAskScreen())),
@@ -44,10 +47,15 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: AnswerView(result: result, shrinkWrap: true),
+        ProviderScope(
+          overrides: [
+            appStringsProvider.overrideWithValue(const AppStringsEn()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: AnswerView(result: result, shrinkWrap: true),
+              ),
             ),
           ),
         ),
@@ -56,7 +64,7 @@ void main() {
       expect(find.textContaining('Phân tích kỹ thuật'), findsOneWidget);
       expect(find.textContaining('Confidence:'), findsNothing);
       expect(find.textContaining('Direct Data Extraction'), findsOneWidget);
-      expect(find.textContaining('Reasoning mode'), findsOneWidget);
+      expect(find.textContaining('Detailed Reasoning Mode'), findsOneWidget);
     });
 
     testWidgets('renders locked guardrail red banner when locked is true', (
@@ -71,10 +79,15 @@ void main() {
       );
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: AnswerView(result: result, shrinkWrap: true),
+        ProviderScope(
+          overrides: [
+            appStringsProvider.overrideWithValue(const AppStringsEn()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: AnswerView(result: result, shrinkWrap: true),
+              ),
             ),
           ),
         ),
@@ -99,23 +112,28 @@ void main() {
       );
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: AnswerView(result: result, shrinkWrap: true),
+        ProviderScope(
+          overrides: [
+            appStringsProvider.overrideWithValue(const AppStringsEn()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: AnswerView(result: result, shrinkWrap: true),
+              ),
             ),
           ),
         ),
       );
 
-      expect(find.text('Sao chép'), findsOneWidget);
+      expect(find.byKey(const ValueKey('copy_answer_button')), findsOneWidget);
       expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('copy_answer_button')));
       await tester.pumpAndSettle();
 
       // After 2s animation & SnackBar timer settle, button returns to ready state
-      expect(find.text('Sao chép'), findsOneWidget);
+      expect(find.byKey(const ValueKey('copy_answer_button')), findsOneWidget);
       expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     });
   });

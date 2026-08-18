@@ -1,50 +1,48 @@
-/// Một mục trong lịch sử câu hỏi của user, từ `GET /api/query/history`.
-class QueryHistoryItem {
-  const QueryHistoryItem({
+/// Một bản ghi phản hồi (feedback) từ người dùng cho Admin.
+class FeedbackAdminItem {
+  const FeedbackAdminItem({
     required this.id,
     required this.question,
     required this.createdAt,
+    this.actorId,
+    this.actorUsername = 'Guest',
     this.answerPreview,
     this.confidence,
     this.locked = false,
-    this.numericRuleHit = false,
-    this.latencyMs,
     this.feedback,
     this.feedbackNote,
     this.feedbackAt,
   });
 
   final String id;
+  final String? actorId;
+  final String actorUsername;
   final String question;
   final String? answerPreview;
   final double? confidence;
   final bool locked;
-  final bool numericRuleHit;
-  final int? latencyMs;
-  final DateTime createdAt;
-
-  /// Feedback của user: 1 = helpful, -1 = not helpful, null = chưa feedback.
   final int? feedback;
   final String? feedbackNote;
   final DateTime? feedbackAt;
+  final DateTime createdAt;
 
-  factory QueryHistoryItem.fromJson(Map<String, dynamic> json) {
-    return QueryHistoryItem(
+  factory FeedbackAdminItem.fromJson(Map<String, dynamic> json) {
+    return FeedbackAdminItem(
       id: json['id'] as String? ?? '',
+      actorId: json['actorId'] as String?,
+      actorUsername: json['actorUsername'] as String? ?? 'Guest',
       question: json['question'] as String? ?? '',
       answerPreview: json['answerPreview'] as String?,
       confidence: (json['confidence'] as num?)?.toDouble(),
       locked: json['locked'] == true,
-      numericRuleHit: json['numericRuleHit'] == true,
-      latencyMs: (json['latencyMs'] as num?)?.toInt(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String).toLocal()
-          : DateTime.now(),
       feedback: (json['feedback'] as num?)?.toInt(),
       feedbackNote: json['feedbackNote'] as String?,
       feedbackAt: json['feedbackAt'] != null
           ? DateTime.parse(json['feedbackAt'] as String).toLocal()
           : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String).toLocal()
+          : DateTime.now(),
     );
   }
 }

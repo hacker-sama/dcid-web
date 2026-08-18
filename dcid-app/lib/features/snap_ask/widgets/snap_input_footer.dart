@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/snap_entry.dart';
 
 /// Floating card container for machine code input and question prompt with image attachment.
-class SnapInputFooter extends StatefulWidget {
+class SnapInputFooter extends ConsumerStatefulWidget {
   const SnapInputFooter({
     super.key,
     required this.snap,
@@ -33,10 +36,10 @@ class SnapInputFooter extends StatefulWidget {
   final VoidCallback onAskQuestion;
 
   @override
-  State<SnapInputFooter> createState() => _SnapInputFooterState();
+  ConsumerState<SnapInputFooter> createState() => _SnapInputFooterState();
 }
 
-class _SnapInputFooterState extends State<SnapInputFooter> {
+class _SnapInputFooterState extends ConsumerState<SnapInputFooter> {
   bool _inputFocused = false;
 
   @override
@@ -73,6 +76,7 @@ class _SnapInputFooterState extends State<SnapInputFooter> {
     final isDark = scheme.brightness == Brightness.dark;
     final accent = accentFor(context);
     final accentGlow = accentGlowFor(context);
+    final strings = ref.watch(appStringsProvider);
 
     final cardBg = isDark ? kDarkCard : Colors.white;
     final borderColor = _inputFocused
@@ -107,7 +111,7 @@ class _SnapInputFooterState extends State<SnapInputFooter> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildMachineCodeRow(scheme, accent),
+              _buildMachineCodeRow(scheme, accent, strings),
               Divider(
                 height: 1,
                 thickness: 1,
@@ -115,7 +119,7 @@ class _SnapInputFooterState extends State<SnapInputFooter> {
                     ? kDarkBorder
                     : scheme.outlineVariant.withValues(alpha: 0.35),
               ),
-              _buildMessageRow(hasSnap, scheme, accent),
+              _buildMessageRow(hasSnap, scheme, accent, strings),
             ],
           ),
         ),
@@ -123,7 +127,7 @@ class _SnapInputFooterState extends State<SnapInputFooter> {
     );
   }
 
-  Widget _buildMachineCodeRow(ColorScheme scheme, Color accent) {
+  Widget _buildMachineCodeRow(ColorScheme scheme, Color accent, dynamic strings) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 10, 8),
       child: Row(
@@ -142,7 +146,7 @@ class _SnapInputFooterState extends State<SnapInputFooter> {
               onChanged: widget.onMachineCodeChanged,
               style: TextStyle(fontSize: 12.5, color: scheme.onSurface),
               decoration: InputDecoration(
-                hintText: 'Machine Code (optional — e.g. CNC-01)',
+                hintText: strings.machineCodeHint,
                 hintStyle: TextStyle(
                   fontSize: 12.5,
                   color: scheme.onSurface.withValues(alpha: 0.35),
@@ -193,14 +197,14 @@ class _SnapInputFooterState extends State<SnapInputFooter> {
     );
   }
 
-  Widget _buildMessageRow(bool hasSnap, ColorScheme scheme, Color accent) {
+  Widget _buildMessageRow(bool hasSnap, ColorScheme scheme, Color accent, dynamic strings) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Tooltip(
-            message: 'Add image or scan QR',
+            message: strings.snapTooltip,
             child: SnapAttachButton(
               picking: widget.picking,
               accent: accent,
@@ -209,31 +213,50 @@ class _SnapInputFooterState extends State<SnapInputFooter> {
           ),
           const SizedBox(width: 4),
           Expanded(
-            child: TextField(
-              controller: widget.questionController,
-              focusNode: widget.questionFocusNode,
-              enabled: hasSnap && !widget.isAsking,
-              maxLines: 5,
-              minLines: 1,
-              style: const TextStyle(fontSize: 14, height: 1.5),
-              decoration: InputDecoration(
-                hintText: hasSnap
-                    ? 'Ask about this device photo…'
-                    : 'Add an image first to start asking…',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: scheme.onSurface.withValues(alpha: 0.35),
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.enter): () {
+                  if (hasSnap && !widget.isAsking && widget.questionController.text.trim().isNotEmpty) {
+                    widget.onAskQuestion();
+                  }
+                },
+                const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
+                  if (hasSnap && !widget.isAsking && widget.questionController.text.trim().isNotEmpty) {
+                    widget.onAskQuestion();
+                  }
+                },
+              },
+              child: TextField(
+                controller: widget.questionController,
+                focusNode: widget.questionFocusNode,
+                enabled: hasSnap && !widget.isAsking,
+                maxLines: 5,
+                minLines: 1,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(fontSize: 14, height: 1.5),
+                decoration: InputDecoration(
+                  hintText: hasSnap
+                      ? strings.askAboutDevicePhoto
+                      : strings.addImageFirstToAsk,
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onSurface.withValues(alpha: 0.35),
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  isDense: true,
                 ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                isDense: true,
+                onSubmitted: (hasSnap && !widget.isAsking)
+                    ? (_) {
+                        if (widget.questionController.text.trim().isNotEmpty) {
+                          widget.onAskQuestion();
+                        }
+                      }
+                    : null,
               ),
-              onSubmitted: (hasSnap && !widget.isAsking)
-                  ? (_) => widget.onAskQuestion()
-                  : null,
             ),
           ),
           const SizedBox(width: 8),

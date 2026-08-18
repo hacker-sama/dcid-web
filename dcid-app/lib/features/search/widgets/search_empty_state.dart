@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/theme.dart';
 import '../../../state/suggestions_provider.dart';
 
@@ -48,6 +49,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
     final isDark = colorScheme.brightness == Brightness.dark;
     final accent = accentFor(context);
     final suggestions = ref.watch(searchSuggestionsProvider);
+    final strings = ref.watch(appStringsProvider);
 
     return Center(
       child: SingleChildScrollView(
@@ -103,7 +105,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
 
             // Bold title
             Text(
-              'DCID Docs',
+              strings.searchHeroTitle,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.displayMedium?.copyWith(
                     fontWeight: FontWeight.w800,
@@ -115,7 +117,7 @@ class _SearchEmptyStateState extends ConsumerState<SearchEmptyState>
             const SizedBox(height: 8),
 
             Text(
-              'AI-powered industrial knowledge assistant',
+              strings.searchHeroSubtitle,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.5),

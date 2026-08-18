@@ -1,11 +1,13 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/localization/locale_controller.dart';
 import '../../../core/theme.dart';
 
 /// Form component for uploading a new technical document.
-class UploadDocumentForm extends StatelessWidget {
+class UploadDocumentForm extends ConsumerWidget {
   const UploadDocumentForm({
     super.key,
     required this.formKey,
@@ -58,10 +60,11 @@ class UploadDocumentForm extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
     final accent = accentFor(context);
+    final strings = ref.watch(appStringsProvider);
 
     return Form(
       key: formKey,
@@ -87,7 +90,7 @@ class UploadDocumentForm extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Upload New Document',
+                      strings.uploadNewDocument,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -96,7 +99,7 @@ class UploadDocumentForm extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Add SOPs, drawings, manuals or specs to DCID',
+                      strings.uploadDocDesc,
                       style: TextStyle(
                         fontSize: 12,
                         color: scheme.onSurface.withValues(alpha: 0.55),
@@ -108,7 +111,7 @@ class UploadDocumentForm extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.close_rounded),
                 onPressed: uploading ? null : onCancel,
-                tooltip: 'Cancel',
+                tooltip: strings.cancel,
               ),
             ],
           ),
@@ -119,14 +122,14 @@ class UploadDocumentForm extends StatelessWidget {
           TextFormField(
             controller: titleController,
             enabled: !uploading,
-            decoration: const InputDecoration(
-              labelText: 'Document Title *',
+            decoration: InputDecoration(
+              labelText: '${strings.docTableTitle} *',
               hintText: 'e.g. CNC-01 Maintenance & Calibration SOP',
               contentPadding:
-                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
             validator: (v) => (v == null || v.trim().isEmpty)
-                ? 'Document Title is required'
+                ? strings.titleRequired
                 : null,
           ),
 
@@ -139,10 +142,10 @@ class UploadDocumentForm extends StatelessWidget {
               final catField = DropdownButtonFormField<String>(
                 initialValue: category,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Category *',
+                decoration: InputDecoration(
+                  labelText: '${strings.category} *',
                   contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
                 items: [
                   for (final entry in categories.entries)
@@ -155,17 +158,17 @@ class UploadDocumentForm extends StatelessWidget {
                     ),
                 ],
                 onChanged: uploading ? null : onCategoryChanged,
-                validator: (v) => v == null ? 'Select category' : null,
+                validator: (v) => v == null ? strings.categoryRequired : null,
               );
 
               final codeField = TextFormField(
                 controller: machineCodeController,
                 enabled: !uploading,
-                decoration: const InputDecoration(
-                  labelText: 'Machine Code',
+                decoration: InputDecoration(
+                  labelText: strings.machineCode,
                   hintText: 'e.g. CNC-01',
                   contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
               );
 
@@ -199,10 +202,10 @@ class UploadDocumentForm extends StatelessWidget {
               final roleField = DropdownButtonFormField<String>(
                 initialValue: minRole,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Min Required Role',
+                decoration: InputDecoration(
+                  labelText: strings.minRole,
                   contentPadding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
                 items: [
                   for (final entry in minRoles.entries)
@@ -256,11 +259,11 @@ class UploadDocumentForm extends StatelessWidget {
             controller: descriptionController,
             enabled: !uploading,
             maxLines: 2,
-            decoration: const InputDecoration(
-              labelText: 'Description',
+            decoration: InputDecoration(
+              labelText: strings.description,
               hintText: 'Brief summary of scope, revision or safety warnings...',
               contentPadding:
-                  EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
 
@@ -276,6 +279,7 @@ class UploadDocumentForm extends StatelessWidget {
             accent: accent,
             scheme: scheme,
             isDark: isDark,
+            strings: strings,
           ),
 
           // Error alert
@@ -323,7 +327,7 @@ class UploadDocumentForm extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 ),
-                child: const Text('Cancel'),
+                child: Text(strings.cancel),
               ),
               const SizedBox(width: 12),
               FilledButton.icon(
@@ -338,7 +342,7 @@ class UploadDocumentForm extends StatelessWidget {
                         ),
                       )
                     : const Icon(Icons.cloud_upload_rounded, size: 18),
-                label: Text(uploading ? 'Uploading...' : 'Upload'),
+                label: Text(uploading ? strings.uploading : strings.submitUpload),
                 style: FilledButton.styleFrom(
                   backgroundColor: accent,
                   padding:
@@ -365,6 +369,7 @@ class DragDropFileZone extends StatefulWidget {
     required this.accent,
     required this.scheme,
     required this.isDark,
+    required this.strings,
   });
 
   final Uint8List? fileBytes;
@@ -375,6 +380,7 @@ class DragDropFileZone extends StatefulWidget {
   final Color accent;
   final ColorScheme scheme;
   final bool isDark;
+  final dynamic strings;
 
   @override
   State<DragDropFileZone> createState() => _DragDropFileZoneState();
@@ -386,6 +392,7 @@ class _DragDropFileZoneState extends State<DragDropFileZone> {
   @override
   Widget build(BuildContext context) {
     final hasFile = widget.fileBytes != null && widget.fileName != null;
+    final strings = widget.strings;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -463,7 +470,7 @@ class _DragDropFileZoneState extends State<DragDropFileZone> {
                     OutlinedButton.icon(
                       onPressed: widget.uploading ? null : widget.onPickFile,
                       icon: const Icon(Icons.refresh_rounded, size: 14),
-                      label: const Text('Change', style: TextStyle(fontSize: 12)),
+                      label: Text(strings.changeFile, style: const TextStyle(fontSize: 12)),
                       style: OutlinedButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         side: BorderSide(
@@ -500,9 +507,9 @@ class _DragDropFileZoneState extends State<DragDropFileZone> {
                           color: widget.scheme.onSurface,
                         ),
                         children: [
-                          const TextSpan(text: 'Drag & drop PDF here or '),
+                          TextSpan(text: '${strings.selectPdfFile} — '),
                           TextSpan(
-                            text: 'browse',
+                            text: strings.uploadNewDocument,
                             style: TextStyle(
                               color: widget.accent,
                               fontWeight: FontWeight.bold,
@@ -514,7 +521,7 @@ class _DragDropFileZoneState extends State<DragDropFileZone> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Supports PDF documents up to 50MB',
+                      'PDF (max 50MB)',
                       style: TextStyle(
                         fontSize: 12,
                         color: widget.scheme.onSurface.withValues(alpha: 0.45),

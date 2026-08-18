@@ -4,17 +4,16 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-public record QueryHistoryDTO(
+public record FeedbackAdminDTO(
         UUID id,
+        UUID actorId,
+        String actorUsername,
         String question,
         String answerPreview,
         BigDecimal confidence,
         Boolean locked,
-        Boolean numericRuleHit,
-        Integer latencyMs,
-        Instant createdAt,
         Short feedback,
         String feedbackNote,
-        Instant feedbackAt
+        Instant feedbackAt,
+        Instant createdAt
 ) {}
-

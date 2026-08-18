@@ -31,4 +31,9 @@ public interface QueryLogRepository extends JpaRepository<QueryLog, UUID> {
 
     @Query("SELECT q FROM QueryLog q WHERE q.createdAt >= :since ORDER BY q.createdAt ASC")
     List<QueryLog> findQueriesSince(@Param("since") Instant since);
+
+    @Query("SELECT q FROM QueryLog q WHERE q.feedback IS NOT NULL " +
+           "AND (:feedback IS NULL OR q.feedback = :feedback) " +
+           "ORDER BY COALESCE(q.feedbackAt, q.createdAt) DESC")
+    Page<QueryLog> findFeedbacks(@Param("feedback") Short feedback, Pageable pageable);
 }
