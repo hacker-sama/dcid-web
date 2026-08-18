@@ -17,6 +17,8 @@ public interface QueryLogRepository extends JpaRepository<QueryLog, UUID> {
 
     Page<QueryLog> findByActorIdOrderByCreatedAtDesc(UUID actorId, Pageable pageable);
 
+    java.util.Optional<QueryLog> findByIdAndActorId(UUID id, UUID actorId);
+
     long countByLocked(boolean locked);
 
     long countByNumericRuleHit(boolean numericRuleHit);

@@ -24,6 +24,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
         // SockJS fallback for browser clients
         registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns("*");
+        registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }

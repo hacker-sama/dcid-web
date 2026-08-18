@@ -131,6 +131,12 @@ class HomeShell extends ConsumerWidget {
           ),
         ),
         actions: [
+          // Lịch sử câu hỏi
+          IconButton(
+            tooltip: 'Lịch sử câu hỏi',
+            icon: const Icon(Icons.history_rounded),
+            onPressed: () => context.push('/history'),
+          ),
           themeToggleButton,
           if (role != null)
             Padding(
@@ -142,6 +148,12 @@ class HomeShell extends ConsumerWidget {
                 ),
               ),
             ),
+          // User avatar → Profile
+          IconButton(
+            tooltip: 'Hồ sơ cá nhân',
+            icon: _UserAvatar(name: auth.user?.fullName ?? auth.user?.username),
+            onPressed: () => context.push('/profile'),
+          ),
           IconButton(
             tooltip: 'Logout',
             icon: const Icon(Icons.logout_rounded),
@@ -183,5 +195,35 @@ class HomeShell extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Avatar tròn hiển thị 1-2 chữ cái đầu tên user.
+class _UserAvatar extends StatelessWidget {
+  const _UserAvatar({this.name});
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final initials = _initials(name ?? '?');
+    return CircleAvatar(
+      radius: 13,
+      backgroundColor: scheme.primaryContainer,
+      child: Text(
+        initials,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: scheme.onPrimaryContainer,
+        ),
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    return name.substring(0, name.length.clamp(0, 2)).toUpperCase();
   }
 }

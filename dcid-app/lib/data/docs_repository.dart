@@ -224,6 +224,31 @@ class DocsRepository implements IDocsRepository {
     await _api.dio.delete<Map<String, dynamic>>('/api/documents/$id');
   }
 
+  @override
+  Future<List<dynamic>> getQueryHistory({int page = 0, int size = 20}) async {
+    final res = await _api.dio.get<Map<String, dynamic>>(
+      '/api/query/history',
+      queryParameters: {'page': page, 'size': size},
+    );
+    final data = res.data!['data'] as Map<String, dynamic>? ?? {};
+    return data['items'] as List<dynamic>? ?? [];
+  }
+
+  @override
+  Future<void> submitFeedback(
+    String queryId, {
+    required bool helpful,
+    String? note,
+  }) async {
+    await _api.dio.post<Map<String, dynamic>>(
+      '/api/query/$queryId/feedback',
+      data: {
+        'helpful': helpful,
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
+    );
+  }
+
   /// Pure parser for the §3.1 PagedResponse body — unit-testable without HTTP.
 
   static List<DocumentSummary> parseDocumentList(Map<String, dynamic> body) {

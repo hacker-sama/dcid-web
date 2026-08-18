@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,11 +15,15 @@ class AnswerView extends StatelessWidget {
   const AnswerView({
     required this.result,
     this.shrinkWrap = false,
+    this.onFeedback,
     super.key,
   });
 
   final AnswerResult result;
   final bool shrinkWrap;
+
+  /// Callback khi user feedback (helpful=true/false). Nếu null thì không hiển thị feedback row.
+  final void Function(bool helpful)? onFeedback;
 
   @override
   Widget build(BuildContext context) {
@@ -65,10 +70,11 @@ class AnswerView extends StatelessWidget {
 
       const SizedBox(height: 8),
 
-      // ── Confidence + metadata row ──────────────────────────────────────────
+      // ── Confidence + metadata + Copy row ───────────────────────────────────
       Wrap(
         spacing: 8,
-        runSpacing: 4,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           _MetaBadge(
             icon: Icons.analytics_outlined,
@@ -91,10 +97,16 @@ class AnswerView extends StatelessWidget {
               color: scheme.secondaryContainer,
               onColor: scheme.onSecondaryContainer,
             ),
+          if (!result.locked && result.answer.isNotEmpty)
+            _CopyAnswerButton(
+              key: const ValueKey('copy_answer_button'),
+              textToCopy: result.answer,
+              scheme: scheme,
+            ),
         ],
       ),
 
-      // ── Citations ──────────────────────────────────────────────────────────
+      // ── Citations ─────────────────────────────────────────────────────────────
       if (result.citations.isNotEmpty) ...[
         const SizedBox(height: 14),
         Text(
@@ -104,6 +116,12 @@ class AnswerView extends StatelessWidget {
         const SizedBox(height: 8),
         for (final c in result.citations)
           _CitationCard(citation: c, scheme: scheme, textTheme: textTheme),
+      ],
+
+      // ── Feedback row ──────────────────────────────────────────────────────
+      if (onFeedback != null && !result.locked && result.answer.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        _FeedbackRow(onFeedback: onFeedback!, scheme: scheme),
       ],
     ];
 
@@ -254,6 +272,107 @@ class _MetaBadge extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Copy answer button
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CopyAnswerButton extends StatefulWidget {
+  const _CopyAnswerButton({
+    super.key,
+    required this.textToCopy,
+    required this.scheme,
+  });
+
+  final String textToCopy;
+  final ColorScheme scheme;
+
+  @override
+  State<_CopyAnswerButton> createState() => _CopyAnswerButtonState();
+}
+
+class _CopyAnswerButtonState extends State<_CopyAnswerButton> {
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    if (widget.textToCopy.isEmpty) return;
+    try {
+      await Clipboard.setData(ClipboardData(text: widget.textToCopy));
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _copied = true);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text('Đã sao chép nội dung câu trả lời vào clipboard'),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      setState(() => _copied = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.scheme.brightness == Brightness.dark;
+    final fg = _copied
+        ? (isDark ? Colors.green.shade300 : Colors.green.shade800)
+        : widget.scheme.onSurfaceVariant;
+    final bg = _copied
+        ? (isDark ? Colors.green.shade900.withValues(alpha: 0.35) : Colors.green.shade50)
+        : widget.scheme.surfaceContainerHighest.withValues(alpha: 0.7);
+
+    return InkWell(
+      onTap: _copy,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _copied
+                ? (isDark ? Colors.green.shade700 : Colors.green.shade300)
+                : widget.scheme.outlineVariant.withValues(alpha: 0.4),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _copied ? Icons.check_rounded : Icons.copy_rounded,
+              size: 12,
+              color: fg,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              _copied ? 'Đã sao chép' : 'Sao chép',
+              style: TextStyle(
+                fontSize: 11,
+                color: fg,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Citation card
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -305,6 +424,105 @@ class _CitationCard extends StatelessWidget {
               ),
         trailing: Icon(Icons.open_in_new, size: 16, color: scheme.primary),
         onTap: () => context.push('/viewer/${citation.versionId}?page=${citation.pageNo}'),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Feedback row (👍 / 👎) — stateful để disable sau khi submit
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FeedbackRow extends StatefulWidget {
+  const _FeedbackRow({required this.onFeedback, required this.scheme});
+  final void Function(bool helpful) onFeedback;
+  final ColorScheme scheme;
+
+  @override
+  State<_FeedbackRow> createState() => _FeedbackRowState();
+}
+
+class _FeedbackRowState extends State<_FeedbackRow> {
+  bool? _selected; // null = chưa chọn, true = helpful, false = not helpful
+
+  void _pick(bool helpful) {
+    if (_selected != null) return; // idempotent
+    setState(() => _selected = helpful);
+    widget.onFeedback(helpful);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = widget.scheme;
+    return Row(
+      children: [
+        Text(
+          'Câu trả lời có hữu ích không?',
+          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(width: 10),
+        _FeedbackChip(
+          label: '👍',
+          selected: _selected == true,
+          disabled: _selected != null,
+          onTap: () => _pick(true),
+          scheme: scheme,
+        ),
+        const SizedBox(width: 6),
+        _FeedbackChip(
+          label: '👎',
+          selected: _selected == false,
+          disabled: _selected != null,
+          onTap: () => _pick(false),
+          scheme: scheme,
+        ),
+        if (_selected != null) ...[
+          const SizedBox(width: 8),
+          Text(
+            'Cảm ơn!',
+            style: TextStyle(fontSize: 11, color: scheme.primary, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FeedbackChip extends StatelessWidget {
+  const _FeedbackChip({
+    required this.label,
+    required this.selected,
+    required this.disabled,
+    required this.onTap,
+    required this.scheme,
+  });
+
+  final String label;
+  final bool selected;
+  final bool disabled;
+  final VoidCallback onTap;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected
+        ? scheme.primaryContainer
+        : scheme.surfaceContainerHighest.withValues(alpha: 0.6);
+    return InkWell(
+      onTap: disabled ? null : onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? scheme.primary : scheme.outlineVariant,
+            width: selected ? 1.5 : 0.8,
+          ),
+        ),
+        child: Text(label, style: const TextStyle(fontSize: 15)),
       ),
     );
   }

@@ -1,7 +1,8 @@
 /// Build-time configuration.
 ///
-/// Override per environment, e.g.:
-///   flutter run --dart-define=API_BASE_URL=http://10.0.0.10:8080
+/// Dev  (default): http://localhost:8080
+/// Prod (CI/CD):   flutter run --dart-define=API_BASE_URL=https://dcid.tech
+///                 flutter build apk --dart-define=API_BASE_URL=https://dcid.tech
 class Env {
   const Env._();
 
