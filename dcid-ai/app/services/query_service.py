@@ -94,22 +94,16 @@ def _minimum_answer_confidence() -> float:
 
 def _best_effort_answer(
     answer: str,
-    confidence: float,
     *,
     numeric_verified: bool | None = None,
 ) -> str:
-    """Keep the best available answer while clearly disclosing weak evidence."""
-    threshold_percent = round(_minimum_answer_confidence() * 100)
-    confidence_percent = round(_clamp_score(confidence) * 100)
+    """Label a best-effort answer without exposing internal confidence scores."""
     numeric_note = (
         " Số liệu kỹ thuật trong câu trả lời chưa được OCR/tài liệu xác nhận đầy đủ."
         if numeric_verified is False
         else ""
     )
-    return (
-        f"⚠️ **Câu trả lời tham khảo — độ tin cậy {confidence_percent}% "
-        f"(mục tiêu {threshold_percent}%).**{numeric_note}\n\n{answer.strip()}"
-    )
+    return f"**Câu trả lời tham khảo.**{numeric_note}\n\n{answer.strip()}"
 
 
 def _ocr_quality_score(text: str) -> float:
@@ -586,7 +580,6 @@ def run_query(req: QueryRequest) -> QueryResponse:
         )
         answer_text = _best_effort_answer(
             answer_text,
-            confidence,
             numeric_verified=numeric_verified,
         )
 
@@ -849,7 +842,6 @@ def run_query_stream(req: QueryRequest):
                 "delta",
                 text=_best_effort_answer(
                     answer_text,
-                    confidence,
                     numeric_verified=numeric_verified,
                 ),
             )

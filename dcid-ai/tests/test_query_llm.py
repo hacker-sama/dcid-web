@@ -175,8 +175,8 @@ class TestRunQuery:
         assert response.guard.locked is True
         assert response.confidence == 0.30
 
-    def test_low_score_returns_best_effort_with_warning(self):
-        """Even very weak evidence returns an answer, but never hides the true score."""
+    def test_low_score_returns_best_effort_with_reference_label(self):
+        """Even very weak evidence returns an answer with a reference label."""
         from app.services.query_service import run_query
 
         with (
@@ -190,8 +190,8 @@ class TestRunQuery:
 
         assert response.guard.locked is False
         assert response.confidence == 0.15
-        assert "80%" in response.answer
-        assert "15%" in response.answer
+        assert response.answer.startswith("**Câu trả lời tham khảo.**")
+        assert "%" not in response.answer
 
     def test_normal_question_calls_llm(self):
         """Score cao + câu hỏi bình thường → gọi LLM, trả answer thật."""
@@ -218,8 +218,8 @@ class TestRunQuery:
         assert len(response.citations) == 1
         assert response.citations[0].pageNo == 3
 
-    def test_answer_below_80_percent_is_published_with_warning(self):
-        """A low-confidence answer is shown with its real score and target warning."""
+    def test_answer_below_80_percent_is_published_with_reference_label(self):
+        """A low-confidence answer is shown without exposing its score in the text."""
         from app.services.query_service import run_query
 
         raw_answer = "Máy CNC sử dụng bộ điều khiển chưa được xác minh."
@@ -236,8 +236,8 @@ class TestRunQuery:
         assert response.guard.locked is False
         assert response.confidence == pytest.approx(0.79)
         assert raw_answer in response.answer
-        assert "80%" in response.answer
-        assert "79%" in response.answer
+        assert response.answer.startswith("**Câu trả lời tham khảo.**")
+        assert "%" not in response.answer
         assert response.citations[0].snippet is not None
 
     def test_numeric_rule_activated(self):
