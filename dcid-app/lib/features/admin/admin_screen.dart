@@ -6,6 +6,7 @@ import '../../data/models/app_user.dart';
 import '../../data/models/user_role.dart';
 import '../../state/providers.dart';
 import 'analytics_view.dart';
+import 'feedback_admin_view.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});
@@ -351,13 +352,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         .length;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(strings.adminUserManagement),
           bottom: TabBar(
             tabs: [
-              Tab(icon: const Icon(Icons.people_alt_rounded), text: strings.usernameLabel),
+              Tab(icon: const Icon(Icons.people_alt_rounded), text: strings.usersTab),
+              Tab(icon: const Icon(Icons.rate_review_rounded), text: strings.feedbackTab),
               Tab(icon: const Icon(Icons.analytics_rounded), text: strings.adminAnalytics),
             ],
           ),
@@ -832,6 +834,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           ),
         ),
       ),
+      const FeedbackAdminView(),
       const AnalyticsView(),
     ],
   ),

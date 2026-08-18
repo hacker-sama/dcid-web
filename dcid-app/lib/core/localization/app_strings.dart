@@ -197,12 +197,38 @@ abstract class AppStrings {
   String get feedbackRecordedUnhelpful;
   String get feedbackFailed;
   String get photoSource;
+  String get searchHistoryPlaceholder;
+  String get filterAllDates;
+  String get filterToday;
+  String get filter7Days;
+  String get filter30Days;
+  String get filterCustomDate;
+  String get filterAllFeedback;
+  String get filterHelpful;
+  String get filterNotHelpful;
+  String get filterUnrated;
+  String get filterLocked;
+  String get clearFilters;
+  String get noMatchingHistory;
+  String get noMatchingHistoryDesc;
+  String get copyQuestionSuccess;
+  String showingHistoryCount(int current, int total);
+  String get showMore;
+  String get showLess;
+  String get feedbackNotePrompt;
 
   // Admin & Analytics
   String get adminManagement;
   String get adminSubtitle;
   String get adminUserManagement;
   String get adminAnalytics;
+  String get feedbackTab;
+  String get adminFeedbacksTitle;
+  String get noFeedbacksFound;
+  String get feedbackRating;
+  String get feedbackNoteLabel;
+  String get feedbackUserLabel;
+  String get dateRange;
   String get createUser;
   String get createUserTitle;
   String get createUserDialogTitle;
@@ -620,6 +646,44 @@ class AppStringsVi implements AppStrings {
   String get feedbackFailed => 'Không gửi được phản hồi. Thử lại sau.';
   @override
   String get photoSource => 'Nguồn ảnh';
+  @override
+  String get searchHistoryPlaceholder => 'Tìm kiếm theo câu hỏi hoặc câu trả lời...';
+  @override
+  String get filterAllDates => 'Tất cả';
+  @override
+  String get filterToday => 'Hôm nay';
+  @override
+  String get filter7Days => '7 ngày qua';
+  @override
+  String get filter30Days => '30 ngày qua';
+  @override
+  String get filterCustomDate => 'Tùy chọn ngày...';
+  @override
+  String get filterAllFeedback => 'Tất cả phản hồi';
+  @override
+  String get filterHelpful => '👍 Đã thích';
+  @override
+  String get filterNotHelpful => '👎 Không thích';
+  @override
+  String get filterUnrated => '⏳ Chưa đánh giá';
+  @override
+  String get filterLocked => '🔒 Bị khóa';
+  @override
+  String get clearFilters => 'Xóa bộ lọc';
+  @override
+  String get noMatchingHistory => 'Không tìm thấy câu hỏi phù hợp';
+  @override
+  String get noMatchingHistoryDesc => 'Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh bộ lọc ngày/trạng thái.';
+  @override
+  String get copyQuestionSuccess => 'Đã sao chép câu hỏi vào bộ nhớ tạm!';
+  @override
+  String showingHistoryCount(int current, int total) => 'Hiển thị $current / $total câu hỏi';
+  @override
+  String get showMore => 'Xem thêm';
+  @override
+  String get showLess => 'Thu gọn';
+  @override
+  String get feedbackNotePrompt => 'Góp ý hoặc nêu lý do (tùy chọn):';
 
   @override
   String get adminManagement => 'Quản trị hệ thống';
@@ -629,6 +693,20 @@ class AppStringsVi implements AppStrings {
   String get adminUserManagement => 'Quản lý người dùng';
   @override
   String get adminAnalytics => 'Báo cáo & Phân tích hệ thống';
+  @override
+  String get feedbackTab => 'Đánh giá người dùng';
+  @override
+  String get adminFeedbacksTitle => 'Nhật ký đánh giá & phản hồi câu trả lời AI';
+  @override
+  String get noFeedbacksFound => 'Chưa có phản hồi nào từ người dùng';
+  @override
+  String get feedbackRating => 'Đánh giá';
+  @override
+  String get feedbackNoteLabel => 'Nội dung góp ý';
+  @override
+  String get feedbackUserLabel => 'Người dùng';
+  @override
+  String get dateRange => 'Khoảng thời gian';
   @override
   String get createUser => 'Tạo người dùng';
   @override
@@ -1062,6 +1140,44 @@ class AppStringsEn implements AppStrings {
   String get feedbackFailed => 'Could not submit feedback. Try again later.';
   @override
   String get photoSource => 'Photo Source';
+  @override
+  String get searchHistoryPlaceholder => 'Search questions or answer content...';
+  @override
+  String get filterAllDates => 'All Time';
+  @override
+  String get filterToday => 'Today';
+  @override
+  String get filter7Days => 'Last 7 Days';
+  @override
+  String get filter30Days => 'Last 30 Days';
+  @override
+  String get filterCustomDate => 'Custom Range...';
+  @override
+  String get filterAllFeedback => 'All Feedback';
+  @override
+  String get filterHelpful => '👍 Helpful';
+  @override
+  String get filterNotHelpful => '👎 Not Helpful';
+  @override
+  String get filterUnrated => '⏳ Unrated';
+  @override
+  String get filterLocked => '🔒 Guarded';
+  @override
+  String get clearFilters => 'Clear Filters';
+  @override
+  String get noMatchingHistory => 'No matching history found';
+  @override
+  String get noMatchingHistoryDesc => 'Try adjusting your search keywords or date/status filters.';
+  @override
+  String get copyQuestionSuccess => 'Question copied to clipboard!';
+  @override
+  String showingHistoryCount(int current, int total) => 'Showing $current of $total queries';
+  @override
+  String get showMore => 'Show more';
+  @override
+  String get showLess => 'Show less';
+  @override
+  String get feedbackNotePrompt => 'Reason or optional notes:';
 
   @override
   String get adminManagement => 'System Administration';
@@ -1071,6 +1187,20 @@ class AppStringsEn implements AppStrings {
   String get adminUserManagement => 'User Management';
   @override
   String get adminAnalytics => 'System Analytics & KPIs';
+  @override
+  String get feedbackTab => 'User Feedbacks';
+  @override
+  String get adminFeedbacksTitle => 'User Feedback Logs on AI Answers';
+  @override
+  String get noFeedbacksFound => 'No user feedback recorded yet';
+  @override
+  String get feedbackRating => 'Rating';
+  @override
+  String get feedbackNoteLabel => 'Feedback Notes';
+  @override
+  String get feedbackUserLabel => 'User';
+  @override
+  String get dateRange => 'Date Range';
   @override
   String get createUser => 'Create User';
   @override
@@ -1504,6 +1634,44 @@ class AppStringsHi implements AppStrings {
   String get feedbackFailed => 'प्रतिक्रिया भेजने में विफल। बाद में पुनः प्रयास करें।';
   @override
   String get photoSource => 'फ़ोटो स्रोत';
+  @override
+  String get searchHistoryPlaceholder => 'प्रश्न या उत्तर सामग्री खोजें...';
+  @override
+  String get filterAllDates => 'सभी समय';
+  @override
+  String get filterToday => 'आज';
+  @override
+  String get filter7Days => 'पिछले 7 दिन';
+  @override
+  String get filter30Days => 'पिछले 30 दिन';
+  @override
+  String get filterCustomDate => 'कस्टम तिथि...';
+  @override
+  String get filterAllFeedback => 'सभी प्रतिक्रियाएं';
+  @override
+  String get filterHelpful => '👍 उपयोगी';
+  @override
+  String get filterNotHelpful => '👎 उपयोगी नहीं';
+  @override
+  String get filterUnrated => '⏳ मूल्यांकित नहीं';
+  @override
+  String get filterLocked => '🔒 सुरक्षित/अवरुद्ध';
+  @override
+  String get clearFilters => 'फ़िल्टर साफ़ करें';
+  @override
+  String get noMatchingHistory => 'कोई मेल खाने वाला इतिहास नहीं मिला';
+  @override
+  String get noMatchingHistoryDesc => 'खोज शब्द या फ़िल्टर समायोजित करने का प्रयास करें।';
+  @override
+  String get copyQuestionSuccess => 'प्रश्न क्लिपबोर्ड पर कॉपी हो गया!';
+  @override
+  String showingHistoryCount(int current, int total) => '$total में से $current प्रश्न प्रदर्शित';
+  @override
+  String get showMore => 'और देखें';
+  @override
+  String get showLess => 'संक्षिप्त करें';
+  @override
+  String get feedbackNotePrompt => 'कारण या अतिरिक्त नोट:';
 
   @override
   String get adminManagement => 'सिस्टम प्रशासन';
@@ -1513,6 +1681,20 @@ class AppStringsHi implements AppStrings {
   String get adminUserManagement => 'उपयोगकर्ता प्रबंधन';
   @override
   String get adminAnalytics => 'सिस्टम एनालिटिक्स और केपीआई';
+  @override
+  String get feedbackTab => 'उपयोगकर्ता प्रतिक्रिया';
+  @override
+  String get adminFeedbacksTitle => 'एआई उत्तरों पर प्रतिक्रिया लॉग';
+  @override
+  String get noFeedbacksFound => 'कोई उपयोगकर्ता प्रतिक्रिया नहीं मिली';
+  @override
+  String get feedbackRating => 'रेटिंग';
+  @override
+  String get feedbackNoteLabel => 'प्रतिक्रिया विवरण';
+  @override
+  String get feedbackUserLabel => 'उपयोगकर्ता';
+  @override
+  String get dateRange => 'तिथि सीमा';
   @override
   String get createUser => 'उपयोगकर्ता बनाएं';
   @override
@@ -1946,6 +2128,44 @@ class AppStringsJa implements AppStrings {
   String get feedbackFailed => 'フィードバックを送信できませんでした。';
   @override
   String get photoSource => '画像ソース';
+  @override
+  String get searchHistoryPlaceholder => '質問または回答内容を検索...';
+  @override
+  String get filterAllDates => '全期間';
+  @override
+  String get filterToday => '今日';
+  @override
+  String get filter7Days => '過去7日間';
+  @override
+  String get filter30Days => '過去30日間';
+  @override
+  String get filterCustomDate => '日付指定...';
+  @override
+  String get filterAllFeedback => 'すべての評価';
+  @override
+  String get filterHelpful => '👍 役に立った';
+  @override
+  String get filterNotHelpful => '👎 役に立たなかった';
+  @override
+  String get filterUnrated => '⏳ 未評価';
+  @override
+  String get filterLocked => '🔒 ガード/保護';
+  @override
+  String get clearFilters => 'フィルター解除';
+  @override
+  String get noMatchingHistory => '該当する質問履歴がありません';
+  @override
+  String get noMatchingHistoryDesc => '検索キーワードや日付フィルターを変更してお試しください。';
+  @override
+  String get copyQuestionSuccess => '質問をクリップボードにコピーしました！';
+  @override
+  String showingHistoryCount(int current, int total) => '$total 件中 $current 件を表示';
+  @override
+  String get showMore => 'もっと見る';
+  @override
+  String get showLess => '折りたたむ';
+  @override
+  String get feedbackNotePrompt => '理由や追加コメント（任意）:';
 
   @override
   String get adminManagement => 'システム管理';
@@ -1955,6 +2175,20 @@ class AppStringsJa implements AppStrings {
   String get adminUserManagement => 'ユーザー管理';
   @override
   String get adminAnalytics => 'システム分析 & KPI';
+  @override
+  String get feedbackTab => 'ユーザー評価一覧';
+  @override
+  String get adminFeedbacksTitle => 'AI回答へのユーザーフィードバック履歴';
+  @override
+  String get noFeedbacksFound => 'ユーザーフィードバックはまだありません';
+  @override
+  String get feedbackRating => '評価';
+  @override
+  String get feedbackNoteLabel => 'コメント';
+  @override
+  String get feedbackUserLabel => 'ユーザー';
+  @override
+  String get dateRange => '期間';
   @override
   String get createUser => 'ユーザー作成';
   @override
