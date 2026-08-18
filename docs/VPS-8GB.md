@@ -38,7 +38,7 @@ docker compose --env-file .env.production \
 Tải model một lần sau khi Ollama sẵn sàng:
 
 ```bash
-docker compose exec ollama ollama pull qwen2.5:1.5b
+docker compose exec ollama ollama pull qwen2.5:3b
 docker compose exec ollama ollama pull qwen2.5vl:3b
 ```
 
@@ -56,7 +56,7 @@ curl http://127.0.0.1:8080/actuator/health
   output tối đa 768 token.
 - Celery worker có concurrency 1 và prefetch 1.
 - Upload trả `taskId`; OCR/index tiếp tục trong hàng đợi Redis.
-- Truy vấn văn bản dùng `qwen2.5:1.5b`; chỉ truy vấn có ảnh hoặc
+- Truy vấn văn bản dùng `qwen2.5:3b`; chỉ truy vấn có ảnh hoặc
   cần suy luận không gian mới dùng `qwen2.5vl:3b`.
 - Ảnh Vision có cạnh dài tối đa 800 px. PNG được giữ cho bản vẽ;
   ảnh thường chuyển JPEG 90.

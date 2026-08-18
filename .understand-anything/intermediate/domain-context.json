@@ -1,0 +1,893 @@
+{
+  "projectRoot": "C:\\project\\new\\dcid-web",
+  "fileCount": 133,
+  "fileTree": [
+    "chroma-tools\\chroma_status.py",
+    "chroma-tools\\inspect_chunks.py",
+    "chroma-tools\\upload_and_verify.py",
+    "dcid-ai\\app\\api\\__init__.py",
+    "dcid-ai\\app\\api\\health.py",
+    "dcid-ai\\app\\api\\ingest.py",
+    "dcid-ai\\app\\api\\query.py",
+    "dcid-ai\\app\\api\\status.py",
+    "dcid-ai\\app\\clients\\__init__.py",
+    "dcid-ai\\app\\clients\\backend_client.py",
+    "dcid-ai\\app\\clients\\llm_client.py",
+    "dcid-ai\\app\\clients\\minio_client.py",
+    "dcid-ai\\app\\clients\\ocr_client.py",
+    "dcid-ai\\app\\pipeline\\__init__.py",
+    "dcid-ai\\app\\pipeline\\chunk.py",
+    "dcid-ai\\app\\pipeline\\embed.py",
+    "dcid-ai\\app\\pipeline\\guardrails.py",
+    "dcid-ai\\app\\pipeline\\index.py",
+    "dcid-ai\\app\\pipeline\\ocr.py",
+    "dcid-ai\\app\\pipeline\\prompts.py",
+    "dcid-ai\\app\\services\\__init__.py",
+    "dcid-ai\\app\\services\\ingest_service.py",
+    "dcid-ai\\app\\services\\query_service.py",
+    "dcid-ai\\app\\services\\resource_gate.py",
+    "dcid-ai\\app\\workers\\__init__.py",
+    "dcid-ai\\app\\workers\\embed_worker.py",
+    "dcid-ai\\app\\__init__.py",
+    "dcid-ai\\app\\celery_app.py",
+    "dcid-ai\\app\\config.py",
+    "dcid-ai\\app\\main.py",
+    "dcid-ai\\app\\main_ocr.py",
+    "dcid-ai\\app\\schemas.py",
+    "dcid-ai\\app\\security.py",
+    "dcid-ai\\src\\api\\__init__.py",
+    "dcid-ai\\src\\api\\routes.py",
+    "dcid-ai\\src\\api\\schemas.py",
+    "dcid-ai\\src\\chunking\\__init__.py",
+    "dcid-ai\\src\\chunking\\chunker.py",
+    "dcid-ai\\src\\embeddings\\__init__.py",
+    "dcid-ai\\src\\embeddings\\embedder.py",
+    "dcid-ai\\src\\ingestion\\__init__.py",
+    "dcid-ai\\src\\ingestion\\loader.py",
+    "dcid-ai\\src\\ingestion\\ocr_engine.py",
+    "dcid-ai\\src\\llm\\__init__.py",
+    "dcid-ai\\src\\llm\\llm_client.py",
+    "dcid-ai\\src\\prompts\\__init__.py",
+    "dcid-ai\\src\\prompts\\prompt_templates.py",
+    "dcid-ai\\src\\retrieval\\__init__.py",
+    "dcid-ai\\src\\retrieval\\retriever.py",
+    "dcid-ai\\src\\utils\\__init__.py",
+    "dcid-ai\\src\\utils\\helpers.py",
+    "dcid-ai\\src\\vectordb\\__init__.py",
+    "dcid-ai\\src\\vectordb\\vector_store.py",
+    "dcid-ai\\tests\\__init__.py",
+    "dcid-ai\\tests\\conftest.py",
+    "dcid-ai\\tests\\test_auth.py",
+    "dcid-ai\\tests\\test_chunk.py",
+    "dcid-ai\\tests\\test_embed_concurrency.py",
+    "dcid-ai\\tests\\test_health.py",
+    "dcid-ai\\tests\\test_ingest.py",
+    "dcid-ai\\tests\\test_llm_model_routing.py",
+    "dcid-ai\\tests\\test_llm_repetition.py",
+    "dcid-ai\\tests\\test_low_memory_search.py",
+    "dcid-ai\\tests\\test_ocr_routing.py",
+    "dcid-ai\\tests\\test_pipeline.py",
+    "dcid-ai\\tests\\test_qdrant_index.py",
+    "dcid-ai\\tests\\test_query.py",
+    "dcid-ai\\tests\\test_query_llm.py",
+    "dcid-ai\\tests\\test_query_stream.py",
+    "dcid-ai\\tests\\test_resource_gate.py",
+    "dcid-ai\\tests\\test_vision_confidence.py",
+    "dcid-ai\\main.py",
+    "dcid-ai\\test_antihallucination.py",
+    "dcid-ai\\test_llm_debug.py",
+    "dcid-ai\\test_notebooklm_pipeline.py",
+    "dcid-ai\\test_raw_response.py",
+    "dcid-ai\\test_vision_pipeline.py",
+    "dcid-ai\\test_web_performance.py",
+    "dcid-app\\.dart_tool\\flutter_build\\0dd23873a6f9f1b62f1c0f3dfcfadeae\\main.dart.js",
+    "dcid-app\\.dart_tool\\flutter_build\\3228e83f08c7327b378d3b2663736145\\main.dart.js",
+    "dcid-app\\.dart_tool\\flutter_build\\605f4a69563be99e16fa06cd1115c96d\\main.dart.js",
+    "dcid-app\\.dart_tool\\flutter_build\\98dc4b3432bed95f94a483d2f6e4e79b\\main.dart.js",
+    "dcid-app\\.dart_tool\\flutter_build\\9cf571ea6f37caf24f696f1d8e57896d\\main.dart.js",
+    "dcid-app\\ios\\Flutter\\ephemeral\\flutter_lldb_helper.py",
+    "dcid-app\\ios\\Runner\\AppDelegate.swift",
+    "dcid-app\\ios\\Runner\\GeneratedPluginRegistrant.h",
+    "dcid-app\\ios\\Runner\\Runner-Bridging-Header.h",
+    "dcid-app\\ios\\Runner\\SceneDelegate.swift",
+    "dcid-app\\ios\\RunnerTests\\RunnerTests.swift",
+    "dcid-app\\ios_backup\\Runner\\AppDelegate.swift",
+    "dcid-app\\ios_backup\\Runner\\Runner-Bridging-Header.h",
+    "dcid-app\\ios_backup\\Runner\\SceneDelegate.swift",
+    "dcid-app\\ios_backup\\RunnerTests\\RunnerTests.swift",
+    "dcid-app\\macos\\Flutter\\GeneratedPluginRegistrant.swift",
+    "dcid-app\\macos\\Runner\\AppDelegate.swift",
+    "dcid-app\\macos\\Runner\\MainFlutterWindow.swift",
+    "dcid-app\\macos\\RunnerTests\\RunnerTests.swift",
+    "dcid-app\\windows\\flutter\\generated_plugin_registrant.h",
+    "dcid-app\\windows\\runner\\flutter_window.cpp",
+    "dcid-app\\windows\\runner\\flutter_window.h",
+    "dcid-app\\windows\\runner\\main.cpp",
+    "dcid-app\\windows\\runner\\resource.h",
+    "dcid-app\\windows\\runner\\utils.cpp",
+    "dcid-app\\windows\\runner\\utils.h",
+    "dcid-app\\windows\\runner\\win32_window.cpp",
+    "dcid-app\\windows\\runner\\win32_window.h",
+    "dcid-backend\\src\\main\\java\\vn\\dcid\\DCIDApplication.java",
+    "dcid-backend\\src\\test\\java\\vn\\dcid\\DCIDApplicationTests.java",
+    "scripts\\migrate_chroma_to_qdrant.py",
+    "scripts\\qdrant_status.py",
+    "scripts\\smoke_test_t2.py",
+    "src\\api\\__init__.py",
+    "src\\api\\routes.py",
+    "src\\api\\schemas.py",
+    "src\\chunking\\__init__.py",
+    "src\\chunking\\chunker.py",
+    "src\\embeddings\\__init__.py",
+    "src\\embeddings\\embedder.py",
+    "src\\ingestion\\__init__.py",
+    "src\\ingestion\\loader.py",
+    "src\\ingestion\\ocr_engine.py",
+    "src\\llm\\__init__.py",
+    "src\\llm\\llm_client.py",
+    "src\\prompts\\__init__.py",
+    "src\\prompts\\prompt_templates.py",
+    "src\\retrieval\\__init__.py",
+    "src\\retrieval\\retriever.py",
+    "src\\utils\\__init__.py",
+    "src\\utils\\helpers.py",
+    "src\\vectordb\\__init__.py",
+    "src\\vectordb\\vector_store.py",
+    "tests\\test_pipeline.py",
+    "main.py"
+  ],
+  "entryPoints": [
+    {
+      "file": "dcid-ai\\app\\api\\health.py",
+      "line": 19,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.get(\"/health\"",
+      "snippet": "@router.get(\"/health\", response_model=HealthResponse)\ndef health() -> HealthResponse:\n    \"\"\"Ki\u00e1\u00bb\u0192m tra tr\u00e1\u00ba\u00a1ng th\u00c3\u00a1i service \u00e2\u20ac\u201d probe Ollama \u00c4\u2018\u00e1\u00bb\u0192 b\u00c3\u00a1o model_loaded.\"\"\"\n    model_loaded = llm_client.is_available()\n    if model_loaded:"
+    },
+    {
+      "file": "dcid-ai\\app\\api\\ingest.py",
+      "line": 12,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/ingest\"",
+      "snippet": "@router.post(\"/ingest\", response_model=IngestAccepted, status_code=status.HTTP_202_ACCEPTED)\ndef ingest(req: IngestRequest) -> IngestAccepted:\n    \"\"\"Queue OCR, chunking, embedding and indexing, then return immediately.\"\"\"\n    task = run_ingest_task.delay(\n        version_id=str(req.versionId),"
+    },
+    {
+      "file": "dcid-ai\\app\\api\\ingest.py",
+      "line": 25,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.delete(\"/documents/{document_id}\"",
+      "snippet": "@router.delete(\"/documents/{document_id}\")\ndef delete_document_vector(document_id: str):\n    \"\"\"Delete all indexed vectors that belong to a document.\"\"\"\n    from src.vectordb import vector_store\n"
+    },
+    {
+      "file": "dcid-ai\\app\\api\\query.py",
+      "line": 35,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/query\"",
+      "snippet": "@router.post(\"/query\", response_model=QueryResponse)\ndef query(req: QueryRequest) -> QueryResponse:\n    \"\"\"Truy v\u00e1\u00ba\u00a5n RAG pipeline \u00e2\u20ac\u201d embed \u00e2\u2020\u2019 Qdrant \u00e2\u2020\u2019 guardrail \u00e2\u2020\u2019 Ollama \u00e2\u2020\u2019 response.\n\n    Request (contract \u00c2\u00a72.2):"
+    },
+    {
+      "file": "dcid-ai\\app\\api\\query.py",
+      "line": 60,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/query/stream\"",
+      "snippet": "@router.post(\"/query/stream\")\ndef query_stream(req: QueryRequest) -> StreamingResponse:\n    \"\"\"Streaming SSE variant \u00e2\u20ac\u201d tr\u00e1\u00ba\u00a3 v\u00e1\u00bb\ufffd Server-Sent Events, ch\u00e1\u00bb\u00af hi\u00e1\u00bb\u2021n t\u00e1\u00bb\u00abng t\u00e1\u00bb\u00ab nh\u00c6\u00b0 ChatGPT.\n\n    Gi\u00e1\u00bb\u2018ng /ai/query nh\u00c6\u00b0ng thay v\u00c3\u00ac \u00c4\u2018\u00e1\u00bb\u00a3i LLM xong m\u00e1\u00bb\u203ai tr\u00e1\u00ba\u00a3 JSON,"
+    },
+    {
+      "file": "dcid-ai\\app\\api\\status.py",
+      "line": 24,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.get(\"/status/{task_id}\"",
+      "snippet": "@router.get(\"/status/{task_id}\", response_model=TaskStatusResponse)\ndef get_task_status(task_id: str) -> TaskStatusResponse:\n    \"\"\"Truy v\u00e1\u00ba\u00a5n tr\u00e1\u00ba\u00a1ng th\u00c3\u00a1i Celery task theo task_id.\n\n    Args:"
+    },
+    {
+      "file": "dcid-ai\\app\\main_ocr.py",
+      "line": 73,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/ocr\"",
+      "snippet": "@router.post(\"/ocr\", response_model=OcrResponse)\ndef run_ocr(req: OcrRequest) -> OcrResponse:\n    logger.info(\"Nh\u00e1\u00ba\u00adn job OCR: storageKey=%s langs=%s\", req.storageKey, req.langs)\n    pdf_bytes = minio_client.get_object(req.storageKey)\n    pages = ocr.extract_pages(pdf_bytes, req.langs)"
+    },
+    {
+      "file": "dcid-ai\\app\\main_ocr.py",
+      "line": 98,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "app.get(\"/ai/health\"",
+      "snippet": "@app.get(\"/ai/health\")\ndef health() -> dict:\n    return {\"status\": \"ok\", \"service\": \"ai-ocr\"}\n\n"
+    },
+    {
+      "file": "dcid-ai\\app\\main_ocr.py",
+      "line": 98,
+      "type": "http",
+      "description": "Decorator route (Flask/FastAPI/NestJS)",
+      "match": "@app.get(\"/ai/health\"",
+      "snippet": "@app.get(\"/ai/health\")\ndef health() -> dict:\n    return {\"status\": \"ok\", \"service\": \"ai-ocr\"}\n\n"
+    },
+    {
+      "file": "dcid-ai\\src\\api\\routes.py",
+      "line": 51,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/ingest\"",
+      "snippet": "@router.post(\"/ingest\")\ndef ingest_document(req: schemas.IngestRequest, background_tasks: BackgroundTasks):\n    \"\"\"POST /api/ingest \u00e2\u20ac\u201d N\u00e1\u00ba\u00a1p & \u00c4\u2018\u00e1\u00bb\ufffdc file (PDF/Scan), ch\u00e1\u00ba\u00a1y OCR, Visual Crop, Qwen2-VL 2B, embed & index v\u00c3\u00a0o ChromaDB.\"\"\"\n    background_tasks.add_task(_run_ingest_background, req)\n   "
+    },
+    {
+      "file": "dcid-ai\\src\\api\\routes.py",
+      "line": 62,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/query\"",
+      "snippet": "@router.post(\"/query\", response_model=schemas.QueryResponse)\ndef query_rag(req: schemas.QueryRequest):\n    \"\"\"POST /api/query \u00e2\u20ac\u201d Truy v\u00e1\u00ba\u00a5n RAG t\u00e1\u00bb\u00ab ChromaDB -> Main Text LLM -> Tr\u00e1\u00ba\u00a3 c\u00c3\u00a2u tr\u00e1\u00ba\u00a3 l\u00e1\u00bb\ufffdi k\u00c3\u00a8m citations (imagePath).\"\"\"\n    start_t = time.time()\n"
+    },
+    {
+      "file": "dcid-ai\\src\\api\\routes.py",
+      "line": 91,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/query/stream\"",
+      "snippet": "@router.post(\"/query/stream\")\ndef query_rag_stream(req: schemas.QueryRequest):\n    \"\"\"POST /api/query/stream \u00e2\u20ac\u201d Streaming SSE variant tr\u00e1\u00ba\u00a3 t\u00e1\u00bb\u00abng t\u00e1\u00bb\u00ab cho UI.\"\"\"\n    hits, citations = retriever.retrieve_context(\n        question=req.question,"
+    },
+    {
+      "file": "dcid-ai\\src\\api\\routes.py",
+      "line": 125,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.get(\"/health\"",
+      "snippet": "@router.get(\"/health\")\ndef health_check():\n    \"\"\"GET /api/health \u00e2\u20ac\u201d Health check service status.\"\"\"\n    return {\n        \"status\": \"UP\","
+    },
+    {
+      "file": "dcid-ai\\src\\api\\routes.py",
+      "line": 136,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.delete(\"/documents/{document_id}\"",
+      "snippet": "@router.delete(\"/documents/{document_id}\")\ndef delete_document(document_id: str):\n    \"\"\"DELETE /api/documents/{document_id} \u00e2\u20ac\u201d X\u00c3\u00b3a to\u00c3\u00a0n b\u00e1\u00bb\u2122 vector chunks v\u00c3\u00a0 file crop c\u00e1\u00bb\u00a7a t\u00c3\u00a0i li\u00e1\u00bb\u2021u.\"\"\"\n    deleted_count = vector_store.delete_document_chunks(document_id=document_id)\n    return {"
+    },
+    {
+      "file": "dcid-ai\\main.py",
+      "line": 59,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "app.get(\"/\"",
+      "snippet": "@app.get(\"/\")\ndef root():\n    return {\n        \"service\": app_cfg.get(\"name\", \"DCID AI Service\"),\n        \"status\": \"running\","
+    },
+    {
+      "file": "dcid-ai\\main.py",
+      "line": 59,
+      "type": "http",
+      "description": "Decorator route (Flask/FastAPI/NestJS)",
+      "match": "@app.get(\"/\"",
+      "snippet": "@app.get(\"/\")\ndef root():\n    return {\n        \"service\": app_cfg.get(\"name\", \"DCID AI Service\"),\n        \"status\": \"running\","
+    },
+    {
+      "file": "src\\api\\routes.py",
+      "line": 51,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/ingest\"",
+      "snippet": "@router.post(\"/ingest\")\ndef ingest_document(req: schemas.IngestRequest, background_tasks: BackgroundTasks):\n    \"\"\"POST /api/ingest \u00e2\u20ac\u201d N\u00e1\u00ba\u00a1p & \u00c4\u2018\u00e1\u00bb\ufffdc file (PDF/Scan), ch\u00e1\u00ba\u00a1y OCR, Visual Crop, Qwen2-VL 2B, embed & index v\u00c3\u00a0o ChromaDB.\"\"\"\n    background_tasks.add_task(_run_ingest_background, req)\n   "
+    },
+    {
+      "file": "src\\api\\routes.py",
+      "line": 62,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/query\"",
+      "snippet": "@router.post(\"/query\", response_model=schemas.QueryResponse)\ndef query_rag(req: schemas.QueryRequest):\n    \"\"\"POST /api/query \u00e2\u20ac\u201d Truy v\u00e1\u00ba\u00a5n RAG t\u00e1\u00bb\u00ab ChromaDB -> Main Text LLM -> Tr\u00e1\u00ba\u00a3 c\u00c3\u00a2u tr\u00e1\u00ba\u00a3 l\u00e1\u00bb\ufffdi k\u00c3\u00a8m citations (imagePath).\"\"\"\n    start_t = time.time()\n"
+    },
+    {
+      "file": "src\\api\\routes.py",
+      "line": 91,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.post(\"/query/stream\"",
+      "snippet": "@router.post(\"/query/stream\")\ndef query_rag_stream(req: schemas.QueryRequest):\n    \"\"\"POST /api/query/stream \u00e2\u20ac\u201d Streaming SSE variant tr\u00e1\u00ba\u00a3 t\u00e1\u00bb\u00abng t\u00e1\u00bb\u00ab cho UI.\"\"\"\n    hits, citations = retriever.retrieve_context(\n        question=req.question,"
+    },
+    {
+      "file": "src\\api\\routes.py",
+      "line": 126,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "router.get(\"/health\"",
+      "snippet": "@router.get(\"/health\")\ndef health_check():\n    \"\"\"GET /api/health \u00e2\u20ac\u201d Health check service status.\"\"\"\n    return {\n        \"status\": \"UP\","
+    },
+    {
+      "file": "main.py",
+      "line": 59,
+      "type": "http",
+      "description": "Express/Koa route",
+      "match": "app.get(\"/\"",
+      "snippet": "@app.get(\"/\")\ndef root():\n    return {\n        \"service\": app_cfg.get(\"name\", \"DCID AI Service\"),\n        \"status\": \"running\","
+    },
+    {
+      "file": "main.py",
+      "line": 59,
+      "type": "http",
+      "description": "Decorator route (Flask/FastAPI/NestJS)",
+      "match": "@app.get(\"/\"",
+      "snippet": "@app.get(\"/\")\ndef root():\n    return {\n        \"service\": app_cfg.get(\"name\", \"DCID AI Service\"),\n        \"status\": \"running\","
+    }
+  ],
+  "fileSignatures": [
+    {
+      "file": "dcid-ai\\app\\api\\query.py",
+      "exports": [
+        "query",
+        "query_stream"
+      ],
+      "imports": [
+        "fastapi",
+        "fastapi.responses",
+        "app.schemas",
+        "app.security",
+        "app.services"
+      ],
+      "lines": 91,
+      "preview": "\"\"\"POST /ai/query \u00e2\u20ac\u201d RAG pipeline th\u00e1\u00bb\u00b1c t\u00e1\u00ba\u00bf k\u00e1\u00ba\u00bft n\u00e1\u00bb\u2018i Qdrant + Ollama.\nPOST /ai/query/stream \u00e2\u20ac\u201d Streaming SSE variant: ch\u00e1\u00bb\u00af hi\u00e1\u00bb\u2021n ra t\u00e1\u00bb\u00abng t\u00e1\u00bb\u00ab nh\u00c6\u00b0 ChatGPT.\n\nLu\u00e1\u00bb\u201cng x\u00e1\u00bb\u00ad l\u00c3\u00bd \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c t\u00c3\u00a1ch ho\u00c3\u00a0n to\u00c3\u00a0n sang app/services/query_service.py\n\u00c4\u2018\u00e1\u00bb\u0192 d\u00e1\u00bb\u2026 unit test. Router n\u00c3\u00a0y ch\u00e1\u00bb\u2030 l\u00c3\u00a0m nhi\u00e1\u00bb\u2021m v\u00e1\u00bb\u00a5 HTTP layer thu\u00e1\u00ba\u00a7n t\u00c3\u00bay:\n- X\u00c3\u00a1c th\u00e1\u00bb\u00b1c token (dependency X-Internal-Token).\n- Validate request schema (Pydantic).\n- Delegate sang query_service.run_query() ho\u00e1\u00ba\u00b7c run_query_stream().\n- Tr\u00e1\u00ba\u00a3 v\u00e1\u00bb\ufffd"
+    },
+    {
+      "file": "dcid-ai\\app\\pipeline\\guardrails.py",
+      "exports": [
+        "check_numeric",
+        "check_reasoning_mode"
+      ],
+      "imports": [
+        "__future__"
+      ],
+      "lines": 116,
+      "preview": "\"\"\"Guardrails \u00e2\u20ac\u201d Ki\u00e1\u00bb\u0192m tra ch\u00e1\u00ba\u00a5t l\u00c6\u00b0\u00e1\u00bb\u00a3ng v\u00c3\u00a0 ph\u00c3\u00a2n lo\u00e1\u00ba\u00a1i c\u00c3\u00a2u h\u00e1\u00bb\ufffdi (contract \u00c2\u00a72.2).\n\nHai t\u00e1\u00ba\u00a7ng guardrail:\n1. Cosine threshold (THRESHOLD = 0.60):\n   - \u00c4\ufffdi\u00e1\u00bb\u0192m similarity t\u00e1\u00bb\u2018t nh\u00e1\u00ba\u00a5t t\u00e1\u00bb\u00ab ChromaDB < ng\u00c6\u00b0\u00e1\u00bb\u00a1ng \u00e2\u2020\u2019 locked=True.\n   - T\u00c3\u00a0i li\u00e1\u00bb\u2021u kh\u00c3\u00b4ng \u00c4\u2018\u00e1\u00bb\u00a7 li\u00c3\u00aan quan \u00e2\u2020\u2019 kh\u00c3\u00b4ng g\u00e1\u00bb\ufffdi LLM, tr\u00e1\u00ba\u00a3 th\u00c3\u00b4ng b\u00c3\u00a1o chu\u00e1\u00ba\u00a9n.\n\n2. Numeric rule extraction:\n   - C\u00c3\u00a2u h\u00e1\u00bb\ufffdi \u00c4\u2018\u00e1\u00bb\ufffd c\u00e1\u00ba\u00adp \u00c4\u2018\u00e1\u00ba\u00bfn th\u00c3\u00b4ng s\u00e1\u00bb\u2018 k\u00e1\u00bb\u00b9 thu\u00e1\u00ba\u00adt s\u00e1\u00bb\u2018 li\u00e1\u00bb\u2021u (\u00c4\u2018i\u00e1\u00bb\u2021n \u00c3\u00a1p, \u00c3\u00a1p su\u00e1\u00ba\u00a5t, v.v.)\n   - K\u00c3\u00adch ho\u00e1\u00ba\u00a1t ch\u00e1\u00bb\u2030 th\u00e1\u00bb\u2039 \u00c4\u2018\u00e1\u00ba\u00b7c bi\u00e1\u00bb\u2021t"
+    },
+    {
+      "file": "dcid-ai\\app\\services\\query_service.py",
+      "exports": [
+        "_normalize_question",
+        "_prefers_ocr_only",
+        "_usable_ocr_text"
+      ],
+      "imports": [
+        "__future__",
+        "uuid",
+        "app.clients",
+        "app.clients.llm_client",
+        "app.config",
+        "app.pipeline",
+        "app.pipeline",
+        "app.pipeline",
+        "app.pipeline",
+        "app.schemas",
+        "app.services.resource_gate"
+      ],
+      "lines": 760,
+      "preview": "\"\"\"Query Service \u00e2\u20ac\u201d RAG Pipeline Orchestrator cho Smart KCN Docs.\n\nLu\u00e1\u00bb\u201cng x\u00e1\u00bb\u00ad l\u00c3\u00bd (theo contract \u00c2\u00a72.2):\n    1. Embed c\u00c3\u00a2u h\u00e1\u00bb\ufffdi b\u00e1\u00ba\u00b1ng multilingual-e5-small (prefix \"query: \").\n    2. Truy v\u00e1\u00ba\u00a5n Qdrant v\u00e1\u00bb\u203ai filter allowedVersionIds.\n    3. Ki\u00e1\u00bb\u0192m tra guardrail (cosine threshold + trigger phrase).\n    4. Build system prompt + inject context chunks t\u00e1\u00bb\u00ab Qdrant.\n    5. G\u00e1\u00bb\ufffdi LM Studio \u00c4\u2018\u00e1\u00bb\u0192 sinh c\u00c3\u00a2u tr\u00e1\u00ba\u00a3 l\u00e1\u00bb\ufffdi (g\u00e1\u00bb\ufffdi qua llm_client).\n    6. T\u00c3\u00adnh confidence t\u00e1\u00bb\u00ab retrieval v\u00c3\u00a0 b\u00e1\u00ba\u00b1ng ch\u00e1\u00bb\u00a9ng "
+    },
+    {
+      "file": "dcid-ai\\src\\api\\routes.py",
+      "exports": [
+        "_run_ingest_background",
+        "ingest_document",
+        "query_rag"
+      ],
+      "imports": [
+        "typing",
+        "fastapi",
+        "fastapi.responses",
+        "src.api",
+        "src.chunking",
+        "src.embeddings",
+        "src.ingestion",
+        "src.llm",
+        "src.prompts",
+        "src.retrieval",
+        "src.vectordb"
+      ],
+      "lines": 145,
+      "preview": "\"\"\"FastAPI Routes cho REST API h\u00e1\u00bb\u2021 th\u00e1\u00bb\u2018ng DCID AI.\"\"\"\n\nimport json\nimport logging\nimport time\nfrom typing import Any, Dict, List\n\nfrom fastapi import APIRouter, BackgroundTasks, HTTPException\nfrom fastapi.responses import StreamingResponse\n\nfrom src.api import schemas\nfrom src.chunking import chunker\nfrom src.embeddings import embedder\nfrom src.ingestion import loader, ocr_engine\nfrom src.llm import llm_client\nfrom src.prompts import prompt_templates\nfrom src.retrieval import retriever\nfrom sr"
+    },
+    {
+      "file": "src\\api\\routes.py",
+      "exports": [
+        "_run_ingest_background",
+        "ingest_document",
+        "query_rag"
+      ],
+      "imports": [
+        "typing",
+        "fastapi",
+        "fastapi.responses",
+        "src.api",
+        "src.chunking",
+        "src.embeddings",
+        "src.ingestion",
+        "src.llm",
+        "src.prompts",
+        "src.retrieval",
+        "src.vectordb"
+      ],
+      "lines": 134,
+      "preview": "\"\"\"FastAPI Routes cho REST API h\u00e1\u00bb\u2021 th\u00e1\u00bb\u2018ng DCID AI.\"\"\"\n\nimport json\nimport logging\nimport time\nfrom typing import Any, Dict, List\n\nfrom fastapi import APIRouter, BackgroundTasks, HTTPException\nfrom fastapi.responses import StreamingResponse\n\nfrom src.api import schemas\nfrom src.chunking import chunker\nfrom src.embeddings import embedder\nfrom src.ingestion import loader, ocr_engine\nfrom src.llm import llm_client\nfrom src.prompts import prompt_templates\nfrom src.retrieval import retriever\nfrom sr"
+    },
+    {
+      "file": "dcid-ai\\app\\api\\__init__.py",
+      "exports": [],
+      "imports": [],
+      "lines": 0,
+      "preview": ""
+    },
+    {
+      "file": "dcid-ai\\app\\api\\health.py",
+      "exports": [
+        "health"
+      ],
+      "imports": [
+        "fastapi",
+        "app.clients",
+        "app.schemas"
+      ],
+      "lines": 27,
+      "preview": "\"\"\"GET /ai/health \u00e2\u20ac\u201d readiness cho BE/compose (contract \u00c2\u00a73). KH\u00c3\u201dNG c\u00e1\u00ba\u00a7n token.\n\nmodel_loaded: True khi Ollama \u00c4\u2018ang ch\u00e1\u00ba\u00a1y v\u00c3\u00a0 model \u00c4\u2018\u00c3\u00a3 s\u00e1\u00ba\u00b5n s\u00c3\u00a0ng ph\u00e1\u00ba\u00a3n h\u00e1\u00bb\u201ci.\nProbe nhanh b\u00e1\u00ba\u00b1ng llm_client.is_available() \u00e2\u20ac\u201d max_tokens=1, kh\u00c3\u00b4ng \u00e1\u00ba\u00a3nh h\u00c6\u00b0\u00e1\u00bb\u0178ng hi\u00e1\u00bb\u2021u n\u00c4\u0192ng.\n\"\"\"\n\nimport logging\n\nfrom fastapi import APIRouter\n\nfrom app.clients import llm_client\nfrom app.schemas import HealthResponse\n\nlogger = logging.getLogger(\"dcid-ai.api.health\")\n\nrouter = APIRouter(prefix=\"/ai\", tags=[\"health\"])\n\n\n@rou"
+    },
+    {
+      "file": "dcid-ai\\app\\api\\ingest.py",
+      "exports": [
+        "ingest",
+        "delete_document_vector"
+      ],
+      "imports": [
+        "fastapi",
+        "app.schemas",
+        "app.security",
+        "app.workers.embed_worker",
+        "src.vectordb"
+      ],
+      "lines": 36,
+      "preview": "\"\"\"Document ingestion endpoints.\"\"\"\n\nfrom fastapi import APIRouter, Depends, status\n\nfrom app.schemas import IngestAccepted, IngestRequest\nfrom app.security import require_internal_token\nfrom app.workers.embed_worker import run_ingest_task\n\nrouter = APIRouter(prefix=\"/ai\", tags=[\"ingest\"], dependencies=[Depends(require_internal_token)])\n\n\n@router.post(\"/ingest\", response_model=IngestAccepted, status_code=status.HTTP_202_ACCEPTED)\ndef ingest(req: IngestRequest) -> IngestAccepted:\n    \"\"\"Queue OCR"
+    },
+    {
+      "file": "dcid-ai\\app\\api\\status.py",
+      "exports": [
+        "get_task_status"
+      ],
+      "imports": [
+        "celery.result",
+        "fastapi",
+        "app.schemas",
+        "app.security"
+      ],
+      "lines": 70,
+      "preview": "\"\"\"GET /ai/status/{task_id} \u00e2\u20ac\u201d Truy v\u00e1\u00ba\u00a5n tr\u00e1\u00ba\u00a1ng th\u00c3\u00a1i Celery task.\n\nEndpoint n\u00c3\u00a0y cho ph\u00c3\u00a9p polling ti\u00e1\u00ba\u00bfn \u00c4\u2018\u00e1\u00bb\u2122 x\u00e1\u00bb\u00ad l\u00c3\u00bd ingest document.\nState flow: PENDING \u00e2\u2020\u2019 PROCESSING_OCR \u00e2\u2020\u2019 PROCESSING_EMBED \u00e2\u2020\u2019 PROCESSING_INDEX \u00e2\u2020\u2019 SUCCESS | FAILURE\n\nL\u00c6\u00b0u \u00c3\u00bd: \u00c4\ufffd\u00c3\u00a2y l\u00c3\u00a0 endpoint ph\u00e1\u00bb\u00a5 tr\u00e1\u00bb\u00a3 \u00e2\u20ac\u201d lu\u00e1\u00bb\u201cng ch\u00c3\u00adnh n\u00c3\u00aan d\u00c3\u00b9ng callback push (BE nh\u00e1\u00ba\u00adn\nPOST /api/internal/ingest-status t\u00e1\u00ba\u00a1i m\u00e1\u00bb\u2014i b\u00c6\u00b0\u00e1\u00bb\u203ac). Endpoint n\u00c3\u00a0y h\u00e1\u00bb\u00afu \u00c3\u00adch cho\ndebug, monitoring v\u00c3\u00a0 fallback khi BE c\u00e1\u00ba\u00a7n ch\u00e1\u00bb\u00a7 \u00c4\u2018\u00e1\u00bb\u2122ng ki\u00e1\u00bb\u0192m tra.\n\"\"\"\n\n"
+    },
+    {
+      "file": "dcid-ai\\app\\pipeline\\__init__.py",
+      "exports": [],
+      "imports": [],
+      "lines": 5,
+      "preview": "\"\"\"Pipeline RAG th\u00e1\u00ba\u00adt \u00e2\u20ac\u201d STUB \u00c4\u2018\u00e1\u00bb\u00a3t sau (docs/ARCHITECTURE.md \u00c2\u00a7B2, docs/PLAN-THESIS.md).\n\nTh\u00e1\u00bb\u00a9 t\u00e1\u00bb\u00b1 thay th\u00e1\u00ba\u00bf: ocr \u00e2\u2020\u2019 chunk \u00e2\u2020\u2019 embed \u00e2\u2020\u2019 index (Qdrant) \u00e2\u2020\u2019 guardrails.\nSkeleton hi\u00e1\u00bb\u2021n t\u00e1\u00ba\u00a1i KH\u00c3\u201dNG import c\u00c3\u00a1c module n\u00c3\u00a0y \u00e1\u00bb\u0178 runtime.\n\"\"\""
+    },
+    {
+      "file": "dcid-ai\\app\\pipeline\\chunk.py",
+      "exports": [
+        "Chunk",
+        "chunk_pages"
+      ],
+      "imports": [
+        "__future__",
+        "dataclasses",
+        "app.pipeline.ocr"
+      ],
+      "lines": 185,
+      "preview": "\"\"\"Chunking v\u00c4\u0192n b\u00e1\u00ba\u00a3n OCR \u00e2\u20ac\u201d layout-aware (T2).\n\nThu\u00e1\u00ba\u00adt to\u00c3\u00a1n:\n- T\u00c3\u00a1ch text th\u00c3\u00a0nh c\u00c3\u00a1c *block* (\u00c4\u2018o\u00e1\u00ba\u00a1n/b\u00e1\u00ba\u00a3ng) b\u00e1\u00ba\u00b1ng blank line.\n- Block b\u00e1\u00ba\u00a3ng (pipe | ho\u00e1\u00ba\u00b7c d\u00e1\u00ba\u00a5u ph\u00c3\u00a2n c\u00c3\u00a1ch dashes/\u00e2\u201d\u20ac) \u00e2\u2020\u2019 gi\u00e1\u00bb\u00af nguy\u00c3\u00aan 1 chunk (kh\u00c3\u00b4ng c\u00e1\u00ba\u00aft gi\u00e1\u00bb\u00afa b\u00e1\u00ba\u00a3ng).\n- Block text th\u00c6\u00b0\u00e1\u00bb\ufffdng \u00e2\u2020\u2019 sliding window MAX_WORDS t\u00e1\u00bb\u00ab, overlap OVERLAP_WORDS t\u00e1\u00bb\u00ab.\n\nTham s\u00e1\u00bb\u2018 m\u00e1\u00ba\u00b7c \u00c4\u2018\u00e1\u00bb\u2039nh \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c ch\u00e1\u00bb\ufffdn \u00c4\u2018\u00e1\u00bb\u0192 1 chunk \u00e2\u2030\u02c6 400\u00e2\u20ac\u201c512 tokens (multilingual-e5-small max 512).\n\"\"\"\n\nfrom __future__ import annotations\n\nimport re\nfro"
+    },
+    {
+      "file": "dcid-ai\\app\\pipeline\\embed.py",
+      "exports": [
+        "_load_model",
+        "_get_model",
+        "embed_texts"
+      ],
+      "imports": [
+        "__future__",
+        "functools",
+        "app.services.resource_gate",
+        "sentence_transformers"
+      ],
+      "lines": 98,
+      "preview": "\"\"\"Embedding v\u00c4\u0192n b\u00e1\u00ba\u00a3n \u00e2\u20ac\u201d multilingual-e5-small (sentence-transformers, CPU).\n\nModel: intfloat/multilingual-e5-small\n- Size: ~470 MB (download l\u00e1\u00ba\u00a7n \u00c4\u2018\u00e1\u00ba\u00a7u t\u00e1\u00bb\u00ab HuggingFace Hub v\u00c3\u00a0o ~/.cache/huggingface)\n- Output: 384-dim L2-normalized float32 vector\n- Prefix chu\u00e1\u00ba\u00a9n e5: \"passage: \" cho \u00c4\u2018o\u00e1\u00ba\u00a1n v\u00c4\u0192n, \"query: \" cho c\u00c3\u00a2u h\u00e1\u00bb\ufffdi\n- Ch\u00e1\u00ba\u00a1y ho\u00c3\u00a0n to\u00c3\u00a0n on-premise CPU (kh\u00c3\u00b4ng c\u00e1\u00ba\u00a7n GPU)\n\nThi\u00e1\u00ba\u00bft k\u00e1\u00ba\u00bf:\n- Model \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c lazy-load l\u00e1\u00ba\u00a7n \u00c4\u2018\u00e1\u00ba\u00a7u g\u00e1\u00bb\ufffdi embed_texts() \u00e2\u2020\u2019 singleton (lru_cache)\n- T\u00c3\u00a1ch h\u00c3\u00a0m em"
+    },
+    {
+      "file": "dcid-ai\\app\\pipeline\\index.py",
+      "exports": [
+        "_get_client",
+        "_ensure_collection"
+      ],
+      "imports": [
+        "__future__",
+        "functools",
+        "typing",
+        "uuid",
+        "app.config",
+        "app.pipeline.chunk",
+        "qdrant_client",
+        "qdrant_client"
+      ],
+      "lines": 373,
+      "preview": "\"\"\"Qdrant vector index for the ``kcn_chunks`` RAG collection.\n\nThe public functions intentionally keep the previous index module contract so\ningestion and query callers do not need database-specific code.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport logging\nimport re\nimport unicodedata\nfrom functools import lru_cache\nfrom typing import Any\nfrom uuid import NAMESPACE_URL, UUID, uuid5\n\nfrom app.config import get_settings\nfrom app.pipeline.chunk import Chunk\n\nlogger = logging.getLogger(\"dcid-ai."
+    },
+    {
+      "file": "dcid-ai\\app\\pipeline\\ocr.py",
+      "exports": [
+        "PageOcr",
+        "_get_engine",
+        "_pick_lang"
+      ],
+      "imports": [
+        "dataclasses",
+        "functools",
+        "typing",
+        "paddleocr"
+      ],
+      "lines": 218,
+      "preview": "\"\"\"OCR trang PDF: PyMuPDF (rasterize PDF \u00e2\u2020\u2019 \u00e1\u00ba\u00a3nh) + PaddleOCR (nh\u00e1\u00ba\u00adn di\u00e1\u00bb\u2021n ch\u00e1\u00bb\u00af VI+EN).\n\nK\u00e1\u00ba\u00bft qu\u00e1\u00ba\u00a3 spike (\u00c4\u2018o b\u00e1\u00ba\u00b1ng CER tr\u00c3\u00aan 8 c\u00c3\u00a2u VI+EN c\u00c3\u00b3 s\u00e1\u00bb\u2018 li\u00e1\u00bb\u2021u k\u00e1\u00bb\u00b9 thu\u00e1\u00ba\u00adt, xem\ndocs/PLAN-THESIS.md m\u00e1\u00bb\u00a5c T1):\n- Ti\u00e1\u00ba\u00bfng Anh: CER 0% (100% ch\u00c3\u00adnh x\u00c3\u00a1c) \u00e2\u20ac\u201d k\u00e1\u00bb\u0192 c\u00e1\u00ba\u00a3 s\u00e1\u00bb\u2018 li\u00e1\u00bb\u2021u (220V, 6.5 bar, \u00c2\u00b10.02mm).\n- Ti\u00e1\u00ba\u00bfng Vi\u00e1\u00bb\u2021t: CER ~10% (89.6% ch\u00c3\u00adnh x\u00c3\u00a1c), robust tr\u00c6\u00b0\u00e1\u00bb\u203ac nhi\u00e1\u00bb\u2026u/m\u00e1\u00bb\ufffd/nghi\u00c3\u00aang (CER ch\u00e1\u00bb\u2030\n  t\u00c4\u0192ng l\u00c3\u00aan ~11%). L\u00e1\u00bb\u2014i t\u00e1\u00ba\u00adp trung \u00e1\u00bb\u0178 c\u00c3\u00a1c nguy\u00c3\u00aan \u00c3\u00a2m c\u00c3\u00b3 2 d\u00e1\u00ba\u00a5u ch\u00e1\u00bb\u201cng (\u00e1\u00ba\u00ad, \u00e1\u00bb\u2021, \u00e1\u00bb\u2122, \u00e1\u00bb"
+    },
+    {
+      "file": "dcid-ai\\app\\pipeline\\prompts.py",
+      "exports": [
+        "build_system_prompt"
+      ],
+      "imports": [
+        "__future__"
+      ],
+      "lines": 150,
+      "preview": "\"\"\"Prompt Templates cho Smart KCN Docs \u00e2\u20ac\u201d RAG Query Pipeline.\n\nThi\u00e1\u00ba\u00bft k\u00e1\u00ba\u00bf cho model nh\u00e1\u00bb\ufffd (1.5B\u00e2\u20ac\u201c2B, h\u00e1\u00bb\u2014 tr\u00e1\u00bb\u00a3 c\u00e1\u00ba\u00a3 Text LLM l\u00e1\u00ba\u00abn Vision VLM nh\u00c6\u00b0 Qwen2-VL): prompt ng\u00e1\u00ba\u00afn g\u00e1\u00bb\ufffdn, r\u00c3\u00b5 r\u00c3\u00a0ng,\nKH\u00c3\u201dNG cho ph\u00c3\u00a9p hallucination (b\u00e1\u00bb\u2039a \u00c4\u2018\u00e1\u00ba\u00b7t) khi context l\u00c3\u00a0 OCR r\u00c3\u00a1c ho\u00e1\u00ba\u00b7c kh\u00c3\u00b4ng \u00c4\u2018\u00e1\u00bb\u00a7 th\u00c3\u00b4ng tin.\n\"\"\"\n\nfrom __future__ import annotations\n\n# \u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac"
+    },
+    {
+      "file": "dcid-ai\\app\\services\\__init__.py",
+      "exports": [],
+      "imports": [],
+      "lines": 0,
+      "preview": ""
+    },
+    {
+      "file": "dcid-ai\\app\\services\\ingest_service.py",
+      "exports": [
+        "run_ingest"
+      ],
+      "imports": [
+        "app.clients",
+        "app.pipeline",
+        "app.pipeline",
+        "app.pipeline",
+        "app.schemas"
+      ],
+      "lines": 125,
+      "preview": "\"\"\"Ingest n\u00e1\u00bb\ufffdn: MinIO \u00e2\u2020\u2019 OCR (PaddleOCR) \u00e2\u2020\u2019 chunk \u00e2\u2020\u2019 embed \u00e2\u2020\u2019 index (Qdrant) \u00e2\u2020\u2019 callback BE.\n\nPipeline T2 (M1c):\n  1. T\u00e1\u00ba\u00a3i PDF t\u00e1\u00bb\u00ab MinIO (storageKey).\n  2. OCR t\u00e1\u00bb\u00abng trang: PyMuPDF rasterize + PaddleOCR nh\u00e1\u00ba\u00adn d\u00e1\u00ba\u00a1ng.\n  3. Chunk layout-aware: gi\u00e1\u00bb\u00af b\u00e1\u00ba\u00a3ng nguy\u00c3\u00aan v\u00e1\u00ba\u00b9n, sliding window cho text th\u00c6\u00b0\u00e1\u00bb\ufffdng.\n  4. Embed: multilingual-e5-small (passage prefix theo chu\u00e1\u00ba\u00a9n E5).\n  5. Upsert v\u00c3\u00a0o Qdrant collection `kcn_chunks` (idempotent theo version_id).\n  6. Callback BE: READY (OCR + index th"
+    },
+    {
+      "file": "dcid-ai\\app\\services\\resource_gate.py",
+      "exports": [
+        "ResourceBusyError",
+        "_redis_client",
+        "heavy_ai_slot"
+      ],
+      "imports": [
+        "__future__",
+        "contextlib",
+        "functools",
+        "inspect",
+        "typing",
+        "app.config"
+      ],
+      "lines": 123,
+      "preview": "\"\"\"Cross-process gate for memory-heavy AI work on small CPU-only hosts.\"\"\"\n\nfrom __future__ import annotations\n\nimport logging\nimport threading\nfrom contextlib import contextmanager\nfrom functools import lru_cache, wraps\nfrom inspect import isgeneratorfunction\nfrom typing import Callable, Iterator, TypeVar\n\nfrom app.config import get_settings\n\nlogger = logging.getLogger(\"dcid-ai.resource_gate\")\n\nF = TypeVar(\"F\", bound=Callable)\n_local = threading.local()\n\n\nclass ResourceBusyError(TimeoutError):\n"
+    },
+    {
+      "file": "dcid-ai\\src\\api\\__init__.py",
+      "exports": [],
+      "imports": [],
+      "lines": 1,
+      "preview": "\"\"\"API package for DCID AI service.\"\"\""
+    },
+    {
+      "file": "dcid-ai\\src\\api\\schemas.py",
+      "exports": [
+        "IngestRequest",
+        "CitationItem",
+        "QueryRequest",
+        "QueryResponse"
+      ],
+      "imports": [
+        "typing",
+        "pydantic"
+      ],
+      "lines": 39,
+      "preview": "\"\"\"Pydantic schemas cho REST API Request / Response (FastAPI).\"\"\"\n\nfrom typing import Any, Dict, List, Optional\nfrom pydantic import BaseModel, Field\n\n\nclass IngestRequest(BaseModel):\n    \"\"\"Schema cho Y\u00c3\u00aau c\u00e1\u00ba\u00a7u Ingest t\u00c3\u00a0i li\u00e1\u00bb\u2021u.\"\"\"\n    versionId: str = Field(..., description=\"UUID phi\u00c3\u00aan b\u00e1\u00ba\u00a3n t\u00c3\u00a0i li\u00e1\u00bb\u2021u\")\n    documentId: str = Field(..., description=\"UUID t\u00c3\u00a0i li\u00e1\u00bb\u2021u g\u00e1\u00bb\u2018c\")\n    filepath: str = Field(..., description=\"\u00c4\ufffd\u00c6\u00b0\u00e1\u00bb\ufffdng d\u00e1\u00ba\u00abn \u00c4\u2018\u00e1\u00ba\u00bfn file trong uploads/\")\n    enableVision: bool = Fi"
+    },
+    {
+      "file": "dcid-ai\\tests\\test_llm_model_routing.py",
+      "exports": [
+        "_settings",
+        "test_text_rag_uses_lightweight_model",
+        "test_attached_image_uses_vision_model"
+      ],
+      "imports": [
+        "types",
+        "app.clients"
+      ],
+      "lines": 22,
+      "preview": "from types import SimpleNamespace\n\nfrom app.clients import llm_client\n\n\ndef _settings():\n    return SimpleNamespace(\n        lm_studio_model=\"qwen2.5:1.5b\",\n        vision_model=\"qwen2.5vl:3b\",\n    )\n\n\ndef test_text_rag_uses_lightweight_model(monkeypatch):\n    monkeypatch.setattr(llm_client, \"get_settings\", _settings)\n\n    assert llm_client.get_model_name() == \"qwen2.5:1.5b\"\n\n\ndef test_attached_image_uses_vision_model(monkeypatch):\n    monkeypatch.setattr(llm_client, \"get_settings\", _settings)\n\n"
+    },
+    {
+      "file": "dcid-ai\\tests\\test_pipeline.py",
+      "exports": [
+        "TestDCIDPipeline"
+      ],
+      "imports": [
+        "PIL",
+        "src.utils",
+        "src.prompts",
+        "src.ingestion.ocr_engine",
+        "src.chunking",
+        "src.vectordb"
+      ],
+      "lines": 82,
+      "preview": "\"\"\"Unit & Integration tests cho DCID AI pipeline.\"\"\"\n\nimport os\nimport unittest\nfrom PIL import Image\n\nfrom src.utils import helpers\nfrom src.prompts import prompt_templates\nfrom src.ingestion.ocr_engine import PageOcrResult, ImageCropResult\nfrom src.chunking import chunker\nfrom src.vectordb import vector_store\n\n\nclass TestDCIDPipeline(unittest.TestCase):\n\n    def test_image_crop_and_save(self):\n        \"\"\"Ki\u00e1\u00bb\u0192m tra t\u00c3\u00adnh n\u00c4\u0192ng c\u00e1\u00ba\u00aft \u00e1\u00ba\u00a3nh v\u00c3\u00a0 l\u00c6\u00b0u v\u00c3\u00a0o uploads/crops/.\"\"\"\n        test_img = Ima"
+    },
+    {
+      "file": "dcid-ai\\tests\\test_query.py",
+      "exports": [
+        "_post",
+        "_assert_schema",
+        "test_locked_when_no_allowed_versions",
+        "test_locked_when_question_says_not_in_docs",
+        "test_numeric_rule_keywords",
+        "test_default_mock_answer"
+      ],
+      "imports": [
+        "fastapi.testclient"
+      ],
+      "lines": 71,
+      "preview": "\"\"\"POST /ai/query \u00e2\u20ac\u201d mock deterministic, schema \u00c4\u2018\u00c3\u00bang contract \u00c2\u00a72.2.\"\"\"\n\nfrom fastapi.testclient import TestClient\n\nVID = \"11111111-1111-1111-1111-111111111111\"\nRESPONSE_KEYS = {\"answer\", \"confidence\", \"guard\", \"citations\", \"latencyMs\", \"model\"}\n\n\ndef _post(client: TestClient, headers: dict[str, str], question: str, allowed: list[str]) -> dict:\n    response = client.post(\n        \"/ai/query\",\n        json={\n            \"question\": question,\n            \"topK\": 5,\n            \"allowedVersionId"
+    },
+    {
+      "file": "dcid-ai\\tests\\test_query_llm.py",
+      "exports": [
+        "_make_hit",
+        "_make_query_request",
+        "TestCheckNumeric"
+      ],
+      "imports": [
+        "__future__",
+        "unittest.mock",
+        "app.pipeline.guardrails",
+        "app.pipeline.guardrails",
+        "app.pipeline.guardrails",
+        "app.pipeline.guardrails",
+        "app.pipeline.guardrails",
+        "app.pipeline.guardrails",
+        "app.pipeline.guardrails"
+      ],
+      "lines": 430,
+      "preview": "\"\"\"Unit tests cho RAG query pipeline \u00e2\u20ac\u201d guardrails, prompts, query_service.\n\nM\u00e1\u00bb\ufffdi dependency ngo\u00c3\u00a0i (LLM, ChromaDB, embed model) \u00c4\u2018\u00e1\u00bb\ufffdu \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c mock\n\u00e2\u2020\u2019 test ch\u00e1\u00ba\u00a1y ho\u00c3\u00a0n to\u00c3\u00a0n offline, kh\u00c3\u00b4ng c\u00e1\u00ba\u00a7n LM Studio hay ChromaDB th\u00e1\u00ba\u00adt.\n\nCh\u00e1\u00ba\u00a1y:\n    cd dcid-ai\n    pytest tests/test_query_llm.py -v\n\"\"\"\n\nfrom __future__ import annotations\n\nimport uuid\nfrom unittest.mock import MagicMock, patch\n\nimport pytest\n\n# \u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2"
+    },
+    {
+      "file": "dcid-ai\\tests\\test_query_stream.py",
+      "exports": [
+        "_events",
+        "_request",
+        "test_stream_emits_meta_deltas_and_done_in_order",
+        "test_stream_locks_unrelated_low_memory_result_without_calling_llm",
+        "test_stream_reports_llm_error_after_metadata"
+      ],
+      "imports": [
+        "unittest.mock",
+        "uuid",
+        "app.schemas",
+        "app.services.query_service",
+        "app.config",
+        "app.clients.llm_client"
+      ],
+      "lines": 92,
+      "preview": "import json\nfrom unittest.mock import patch\nfrom uuid import uuid4\n\nfrom app.schemas import QueryRequest\nfrom app.services.query_service import LOCKED_ANSWER, run_query_stream\n\n\ndef _events(lines):\n    return [json.loads(line.removeprefix(\"data: \").strip()) for line in lines]\n\n\ndef _request(question=\"dien ap servo truc X\"):\n    return QueryRequest(\n        question=question,\n        topK=3,\n        allowedVersionIds=[uuid4()],\n    )\n\n\ndef test_stream_emits_meta_deltas_and_done_in_order():\n    ve"
+    },
+    {
+      "file": "dcid-ai\\test_notebooklm_pipeline.py",
+      "exports": [
+        "run_test"
+      ],
+      "imports": [
+        "app.pipeline",
+        "app.schemas"
+      ],
+      "lines": 81,
+      "preview": "import urllib.request\nimport urllib.error\nimport json\nimport uuid\nimport sys\n\ndef run_test():\n    sys.stdout.reconfigure(encoding='utf-8')\n    print(\"=== TEST NOTEBOOKLM PIPELINE (DOCUMENT TARGETING & MULTI-TURN CHAT) ===\")\n\n    # 1. Test unit build_user_prompt trong prompts.py\n    print(\"\\n[1] Ki\u00e1\u00bb\u0192m tra h\u00c3\u00a0m format l\u00e1\u00bb\u2039ch s\u00e1\u00bb\u00ad h\u00e1\u00bb\u2122i tho\u00e1\u00ba\u00a1i (prompts.build_user_prompt)...\")\n    try:\n        from app.pipeline import prompts\n        from app.schemas import ChatMessage\n        \n        q = \"Th\u00e1\u00ba\u00bf "
+    },
+    {
+      "file": "dcid-ai\\test_vision_pipeline.py",
+      "exports": [],
+      "imports": [
+        "app.config",
+        "app.clients",
+        "minio"
+      ],
+      "lines": 94,
+      "preview": "\"\"\"Test ki\u00e1\u00bb\u0192m tra Vision pipeline: \u00e1\u00ba\u00a3nh trang c\u00c3\u00b3 t\u00e1\u00bb\u201cn t\u00e1\u00ba\u00a1i trong MinIO kh\u00c3\u00b4ng?\"\"\"\nimport sys, os\nos.environ[\"LM_STUDIO_BASE_URL\"] = \"http://localhost:1234/v1\"\nos.environ[\"LM_STUDIO_API_KEY\"] = \"lm-studio\"\nos.environ[\"LLM_TIMEOUT\"] = \"120\"\nsys.path.insert(0, \".\")\n\nfrom app.config import get_settings\nget_settings.cache_clear()\n\n# 1. Ki\u00e1\u00bb\u0192m tra MinIO connectivity\nprint(\"=\"*60)\nprint(\"1. Ki\u00e1\u00bb\u0192m tra MinIO connectivity\")\nprint(\"=\"*60)\ntry:\n    from app.clients import minio_client\n    s = get_sett"
+    },
+    {
+      "file": "src\\api\\__init__.py",
+      "exports": [],
+      "imports": [],
+      "lines": 1,
+      "preview": "\"\"\"API package for DCID AI service.\"\"\""
+    },
+    {
+      "file": "src\\api\\schemas.py",
+      "exports": [
+        "IngestRequest",
+        "CitationItem",
+        "QueryRequest",
+        "QueryResponse"
+      ],
+      "imports": [
+        "typing",
+        "pydantic"
+      ],
+      "lines": 39,
+      "preview": "\"\"\"Pydantic schemas cho REST API Request / Response (FastAPI).\"\"\"\n\nfrom typing import Any, Dict, List, Optional\nfrom pydantic import BaseModel, Field\n\n\nclass IngestRequest(BaseModel):\n    \"\"\"Schema cho Y\u00c3\u00aau c\u00e1\u00ba\u00a7u Ingest t\u00c3\u00a0i li\u00e1\u00bb\u2021u.\"\"\"\n    versionId: str = Field(..., description=\"UUID phi\u00c3\u00aan b\u00e1\u00ba\u00a3n t\u00c3\u00a0i li\u00e1\u00bb\u2021u\")\n    documentId: str = Field(..., description=\"UUID t\u00c3\u00a0i li\u00e1\u00bb\u2021u g\u00e1\u00bb\u2018c\")\n    filepath: str = Field(..., description=\"\u00c4\ufffd\u00c6\u00b0\u00e1\u00bb\ufffdng d\u00e1\u00ba\u00abn \u00c4\u2018\u00e1\u00ba\u00bfn file trong uploads/\")\n    enableVision: bool = Fi"
+    },
+    {
+      "file": "tests\\test_pipeline.py",
+      "exports": [
+        "TestDCIDPipeline"
+      ],
+      "imports": [
+        "PIL",
+        "src.utils",
+        "src.prompts",
+        "src.ingestion.ocr_engine",
+        "src.chunking",
+        "src.vectordb"
+      ],
+      "lines": 77,
+      "preview": "\"\"\"Unit & Integration tests cho DCID AI pipeline.\"\"\"\n\nimport os\nimport unittest\nfrom PIL import Image\n\nfrom src.utils import helpers\nfrom src.prompts import prompt_templates\nfrom src.ingestion.ocr_engine import PageOcrResult, ImageCropResult\nfrom src.chunking import chunker\nfrom src.vectordb import vector_store\n\n\nclass TestDCIDPipeline(unittest.TestCase):\n\n    def test_image_crop_and_save(self):\n        \"\"\"Ki\u00e1\u00bb\u0192m tra t\u00c3\u00adnh n\u00c4\u0192ng c\u00e1\u00ba\u00aft \u00e1\u00ba\u00a3nh v\u00c3\u00a0 l\u00c6\u00b0u v\u00c3\u00a0o uploads/crops/.\"\"\"\n        test_img = Ima"
+    },
+    {
+      "file": "chroma-tools\\chroma_status.py",
+      "exports": [
+        "print_header",
+        "get_chroma_collection_stats",
+        "check_backend_documents"
+      ],
+      "imports": [],
+      "lines": 111,
+      "preview": "#!/usr/bin/env python3\n\"\"\"\nKi\u00e1\u00bb\u0192m tra tr\u00e1\u00ba\u00a1ng th\u00c3\u00a1i ChromaDB (`kcn_chunks`) v\u00c3\u00a0 \u00c4\u2018\u00e1\u00bb\u2018i chi\u00e1\u00ba\u00bfu v\u00e1\u00bb\u203ai d\u00e1\u00bb\u00af li\u00e1\u00bb\u2021u t\u00e1\u00bb\u00ab Backend.\n\"\"\"\nimport sys\nimport io\nimport json\nimport urllib.request\nimport urllib.error\n\n# Force UTF-8 stdout\nif hasattr(sys.stdout, \"buffer\"):\n    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=\"utf-8\", errors=\"replace\")\n\nCHROMA_HOST = \"localhost\"\nCHROMA_PORT = 8001\nBE_BASE_URL = \"http://localhost:8080\"\nADMIN_USER = \"admin\"\nADMIN_PASS = \"admin123\"\n\ndef print_header(ti"
+    },
+    {
+      "file": "chroma-tools\\inspect_chunks.py",
+      "exports": [
+        "main"
+      ],
+      "imports": [],
+      "lines": 66,
+      "preview": "#!/usr/bin/env python3\n\"\"\"\nXem chi ti\u00e1\u00ba\u00bft v\u00c3\u00a0 t\u00c3\u00acm ki\u00e1\u00ba\u00bfm c\u00c3\u00a1c \u00c4\u2018o\u00e1\u00ba\u00a1n v\u00c4\u0192n b\u00e1\u00ba\u00a3n (chunk) \u00c4\u2018ang l\u00c6\u00b0u trong ChromaDB (`kcn_chunks`).\n\"\"\"\nimport sys\nimport io\nimport argparse\n\n# Force UTF-8 stdout\nif hasattr(sys.stdout, \"buffer\"):\n    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=\"utf-8\", errors=\"replace\")\n\nCHROMA_HOST = \"localhost\"\nCHROMA_PORT = 8001\n\ndef main():\n    parser = argparse.ArgumentParser(description=\"Tra c\u00e1\u00bb\u00a9u chunk trong ChromaDB.\")\n    parser.add_argument(\"--doc-id\", hel"
+    },
+    {
+      "file": "chroma-tools\\upload_and_verify.py",
+      "exports": [
+        "make_sample_pdf",
+        "get_jwt_token",
+        "upload_document"
+      ],
+      "imports": [],
+      "lines": 182,
+      "preview": "#!/usr/bin/env python3\n\"\"\"\nT\u00e1\u00ba\u00a3i file t\u00c3\u00a0i li\u00e1\u00bb\u2021u qua Backend (:8080) v\u00c3\u00a0 x\u00c3\u00a1c minh tr\u00e1\u00bb\u00b1c ti\u00e1\u00ba\u00bfp vi\u00e1\u00bb\u2021c n\u00e1\u00ba\u00a1p chunk v\u00c3\u00a0o ChromaDB (:8001).\n\"\"\"\nimport sys\nimport io\nimport time\nimport json\nimport uuid\nimport argparse\nimport urllib.request\nimport urllib.error\n\n# Force UTF-8 stdout\nif hasattr(sys.stdout, \"buffer\"):\n    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding=\"utf-8\", errors=\"replace\")\n\nBE_BASE_URL = \"http://localhost:8080\"\nCHROMA_HOST = \"localhost\"\nCHROMA_PORT = 8001\nADMIN_USER ="
+    },
+    {
+      "file": "dcid-ai\\app\\clients\\__init__.py",
+      "exports": [],
+      "imports": [],
+      "lines": 0,
+      "preview": ""
+    },
+    {
+      "file": "dcid-ai\\app\\clients\\backend_client.py",
+      "exports": [
+        "post_ingest_callback",
+        "post_ingest_status"
+      ],
+      "imports": [
+        "app.config",
+        "app.schemas",
+        "app.security"
+      ],
+      "lines": 65,
+      "preview": "\"\"\"Client g\u00e1\u00bb\ufffdi ng\u00c6\u00b0\u00e1\u00bb\u00a3c v\u00e1\u00bb\ufffd dcid-backend (AI \u00e2\u2020\u2019 BE), g\u00e1\u00ba\u00afn X-Internal-Token (contract \u00c2\u00a70.3, \u00c2\u00a71.2).\"\"\"\n\nimport logging\n\nimport httpx\n\nfrom app.config import get_settings\nfrom app.schemas import IngestCallback, IngestStatusPush\nfrom app.security import INTERNAL_TOKEN_HEADER\n\nlogger = logging.getLogger(\"dcid-ai.backend_client\")\n\nCALLBACK_PATH = \"/api/internal/ingest-callback\"\nSTATUS_PUSH_PATH = \"/api/internal/ingest-status\"\nTIMEOUT_SECONDS = 30.0\n\n\ndef post_ingest_callback(payload: IngestCallb"
+    },
+    {
+      "file": "dcid-ai\\app\\clients\\llm_client.py",
+      "exports": [
+        "_supports_extra_repeat_penalty",
+        "_estimated_tokens",
+        "_truncate_text_keep_ends",
+        "_fit_messages_to_context"
+      ],
+      "imports": [
+        "__future__",
+        "functools",
+        "typing",
+        "app.config",
+        "app.services.resource_gate"
+      ],
+      "lines": 881,
+      "preview": "\"\"\"Client k\u00e1\u00ba\u00bft n\u00e1\u00bb\u2018i local LLM qua OpenAI-compatible REST API.\n\nM\u00e1\u00ba\u00b7c \u00c4\u2018\u00e1\u00bb\u2039nh \u00e1\u00bb\u00a9ng d\u00e1\u00bb\u00a5ng d\u00c3\u00b9ng Ollama t\u00e1\u00ba\u00a1i `/v1/chat/completions`. C\u00c3\u00a1c t\u00c3\u00aan c\u00e1\u00ba\u00a5u h\u00c3\u00acnh\n`LM_STUDIO_*` \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c gi\u00e1\u00bb\u00af l\u00e1\u00ba\u00a1i \u00c4\u2018\u00e1\u00bb\u0192 kh\u00c3\u00b4ng l\u00c3\u00a0m h\u00e1\u00bb\ufffdng file `.env` c\u00c5\u00a9.\n\nThi\u00e1\u00ba\u00bft k\u00e1\u00ba\u00bf:\n- Client singleton per process (lazy init, thread-safe v\u00e1\u00bb\u203ai lru_cache).\n- M\u00e1\u00bb\ufffdi exception t\u00e1\u00bb\u00ab OpenAI SDK \u00c4\u2018\u00e1\u00bb\ufffdu \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c b\u00e1\u00ba\u00aft v\u00c3\u00a0 re-raise c\u00c3\u00b9ng context r\u00c3\u00b5 r\u00c3\u00a0ng.\n- Timeout ri\u00c3\u00aang bi\u00e1\u00bb\u2021t theo settings (m\u00e1\u00ba\u00b7c \u00c4\u2018\u00e1\u00bb\u2039nh 60s \u00e2\u20ac\u201d \u00c4\u2018\u00e1\u00bb\u00a7 cho CPU inference"
+    },
+    {
+      "file": "dcid-ai\\app\\clients\\minio_client.py",
+      "exports": [
+        "_make_client",
+        "get_object",
+        "get_object_base64",
+        "put_object"
+      ],
+      "imports": [
+        "minio",
+        "app.config",
+        "PIL"
+      ],
+      "lines": 153,
+      "preview": "\"\"\"Client MinIO t\u00e1\u00bb\u2018i gi\u00e1\u00ba\u00a3n: t\u00e1\u00ba\u00a3i object PDF theo storageKey (contract \u00c2\u00a73 \u00e2\u20ac\u201d key layout).\"\"\"\n\nfrom minio import Minio\n\nfrom app.config import get_settings\n\n\ndef _make_client() -> Minio:\n    s = get_settings()\n    return Minio(\n        endpoint=s.minio_endpoint,\n        access_key=s.minio_access_key,\n        secret_key=s.minio_secret_key,\n        secure=s.minio_secure,\n    )\n\n\ndef get_object(storage_key: str) -> bytes:\n    \"\"\"T\u00e1\u00ba\u00a3i to\u00c3\u00a0n b\u00e1\u00bb\u2122 object t\u00e1\u00bb\u00ab bucket c\u00e1\u00ba\u00a5u h\u00c3\u00acnh (m\u00e1\u00ba\u00b7c \u00c4\u2018\u00e1\u00bb\u2039nh kcn-"
+    },
+    {
+      "file": "dcid-ai\\app\\clients\\ocr_client.py",
+      "exports": [
+        "extract_pages"
+      ],
+      "imports": [
+        "app.config",
+        "app.pipeline.ocr",
+        "app.security",
+        "app.services.resource_gate",
+        "app.clients",
+        "app.pipeline"
+      ],
+      "lines": 69,
+      "preview": "\"\"\"HTTP client for the dedicated PaddleOCR sidecar, with a native-text fallback.\"\"\"\n\nimport logging\n\nimport httpx\n\nfrom app.config import get_settings\nfrom app.pipeline.ocr import PageOcr\nfrom app.security import INTERNAL_TOKEN_HEADER\nfrom app.services.resource_gate import serialized_heavy\n\nlogger = logging.getLogger(\"dcid-ai.ocr_client\")\n\nOCR_PATH = \"/ocr\"\nTIMEOUT_SECONDS = 300.0  # OCR c\u00c3\u00b3 th\u00e1\u00bb\u0192 ch\u00e1\u00ba\u00adm v\u00e1\u00bb\u203ai PDF nhi\u00e1\u00bb\ufffdu trang\n\n\n@serialized_heavy(\"ocr\")\ndef extract_pages(\n    storage_key: str,\n"
+    },
+    {
+      "file": "dcid-ai\\app\\workers\\__init__.py",
+      "exports": [],
+      "imports": [],
+      "lines": 1,
+      "preview": "\"\"\"Celery workers package.\"\"\""
+    },
+    {
+      "file": "dcid-ai\\app\\workers\\embed_worker.py",
+      "exports": [
+        "_push_status",
+        "run_ingest_task"
+      ],
+      "imports": [
+        "__future__",
+        "uuid",
+        "celery",
+        "celery.exceptions",
+        "app.celery_app",
+        "app.clients",
+        "app.pipeline",
+        "app.pipeline",
+        "app.pipeline",
+        "app.schemas"
+      ],
+      "lines": 254,
+      "preview": "\"\"\"Celery Worker \u00e2\u20ac\u201d Ingest Pipeline: OCR \u00e2\u2020\u2019 Chunk \u00e2\u2020\u2019 Embed \u00e2\u2020\u2019 Qdrant \u00e2\u2020\u2019 Callback.\n\nWorker n\u00c3\u00a0y \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c ch\u00e1\u00ba\u00a1y nh\u00c6\u00b0 m\u00e1\u00bb\u2122t ti\u00e1\u00ba\u00bfn tr\u00c3\u00acnh ri\u00c3\u00aang bi\u00e1\u00bb\u2021t (container `ai-worker`),\nt\u00c3\u00a1ch ho\u00c3\u00a0n to\u00c3\u00a0n kh\u00e1\u00bb\ufffdi FastAPI API server. Vi\u00e1\u00bb\u2021c t\u00c3\u00a1ch gi\u00c3\u00bap:\n  - Embed model (470MB) ch\u00e1\u00bb\u2030 n\u00e1\u00ba\u00a1p 1 l\u00e1\u00ba\u00a7n trong worker process, kh\u00c3\u00b4ng chi\u00e1\u00ba\u00bfm RAM c\u00e1\u00bb\u00a7a API.\n  - API server ph\u00e1\u00ba\u00a3n h\u00e1\u00bb\u201ci t\u00e1\u00bb\u00a9c th\u00c3\u00ac (202), kh\u00c3\u00b4ng bao gi\u00e1\u00bb\ufffd b\u00e1\u00bb\u2039 block b\u00e1\u00bb\u0178i OCR/Embed.\n  - Retry t\u00e1\u00bb\u00b1 \u00c4\u2018\u00e1\u00bb\u2122ng khi l\u00e1\u00bb\u2014i m\u00e1\u00ba\u00a1ng/timeout (max 3 l\u00e1\u00ba\u00a7n, backof"
+    }
+  ],
+  "metadata": {
+    "docker-compose.yml": "# Shared named volumes so data survives container restarts\nvolumes:\n  postgres_data: {}\n  minio_data: {}\n  qdrant_data: {}  # Qdrant persistent vector index\n  redis_data: {}   # Redis persistence cho Celery task results\n  ollama_data: {}\n  paddle_models: {}\n  hf_models: {}\n\nservices:\n  postgres:\n    image: postgres:16\n    container_name: dcid-postgres\n    environment:\n      POSTGRES_DB: dcid\n      POSTGRES_USER: dcid\n      POSTGRES_PASSWORD: dcid\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n    ports:\n      # Host port 5433 (kh\u00c3\u00b4ng ph\u00e1\u00ba\u00a3i 5432 m\u00e1\u00ba\u00b7c \u00c4\u2018\u00e1\u00bb\u2039nh) \u00e2\u20ac\u201d tr\u00c3\u00a1nh \u00c4\u2018\u00e1\u00bb\u00a5ng \u00c4\u2018\u00e1\u00bb\u2122 v\u00e1\u00bb\u203ai PostgreSQL\n      # c\u00c3\u00a0i s\u00e1\u00ba\u00b5n tr\u00c3\u00aan m\u00c3\u00a1y dev (r\u00e1\u00ba\u00a5t hay g\u00e1\u00ba\u00b7p). Container backend d\u00c3\u00b9ng service name\n      # `postgres:5432` qua m\u00e1\u00ba\u00a1ng n\u00e1\u00bb\u2122i b\u00e1\u00bb\u2122 compose, kh\u00c3\u00b4ng b\u00e1\u00bb\u2039 \u00e1\u00ba\u00a3nh h\u00c6\u00b0\u00e1\u00bb\u0178ng b\u00e1\u00bb\u0178i mapping n\u00c3\u00a0y.\n      - \"5433:5432\"\n    mem_limit: 320m\n    restart: unless-stopped\n\n  redis:\n    image: redis:7\n    container_name: dcid-redis\n    command:\n      - redis-server\n      - --save\n      - \"",
+    "README.md": "# Smart KCN Docs\n\nTr\u00e1\u00bb\u00a3 l\u00c3\u00bd k\u00e1\u00bb\u00b9 thu\u00e1\u00ba\u00adt s\u00e1\u00bb\u2018 & qu\u00e1\u00ba\u00a3n tr\u00e1\u00bb\u2039 tri th\u00e1\u00bb\u00a9c **on-premise** cho khu c\u00c3\u00b4ng nghi\u00e1\u00bb\u2021p (KCN).\n\nMonorepo:\n\n| Th\u00c6\u00b0 m\u00e1\u00bb\u00a5c | Vai tr\u00c3\u00b2 |\n|---|---|\n| [`dcid-backend`](dcid-backend) | Governance/control plane (Spring Boot 3.3, Java 21): Auth/RBAC, qu\u00e1\u00ba\u00a3n l\u00c3\u00bd t\u00c3\u00a0i li\u00e1\u00bb\u2021u & version, API X\u00c3\u00b3a t\u00c3\u00a0i li\u00e1\u00bb\u2021u, audit ISO, storage MinIO, WebSocket STOMP. |\n| [`dcid-app`](dcid-app) | Frontend **Flutter** \u00c4\u2018a n\u00e1\u00bb\ufffdn t\u00e1\u00ba\u00a3ng \u00e2\u20ac\u201d Web (Kiosk/Admin) + Mobile (Android). \u00c4\ufffd\u00c3\u00a3 c\u00c3\u00b3 Tra c\u00e1\u00bb\u00a9u RAG, Upload t\u00c3\u00a0i li\u00e1\u00bb\u2021u, X\u00c3\u00b3a t\u00c3\u00a0i li\u00e1\u00bb\u2021u (AlertDialog x\u00c3\u00a1c nh\u00e1\u00ba\u00adn). |\n| [`dcid-ai`](dcid-ai) | AI plane (Python/FastAPI) \u00e2\u20ac\u201d OCR/RAG/LLM, Qdrant vector DB, Celery/Redis v\u00c3\u00a0 SSE Streaming. |\n\n\n## C\u00c3\u00a1c Ph\u00c3\u00a2n h\u00e1\u00bb\u2021 H\u00e1\u00bb\u2021 th\u00e1\u00bb\u2018ng AI H\u00e1\u00bb\ufffdi \u00c4\u2018\u00c3\u00a1p Local\n\nH\u00e1\u00bb\u2021 th\u00e1\u00bb\u2018ng \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c thi\u00e1\u00ba\u00bft k\u00e1\u00ba\u00bf theo ki\u00e1\u00ba\u00bfn tr\u00c3\u00bac **Dual-Plane Local RAG** \u00c4\u2018\u00e1\u00bb\u2122c l\u00e1\u00ba\u00adp tuy\u00e1\u00bb\u2021t \u00c4\u2018\u00e1\u00bb\u2018i:\n\n### Ph\u00c3\u00a2n h\u00e1\u00bb\u2021 A \u00e2\u20ac\u201d Tra c\u00e1\u00bb\u00a9u Kho t\u00c3\u00a0i li\u00e1\u00bb\u2021u ch\u00c3\u00adnh th\u00e1\u00bb\u00a9c (Official Document Governance)\n- **M\u00e1\u00bb\u00a5c ti\u00c3\u00aau**: Qu\u00e1\u00ba\u00a3n l\u00c3\u00bd c\u00c3\u00a1c t\u00c3\u00a0i li\u00e1\u00bb\u2021u quy tr\u00c3\u00acnh SOP, b\u00e1\u00ba\u00a3n v\u00e1\u00ba\u00bd k\u00e1\u00bb\u00b9 thu\u00e1\u00ba\u00adt, n\u00e1\u00bb\u2122i quy nh\u00c3\u00a0 m\u00c3\u00a1y theo chu\u00e1\u00ba\u00a9n ISO.\n- **Ph\u00c3\u00a2n quy\u00e1\u00bb\ufffdn RBAC**: So s\u00c3\u00a1nh m\u00e1\u00bb\u00a9c \u00c4\u2018\u00e1\u00bb\u2122 ph\u00c3\u00a2n quy\u00e1\u00bb\ufffdn `min_role` (`OPERATOR` < `ENGINEER` < `QA_ADMIN` < `ADMIN`). T\u00e1\u00bb\u00b1 \u00c4\u2018\u00e1\u00bb\u2122ng l\u00e1\u00bb\ufffdc b\u00e1\u00bb\ufffd c\u00c3\u00a1c t\u00c3\u00a0i li\u00e1\u00bb\u2021u v\u00c6\u00b0\u00e1\u00bb\u00a3t qu\u00c3\u00a1 c\u00e1\u00ba\u00a5p b\u00e1\u00ba\u00adc ng\u00c6\u00b0\u00e1\u00bb\ufffdi d\u00c3\u00b9ng.\n- **Qu\u00e1\u00ba\u00a3n l\u00c3\u00bd V\u00c3\u00b2ng \u00c4\u2018\u00e1\u00bb\ufffdi Version**: Upload phi\u00c3\u00aan b\u00e1\u00ba\u00a3n m\u00e1\u00bb\u203ai (v2, v3...), duy\u00e1\u00bb\u2021t ph\u00c3\u00a1t h\u00c3\u00a0nh `ACTIVE` (t\u00e1\u00bb\u00b1 \u00c4\u2018\u00e1\u00bb\u2122ng chuy\u00e1\u00bb\u0192n version active c\u00c5\u00a9 th\u00c3\u00a0nh `SUPERSEDED`), v\u00c3\u00a0 \u00c4\u2018\u00c3\u00a1nh d\u00e1\u00ba\u00a5u l\u00e1\u00bb\u2014i th\u00e1\u00bb\ufffdi `OBSOLETE`.\n\n### Ph\u00c3\u00a2n h\u00e1\u00bb\u2021 B \u00e2\u20ac\u201d H\u00e1\u00bb\ufffdi \u00c4\u2018\u00c3\u00a1p T\u00c3\u00a0i li\u00e1\u00bb\u2021u C\u00c3\u00b4ng khai \u00e1\u00ba\u00a8n danh (`/ask`)\n- **M\u00e1\u00bb\u00a5c ti\u00c3\u00aau**: Kh\u00c3\u00a1ch ch\u00c6\u00b0a \u00c4\u2018\u00c4\u0192ng nh\u00e1\u00ba\u00adp c\u00c3\u00b3 th\u00e1\u00bb\u0192 d\u00c3\u00b9ng th\u00e1\u00bb\u00ad h\u00e1\u00bb\ufffdi \u00c4\u2018\u00c3\u00a1p ri\u00c3\u00aang v\u00e1\u00bb\u203ai c\u00c3\u00a1c file PDF c\u00c3\u00a1 nh\u00c3\u00a2n t\u00e1\u00ba\u00a3i l\u00c3\u00aan.\n- **B\u00e1\u00ba\u00a3o m\u00e1\u00ba\u00adt & C\u00c3\u00b4 l\u00e1\u00ba\u00adp D\u00e1\u00bb\u00af li\u00e1\u00bb\u2021u**:\n  - Kh\u00c3\u00b4ng c\u00e1\u00ba\u00a7n JWT Bearer header. X\u00c3\u00a1c th\u00e1\u00bb\u00b1c qua **Session Token** ng\u00e1\u00ba\u00abu nhi\u00c3\u00aan.\n  - File t\u00e1\u00ba\u00a1m l\u00c6\u00b0u t\u00e1\u00ba\u00a1i th\u00c6\u00b0 m\u00e1\u00bb\u00a5c ri\u00c3\u00aang `sessions/{sessionId}/` tr\u00c3\u00aan MinIO.\n  - Vector t\u00e1\u00ba\u00a1m \u00c4\u2018\u00c6\u00b0\u00e1\u00bb\u00a3c c\u00c3\u00b4 l\u00e1\u00ba\u00adp ho\u00c3\u00a0n to\u00c3\u00a0n theo `sessionId` tr\u00c3\u00aan Qdrant.\n- **T\u00e1\u00bb\u00b1 \u00c4\u2018\u00e1\u00bb\u2122ng Ti\u00c3\u00aau h\u00e1\u00bb"
+  }
+}
