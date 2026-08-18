@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/app_user.dart';
 import '../../data/models/user_role.dart';
+import '../../state/auth_controller.dart';
 import '../../state/providers.dart';
 import 'analytics_view.dart';
 
@@ -257,6 +258,48 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
     }
+  }
+
+  void _showDeleteUserDialog(AppUser user) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final nav = Navigator.of(ctx);
+        final messenger = ScaffoldMessenger.of(context);
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Delete Account'),
+          content: Text("Are you sure you want to delete account '${user.username}'? This action cannot be undone."),
+          actions: [
+            TextButton(
+              onPressed: () => nav.pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+              onPressed: () async {
+                nav.pop();
+                try {
+                  final repo = ref.read(authRepositoryProvider);
+                  await repo.deleteUser(user.id);
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Account ${user.username} deleted successfully'),
+                    ),
+                  );
+                  _fetchUsers();
+                  // Re-fetch analytics stat cards using invalidation
+                  ref.invalidate(analyticsFutureProvider);
+                } catch (e) {
+                  messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Color _getRoleColor(UserRole role) {
@@ -769,12 +812,25 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                     // Actions (Center-aligned)
                                     DataCell(
                                       Center(
-                                        child: IconButton(
-                                          icon: Icon(Icons.key_rounded,
-                                              size: 18, color: scheme.primary),
-                                          tooltip: 'Reset Password',
-                                          onPressed: () =>
-                                              _showResetPasswordDialog(user),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: Icon(Icons.key_rounded,
+                                                  size: 18, color: scheme.primary),
+                                              tooltip: 'Reset Password',
+                                              onPressed: () =>
+                                                  _showResetPasswordDialog(user),
+                                            ),
+                                            if (ref.read(authControllerProvider).user?.id != user.id && user.username != 'admin')
+                                              IconButton(
+                                                icon: Icon(Icons.delete_outline_rounded,
+                                                    size: 18, color: scheme.error),
+                                                tooltip: 'Delete Account',
+                                                onPressed: () =>
+                                                    _showDeleteUserDialog(user),
+                                              ),
+                                          ],
                                         ),
                                       ),
                                     ),

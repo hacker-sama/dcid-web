@@ -24,6 +24,7 @@ abstract class IAuthRepository {
   });
   Future<void> resetPassword({required String id, required String newPassword});
   Future<AppUser> updateUserStatus({required String id, required bool isActive});
+  Future<void> deleteUser(String id);
 
   /// Tự đổi mật khẩu (yêu cầu mật khẩu hiện tại).
   Future<void> changePassword({

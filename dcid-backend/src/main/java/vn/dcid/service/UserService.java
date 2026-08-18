@@ -138,6 +138,15 @@ public class UserService {
         return toUserProfileDTO(updated);
     }
 
+    @Transactional
+    public void deleteUser(UUID id) {
+        User user = getUserById(id);
+        userRepository.delete(user);
+        auditLogService.log(currentActorId(), "USER_DELETE", "USER", id, null,
+                "{\"targetUserId\":\"" + id + "\",\"username\":\"" + user.getUsername() + "\"}");
+    }
+
+
     /** Lấy actorId từ SecurityContext — null-safe (system task hoặc internal call). */
     private UUID currentActorId() {
         String id = SecurityContextHelper.getCurrentUserId();

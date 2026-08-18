@@ -114,6 +114,13 @@ class AuthRepository implements IAuthRepository {
   }
 
   @override
+  Future<void> deleteUser(String id) async {
+    await _api.dio.delete<Map<String, dynamic>>(
+      '/api/admin/users/$id',
+    );
+  }
+
+  @override
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,

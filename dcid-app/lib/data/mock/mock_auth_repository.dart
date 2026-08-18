@@ -111,6 +111,11 @@ class MockAuthRepository implements IAuthRepository {
     return updated;
   }
 
+  @override
+  Future<void> deleteUser(String id) async {
+    _users.removeWhere((u) => u.id == id);
+  }
+
   static AppUser _userForUsername(String username) {
     final UserRole role;
     switch (username.toLowerCase()) {

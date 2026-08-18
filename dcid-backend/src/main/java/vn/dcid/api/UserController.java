@@ -64,4 +64,10 @@ public class UserController {
             @Valid @RequestBody UpdateUserStatusRequest request) {
         return ResponseEntity.ok(ApiResponse.of(userService.updateUserStatus(id, request)));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Boolean>> deleteUser(@PathVariable UUID id) {
+        userService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.of(true));
+    }
 }
