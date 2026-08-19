@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/localization/locale_controller.dart';
 import '../../state/auth_controller.dart';
 import '../../state/providers.dart';
 
@@ -11,6 +12,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
+    final strings = ref.watch(appStringsProvider);
     final user = auth.user;
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -21,7 +23,7 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hồ sơ cá nhân'),
+        title: Text(strings.profileTitle),
         centerTitle: false,
       ),
       body: ListView(
@@ -51,7 +53,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Center(
-            child: _RoleBadge(role: user.role.label, scheme: scheme),
+            child: _RoleBadge(role: user.role.localized(strings), scheme: scheme),
           ),
           const SizedBox(height: 32),
 
@@ -66,26 +68,26 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 _InfoTile(
                   icon: Icons.person_outline_rounded,
-                  label: 'Tên đăng nhập',
+                  label: strings.usernameLabel,
                   value: user.username,
                 ),
                 Divider(height: 1, indent: 56, color: scheme.outlineVariant),
                 _InfoTile(
                   icon: Icons.badge_outlined,
-                  label: 'Họ và tên',
+                  label: strings.fullNameLabel,
                   value: user.fullName ?? '—',
                 ),
                 Divider(height: 1, indent: 56, color: scheme.outlineVariant),
                 _InfoTile(
                   icon: Icons.email_outlined,
-                  label: 'Email',
+                  label: strings.emailLabel,
                   value: user.email ?? '—',
                 ),
                 Divider(height: 1, indent: 56, color: scheme.outlineVariant),
                 _InfoTile(
                   icon: Icons.shield_outlined,
-                  label: 'Vai trò',
-                  value: user.role.label,
+                  label: strings.roleLabel,
+                  value: user.role.localized(strings),
                 ),
               ],
             ),
@@ -95,7 +97,7 @@ class ProfileScreen extends ConsumerWidget {
           // ── Change password button ─────────────────────────────────────────
           OutlinedButton.icon(
             icon: const Icon(Icons.lock_outline_rounded),
-            label: const Text('Đổi mật khẩu'),
+            label: Text(strings.changePassword),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -127,15 +129,15 @@ class ProfileScreen extends ConsumerWidget {
 // Change password dialog
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ChangePasswordDialog extends StatefulWidget {
+class _ChangePasswordDialog extends ConsumerStatefulWidget {
   const _ChangePasswordDialog({required this.ref});
   final WidgetRef ref;
 
   @override
-  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+  ConsumerState<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
 }
 
-class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
   final _formKey = GlobalKey<FormState>();
   final _currentCtrl = TextEditingController();
   final _newCtrl = TextEditingController();
@@ -156,6 +158,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   }
 
   Future<void> _submit() async {
+    final strings = ref.read(appStringsProvider);
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() {
       _loading = true;
@@ -170,11 +173,11 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
-                Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text('Đổi mật khẩu thành công'),
+                const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(strings.changePasswordSuccess),
               ],
             ),
             backgroundColor: Colors.green.shade700,
@@ -188,8 +191,8 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       final msg = e.toString().toLowerCase();
       setState(() {
         _errorMessage = msg.contains('400') || msg.contains('badcredentials')
-            ? 'Mật khẩu hiện tại không đúng.'
-            : 'Đổi mật khẩu thất bại. Vui lòng thử lại.';
+            ? strings.currentPasswordRequired
+            : '${strings.changePasswordError}: $e';
         _loading = false;
       });
     }
@@ -197,8 +200,10 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(appStringsProvider);
+
     return AlertDialog(
-      title: const Text('Đổi mật khẩu'),
+      title: Text(strings.changePassword),
       content: Form(
         key: _formKey,
         child: Column(
@@ -229,31 +234,31 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             ],
             _PasswordField(
               controller: _currentCtrl,
-              label: 'Mật khẩu hiện tại',
+              label: strings.currentPassword,
               obscure: _obscureCurrent,
               onToggle: () => setState(() => _obscureCurrent = !_obscureCurrent),
-              validator: (v) => (v == null || v.isEmpty) ? 'Bắt buộc' : null,
+              validator: (v) => (v == null || v.isEmpty) ? strings.currentPasswordRequired : null,
             ),
             const SizedBox(height: 12),
             _PasswordField(
               controller: _newCtrl,
-              label: 'Mật khẩu mới',
+              label: strings.newPassword,
               obscure: _obscureNew,
               onToggle: () => setState(() => _obscureNew = !_obscureNew),
               validator: (v) {
-                if (v == null || v.isEmpty) return 'Bắt buộc';
-                if (v.length < 8) return 'Tối thiểu 8 ký tự';
+                if (v == null || v.isEmpty) return strings.passwordRequired;
+                if (v.length < 6) return strings.newPasswordMinLength;
                 return null;
               },
             ),
             const SizedBox(height: 12),
             _PasswordField(
               controller: _confirmCtrl,
-              label: 'Xác nhận mật khẩu mới',
+              label: strings.confirmNewPassword,
               obscure: _obscureConfirm,
               onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
               validator: (v) =>
-                  v != _newCtrl.text ? 'Mật khẩu không khớp' : null,
+                  v != _newCtrl.text ? strings.passwordsDoNotMatch : null,
             ),
           ],
         ),
@@ -261,7 +266,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       actions: [
         TextButton(
           onPressed: _loading ? null : () => Navigator.of(context).pop(),
-          child: const Text('Huỷ'),
+          child: Text(strings.cancel),
         ),
         FilledButton(
           onPressed: _loading ? null : _submit,
@@ -271,7 +276,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : const Text('Xác nhận'),
+              : Text(strings.saveChanges),
         ),
       ],
     );

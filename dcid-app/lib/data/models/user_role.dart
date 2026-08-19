@@ -18,4 +18,19 @@ enum UserRole {
 
   /// Roles allowed into the admin/QA area.
   bool get isAdminLevel => this == admin || this == qaAdmin;
+
+  /// Localized human-friendly label based on current app language.
+  String localized(dynamic strings) {
+    if (strings == null) return label;
+    switch (this) {
+      case UserRole.operatorRole:
+        return strings.roleOperator as String;
+      case UserRole.engineer:
+        return strings.roleEngineer as String;
+      case UserRole.qaAdmin:
+        return strings.roleQaAdmin as String;
+      case UserRole.admin:
+        return strings.roleAdmin as String;
+    }
+  }
 }

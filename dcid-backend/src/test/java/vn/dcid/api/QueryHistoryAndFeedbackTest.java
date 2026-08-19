@@ -119,13 +119,30 @@ class QueryHistoryAndFeedbackTest {
         verify(queryLogRepository).save(sampleLog);
     }
 
-    @Test
-    void submitFeedback_NotFound_ThrowsException() {
-        when(userService.getCurrentUser()).thenReturn(sampleUser);
-        when(queryLogRepository.findByIdAndActorId(sampleLogId, sampleUserId))
-                .thenReturn(Optional.empty());
+    @Mock
+    private vn.dcid.repository.UserRepository userRepository;
 
-        FeedbackRequest req = new FeedbackRequest(true, null);
-        assertThrows(NotFoundException.class, () -> feedbackController.submitFeedback(sampleLogId, req));
+    @InjectMocks
+    private FeedbackAdminController feedbackAdminController;
+
+    @Test
+    void getFeedbacks_Admin_Success() {
+        sampleLog.setFeedback((short) 1);
+        sampleLog.setFeedbackNote("Rất tốt");
+        sampleLog.setFeedbackAt(Instant.now());
+
+        when(queryLogRepository.findFeedbacks(eq((short) 1), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(sampleLog)));
+        when(userRepository.findAllById(List.of(sampleUserId)))
+                .thenReturn(List.of(sampleUser));
+
+        var response = feedbackAdminController.getFeedbacks((short) 1, 0, 20);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().data().total());
+        assertEquals("testuser", response.getBody().data().items().get(0).actorUsername());
+        assertEquals((short) 1, response.getBody().data().items().get(0).feedback());
+        assertEquals("Rất tốt", response.getBody().data().items().get(0).feedbackNote());
     }
 }

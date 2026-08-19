@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/constrained_content.dart';
+import '../../core/localization/locale_controller.dart';
 import '../../data/models/answer_result.dart';
 import '../../data/models/snap_entry.dart';
 import '../../state/providers.dart';
@@ -23,27 +24,29 @@ import 'widgets/snap_preview_dialog.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 AnswerResult _buildFallbackAnswer(
-    String fileName, String? machineCode, Object error) {
+    String fileName, String? machineCode, Object error, dynamic strings) {
   final machineTag =
       machineCode != null ? ' · Machine Code: **$machineCode**' : '';
   final status = error is DioException ? error.response?.statusCode : null;
   final String message;
   if (status == 401 || status == 403) {
     message =
-        '⚠️ **Phiên đăng nhập đã hết hạn.** Vui lòng đăng nhập lại trước khi phân tích ảnh.';
+        '⚠️ **Session expired.** Please log in again before analyzing images.';
+  } else if (error is DioException &&
+      error.type == DioExceptionType.receiveTimeout) {
+    message =
+        '⚠️ **Phân tích ảnh quá thời gian chờ.** Model ảnh xử lý quá lâu; vui lòng thử lại hoặc dùng ảnh nhỏ, rõ hơn.';
   } else if (error is DioException &&
       (error.type == DioExceptionType.connectionError ||
-          error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.receiveTimeout)) {
+          error.type == DioExceptionType.connectionTimeout)) {
     message =
-        '⚠️ **Không thể kết nối dịch vụ phân tích ảnh.** Vui lòng kiểm tra backend và AI service rồi thử lại.';
+        '⚠️ **Cannot connect to image analysis service.** Please check backend and AI service then retry.';
   } else {
     message =
-        '⚠️ **Phân tích ảnh thất bại.** Máy chủ không trả về kết quả hợp lệ; vui lòng thử lại.';
+        '⚠️ **Image analysis failed.** Server did not return a valid result; please retry.';
   }
   return AnswerResult(
-    answer: '$message$machineTag\n\n**File:** `$fileName`\n\n'
-        'Không có dữ liệu OCR hoặc thông số kỹ thuật nào được tạo giả.',
+    answer: '$message$machineTag\n\n**File:** `$fileName`',
     confidence: 0.0,
     locked: true,
     numericRule: false,
@@ -81,7 +84,8 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   final ScrollController _thumbnailScrollController = ScrollController();
 
   static final _locRegex = RegExp(
-      r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]');
+    r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]',
+  );
 
   // ── Image capture / pick ──────────────────────────────────────────────────
 
@@ -192,13 +196,14 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     // Guard before reading state so one user action creates at most one request.
     if (_isAsking) return;
 
+    final strings = ref.read(appStringsProvider);
     final snapState = ref.read(snapProvider);
     final snapIndex = snapState.selectedIndex;
     final snap = snapState.selectedSnap;
 
     if (snap == null || snapIndex == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an image before asking')),
+        SnackBar(content: Text(strings.selectImageBeforeAsking)),
       );
       return;
     }
@@ -248,13 +253,16 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
         snap.fileName,
         machineCode.isNotEmpty ? machineCode : null,
         e,
+        strings,
       );
       isError = true;
     }
 
     if (!mounted) return;
 
-    ref.read(snapProvider.notifier).addMessage(
+    ref
+        .read(snapProvider.notifier)
+        .addMessage(
           snapIndex,
           ChatMessage(
             question: question,
@@ -284,11 +292,11 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   }
 
   void _scanQR() {
+    final strings = ref.read(appStringsProvider);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-            'QR scanner coming soon — enter the machine code manually for now.'),
-        duration: Duration(seconds: 3),
+      SnackBar(
+        content: Text(strings.scanQrDesc),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -303,11 +311,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   }
 
   void _openPreview(SnapEntry snap, List<Rect> boxes) {
-    showSnapPreviewDialog(
-      context: context,
-      snap: snap,
-      boxes: boxes,
-    );
+    showSnapPreviewDialog(context: context, snap: snap, boxes: boxes);
   }
 
   String _formatDate(DateTime dt) {
@@ -333,6 +337,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   @override
   Widget build(BuildContext context) {
     final snapState = ref.watch(snapProvider);
+    final strings = ref.watch(appStringsProvider);
     final snaps = snapState.snaps;
     final snap = snapState.selectedSnap;
     final selectedIndex = snapState.selectedIndex;
@@ -352,7 +357,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
               if (snaps.isEmpty) ...[
                 Expanded(
                   child: SnapEmptyState(
-                      onAdd: _openImageSourcePicker, scheme: scheme),
+                    onAdd: _openImageSourcePicker,
+                    scheme: scheme,
+                  ),
                 ),
               ] else ...[
                 const SizedBox(height: 10),
@@ -370,7 +377,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: _buildChatArea(snap, scheme),
+                  child: _buildChatArea(snap, scheme, strings),
                 ),
               ],
               RepaintBoundary(
@@ -397,11 +404,11 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
   // ── Chat area ─────────────────────────────────────────────────────────────
 
-  Widget _buildChatArea(SnapEntry? snap, ColorScheme scheme) {
+  Widget _buildChatArea(SnapEntry? snap, ColorScheme scheme, dynamic strings) {
     if (snap == null) {
       return Center(
         child: Text(
-          'Select an image to start asking questions',
+          strings.selectImageToAsk,
           style: TextStyle(color: scheme.onSurfaceVariant),
         ),
       );
@@ -411,16 +418,19 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.chat_bubble_outline,
-                size: 40, color: scheme.outlineVariant),
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 40,
+              color: scheme.outlineVariant,
+            ),
             const SizedBox(height: 10),
             Text(
-              'No questions yet for this image',
+              strings.noQuestionsYet,
               style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
             ),
             const SizedBox(height: 4),
             Text(
-              'Type your question below to start the analysis',
+              strings.typeQuestionBelow,
               style: TextStyle(color: scheme.outline, fontSize: 12),
             ),
           ],

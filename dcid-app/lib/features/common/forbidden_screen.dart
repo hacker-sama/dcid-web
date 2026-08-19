@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class ForbiddenScreen extends StatelessWidget {
+import '../../core/localization/locale_controller.dart';
+
+class ForbiddenScreen extends ConsumerWidget {
   const ForbiddenScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(appStringsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('403')),
+      appBar: AppBar(title: Text(strings.forbiddenTitle)),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.block, size: 64),
             const SizedBox(height: 12),
-            const Text('Bạn không có quyền truy cập mục này.'),
+            Text(strings.forbiddenDesc),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => context.go('/search'),
-              child: const Text('Về trang tra cứu'),
+              child: Text(strings.backToSearch),
             ),
           ],
         ),

@@ -1,10 +1,12 @@
+import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:data_table_2/data_table_2.dart';
 
-import '../../core/responsive.dart';
 import '../../core/constrained_content.dart';
+import '../../core/localization/app_strings.dart';
+import '../../core/localization/locale_controller.dart';
+import '../../core/responsive.dart';
 import '../../data/models/document_summary.dart';
 import '../../state/documents_providers.dart';
 import '../../state/ingest_progress_provider.dart';
@@ -25,18 +27,18 @@ enum _SortOption {
 }
 
 extension _SortOptionLabel on _SortOption {
-  String get label {
+  String localized(AppStrings strings) {
     switch (this) {
       case _SortOption.updatedNewest:
-        return 'Newest first';
+        return strings.sortNewest;
       case _SortOption.updatedOldest:
-        return 'Oldest first';
+        return strings.sortOldest;
       case _SortOption.titleAZ:
-        return 'Title A→Z';
+        return strings.sortTitleAZ;
       case _SortOption.titleZA:
-        return 'Title Z→A';
+        return strings.sortTitleZA;
       case _SortOption.category:
-        return 'Category / Code';
+        return strings.sortCategory;
     }
   }
 
@@ -80,20 +82,21 @@ List<DocumentSummary> _applySorting(
           (a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
     case _SortOption.category:
       list.sort((a, b) {
-        final cmp = (a.category ?? '').compareTo(b.category ?? '');
+        final ca = a.category ?? '';
+        final cb = b.category ?? '';
+        final cmp = ca.compareTo(cb);
         if (cmp != 0) return cmp;
-        return (a.machineCode ?? '').compareTo(b.machineCode ?? '');
+        return a.title.toLowerCase().compareTo(b.title.toLowerCase());
       });
   }
   return list;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Screen
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Danh sách tài liệu (`/documents`): loading / error / empty state,
-/// pull-to-refresh, upload chỉ cho QA_ADMIN/ADMIN.
+/// Màn hình danh sách tài liệu (`/documents`):
+/// - Role-based filtering.
+/// - Desktop (≥1024px): DataTable2 với action bar + header upload.
+/// - Tablet (600–1023px): Card list kèm thanh sort bằng filter chips.
+/// - Mobile (<600px): Card list + compact sort dropdown + FAB.
 class DocumentsScreen extends ConsumerStatefulWidget {
   const DocumentsScreen({super.key});
 
@@ -104,16 +107,22 @@ class DocumentsScreen extends ConsumerStatefulWidget {
 class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   _SortOption _sort = _SortOption.updatedNewest;
 
+  // ── Open upload modal ─────────────────────────────────────────────────────
+
   Future<void> _openUploadSheet(BuildContext context) async {
-    final isWide = Responsive.isWide(context);
     final messenger = ScaffoldMessenger.of(context);
+    final isDesktop =
+        MediaQuery.sizeOf(context).width >= Breakpoints.expanded;
+
     final Object? uploaded;
-    if (isWide) {
+    if (isDesktop) {
       uploaded = await showDialog<Object>(
         context: context,
+        barrierDismissible: false,
         builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: const BoxConstraints(maxWidth: 620),
             child: const UploadDocumentSheet(),
           ),
         ),
@@ -129,8 +138,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     }
     if (uploaded != null && (uploaded == true || uploaded is String)) {
       ref.invalidate(documentsProvider);
+      final strings = ref.read(appStringsProvider);
       messenger.showSnackBar(
-        const SnackBar(content: Text('Uploaded — OCR processing started...')),
+        SnackBar(content: Text(strings.uploadSuccessSnackbar)),
       );
       if (uploaded is String && context.mounted) {
         context.push('/documents/$uploaded');
@@ -140,22 +150,22 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   Future<void> _confirmAndDeleteDocument(
       BuildContext context, String docId, String title) async {
+    final strings = ref.read(appStringsProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text(
-            'Are you sure you want to delete "$title"? This will permanently remove all versions and related search data.'),
+        title: Text(strings.confirmDelete),
+        content: Text(strings.deleteConfirmDesc(title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(ctx).colorScheme.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
+            child: Text(strings.delete),
           ),
         ],
       ),
@@ -168,11 +178,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         await repo.deleteDocument(docId);
         ref.invalidate(documentsProvider);
         messenger.showSnackBar(
-          const SnackBar(content: Text('Document deleted successfully.')),
+          SnackBar(content: Text(strings.deleteSuccess)),
         );
       } catch (e) {
         messenger.showSnackBar(
-          SnackBar(content: Text('Could not delete document: $e')),
+          SnackBar(content: Text(strings.deleteFailed(e.toString()))),
         );
       }
     }
@@ -180,7 +190,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
   // ── Sort bar (mobile: compact dropdown / tablet: filter chips) ───────────
 
-  Widget _buildSortBar(ColorScheme scheme, {required bool isMobile}) {
+  Widget _buildSortBar(ColorScheme scheme, AppStrings strings, {required bool isMobile}) {
     if (isMobile) {
       // ── Compact dropdown for narrow phone screens ─────────────────────────
       return Padding(
@@ -190,7 +200,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
             const SizedBox(width: 6),
             Text(
-              'Sort:',
+              '${strings.sortBy}:',
               style: TextStyle(
                 fontSize: 13,
                 color: scheme.onSurfaceVariant,
@@ -232,7 +242,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                     size: 15,
                                     color: scheme.onSurface),
                                 const SizedBox(width: 8),
-                                Text(opt.label),
+                                Text(opt.localized(strings)),
                               ],
                             ),
                           ))
@@ -256,7 +266,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           Icon(Icons.sort, size: 18, color: scheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Text(
-            'Sort:',
+            '${strings.sortBy}:',
             style: TextStyle(
               fontSize: 13,
               color: scheme.onSurfaceVariant,
@@ -274,7 +284,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     padding: const EdgeInsets.only(right: 6),
                     child: FilterChip(
                       avatar: Icon(opt.icon, size: 14),
-                      label: Text(opt.label,
+                      label: Text(opt.localized(strings),
                           style: const TextStyle(fontSize: 12)),
                       selected: selected,
                       onSelected: (_) => setState(() => _sort = opt),
@@ -308,6 +318,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     final canDelete = ref.watch(canDeleteDocumentProvider);
     final visibleCategories = ref.watch(visibleCategoriesProvider);
     final scheme = Theme.of(context).colorScheme;
+    final strings = ref.watch(appStringsProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -323,6 +334,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (_, _) => _ErrorState(
+                strings: strings,
                 onRetry: () => ref.invalidate(documentsProvider),
               ),
               data: (allDocs) {
@@ -343,6 +355,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     onRefresh: () => ref.refresh(documentsProvider.future),
                     child: _EmptyState(
                       isAdminLevel: canUpload,
+                      strings: strings,
                       onUploadPressed: () => _openUploadSheet(context),
                     ),
                   );
@@ -355,6 +368,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                     canDelete: canDelete,
                     sort: _sort,
                     scheme: scheme,
+                    strings: strings,
                     onSortChanged: (s) => setState(() => _sort = s),
                     onUpload: () => _openUploadSheet(context),
                     onDelete: (id, title) =>
@@ -368,7 +382,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const _IngestProgressBannerList(),
-                    _buildSortBar(scheme, isMobile: isMobile),
+                    _buildSortBar(scheme, strings, isMobile: isMobile),
                     Expanded(
                       child: ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -413,7 +427,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                                       icon: const Icon(
                                           Icons.delete_outline,
                                           color: Colors.red),
-                                      tooltip: 'Delete',
+                                      tooltip: strings.deleteDocument,
                                       onPressed: () =>
                                           _confirmAndDeleteDocument(
                                               context,
@@ -456,7 +470,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   child: FloatingActionButton.extended(
                     onPressed: () => _openUploadSheet(context),
                     icon: const Icon(Icons.upload_file),
-                    label: const Text('Upload Document'),
+                    label: Text(strings.uploadNewDocument),
                   ),
                 )
               : null,
@@ -477,6 +491,7 @@ class _DesktopView extends StatelessWidget {
     required this.canDelete,
     required this.sort,
     required this.scheme,
+    required this.strings,
     required this.onSortChanged,
     required this.onUpload,
     required this.onDelete,
@@ -488,6 +503,7 @@ class _DesktopView extends StatelessWidget {
   final bool canDelete;
   final _SortOption sort;
   final ColorScheme scheme;
+  final AppStrings strings;
   final ValueChanged<_SortOption> onSortChanged;
   final VoidCallback onUpload;
   final void Function(String id, String title) onDelete;
@@ -512,7 +528,7 @@ class _DesktopView extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Documents',
+                        strings.documentsTitle,
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       Row(
@@ -530,7 +546,7 @@ class _DesktopView extends StatelessWidget {
                                         children: [
                                           Icon(opt.icon, size: 16),
                                           const SizedBox(width: 8),
-                                          Text(opt.label,
+                                          Text(opt.localized(strings),
                                               style: const TextStyle(
                                                   fontSize: 14)),
                                         ],
@@ -546,7 +562,7 @@ class _DesktopView extends StatelessWidget {
                             FilledButton.icon(
                               onPressed: onUpload,
                               icon: const Icon(Icons.upload_file),
-                              label: const Text('Upload Document'),
+                              label: Text(strings.uploadNewDocument),
                             ),
                           ],
                         ],
@@ -561,24 +577,24 @@ class _DesktopView extends StatelessWidget {
                       columnSpacing: 24,
                       horizontalMargin: 12,
                       minWidth: 800,
-                      columns: const [
+                      columns: [
                         DataColumn2(
-                          label: Text('Document Name'),
+                          label: Text(strings.docTableTitle),
                           size: ColumnSize.L,
                         ),
                         DataColumn2(
-                          label: Text('Category'),
+                          label: Text(strings.category),
                           size: ColumnSize.M,
                         ),
                         DataColumn2(
-                          label: Text('Machine Code'),
+                          label: Text(strings.machineCode),
                           size: ColumnSize.M,
                         ),
                         DataColumn2(
-                          label: Text('Updated'),
+                          label: Text(strings.docTableUpdated),
                           size: ColumnSize.M,
                         ),
-                        DataColumn2(
+                        const DataColumn2(
                           label: Text(''),
                           size: ColumnSize.S,
                         ),
@@ -605,7 +621,7 @@ class _DesktopView extends StatelessWidget {
                                       icon: const Icon(
                                           Icons.delete_outline,
                                           color: Colors.red),
-                                      tooltip: 'Delete document',
+                                      tooltip: strings.deleteDocument,
                                       onPressed: () =>
                                           onDelete(doc.id, doc.title),
                                     ),
@@ -637,10 +653,11 @@ class _DesktopView extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({this.isAdminLevel = false, this.onUploadPressed});
+  const _EmptyState({this.isAdminLevel = false, this.onUploadPressed, required this.strings});
 
   final bool isAdminLevel;
   final VoidCallback? onUploadPressed;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
@@ -653,14 +670,14 @@ class _EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Documents',
+              strings.documentsTitle,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             if (isAdminLevel && onUploadPressed != null)
               FilledButton.icon(
                 onPressed: onUploadPressed,
                 icon: const Icon(Icons.upload_file),
-                label: const Text('Upload Document'),
+                label: Text(strings.uploadNewDocument),
               ),
           ],
         ),
@@ -668,16 +685,17 @@ class _EmptyState extends StatelessWidget {
         Icon(Icons.folder_open,
             size: 56, color: Theme.of(context).colorScheme.outline),
         const SizedBox(height: 12),
-        const Center(child: Text('No documents found')),
+        Center(child: Text(strings.noDocsFound)),
       ],
     );
   }
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.onRetry});
+  const _ErrorState({required this.onRetry, required this.strings});
 
   final VoidCallback onRetry;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
@@ -686,7 +704,7 @@ class _ErrorState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Could not load documents.\nCheck backend connection.',
+            '${strings.error}: Could not load documents.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
@@ -694,7 +712,7 @@ class _ErrorState extends StatelessWidget {
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+            label: Text(strings.retry),
           ),
         ],
       ),

@@ -77,7 +77,8 @@ def test_snap_vision_only_confidence_is_nonzero_but_conservative() -> None:
     assert response.guard.locked is False
     assert response.confidence == pytest.approx(0.55)
     assert "Kích thước cụm camera là 42.15 mm." in response.answer
-    assert "80%" in response.answer
+    assert response.answer.startswith("**Câu trả lời tham khảo.**")
+    assert "%" not in response.answer
 
 
 def test_ocr_content_does_not_change_question_classification() -> None:

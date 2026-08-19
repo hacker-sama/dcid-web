@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constrained_content.dart';
 import '../../core/file_viewer/file_viewer.dart';
+import '../../core/localization/locale_controller.dart';
 import '../../data/models/document_detail.dart';
 import '../../state/documents_providers.dart';
 import '../../state/providers.dart';
@@ -20,31 +21,32 @@ class DocumentDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(documentDetailProvider(documentId));
     final isAdminLevel = ref.watch(canUploadProvider);
+    final strings = ref.watch(appStringsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chi tiết tài liệu'),
+        title: Text(strings.documentDetail),
         actions: [
           if (isAdminLevel)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),
-              tooltip: 'Xóa tài liệu',
+              tooltip: strings.deleteDocument,
               onPressed: () async {
-                final title = detailAsync.value?.document.title ?? 'tài liệu này';
+                final title = detailAsync.value?.document.title ?? strings.documentDetail;
                 final confirmed = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Xác nhận xóa tài liệu'),
-                    content: Text('Bạn có chắc chắn muốn xóa "$title"? Hành động này không thể hoàn tác.'),
+                    title: Text(strings.confirmDelete),
+                    content: Text(strings.deleteConfirmDesc(title)),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Hủy'),
+                        child: Text(strings.cancel),
                       ),
                       FilledButton(
                         style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Xóa'),
+                        child: Text(strings.delete),
                       ),
                     ],
                   ),
@@ -57,12 +59,12 @@ class DocumentDetailScreen extends ConsumerWidget {
                     await repo.deleteDocument(documentId);
                     ref.invalidate(documentsProvider);
                     messenger.showSnackBar(
-                      const SnackBar(content: Text('Đã xóa tài liệu thành công.')),
+                      SnackBar(content: Text(strings.deleteSuccess)),
                     );
                     if (context.mounted) Navigator.of(context).pop();
                   } catch (e) {
                     messenger.showSnackBar(
-                      SnackBar(content: Text('Không thể xóa tài liệu: $e')),
+                      SnackBar(content: Text(strings.deleteFailed(e.toString()))),
                     );
                   }
                 }
@@ -79,7 +81,7 @@ class DocumentDetailScreen extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Không tải được chi tiết tài liệu.',
+                strings.loadDetailFailed,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               const SizedBox(height: 16),
@@ -87,7 +89,7 @@ class DocumentDetailScreen extends ConsumerWidget {
                 onPressed: () =>
                     ref.invalidate(documentDetailProvider(documentId)),
                 icon: const Icon(Icons.refresh),
-                label: const Text('Thử lại'),
+                label: Text(strings.retry),
               ),
             ],
           ),
@@ -101,15 +103,15 @@ class DocumentDetailScreen extends ConsumerWidget {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
-                _DocumentInfoCard(detail: detail),
+                _DocumentInfoCard(detail: detail, strings: strings),
                 const SizedBox(height: 16),
-                Text('Phiên bản', style: Theme.of(context).textTheme.titleMedium),
+                Text(strings.versionsList, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 if (detail.versions.isEmpty)
-                  const Text('Chưa có phiên bản nào.')
+                  Text(strings.noVersions)
                 else
                   for (final version in detail.versions) ...[
-                    _VersionTile(documentId: documentId, version: version),
+                    _VersionTile(documentId: documentId, version: version, strings: strings),
                     const SizedBox(height: 8),
                   ],
               ],
@@ -122,9 +124,10 @@ class DocumentDetailScreen extends ConsumerWidget {
 }
 
 class _DocumentInfoCard extends StatelessWidget {
-  const _DocumentInfoCard({required this.detail});
+  const _DocumentInfoCard({required this.detail, required this.strings});
 
   final DocumentDetail detail;
+  final dynamic strings;
 
   @override
   Widget build(BuildContext context) {
@@ -138,11 +141,11 @@ class _DocumentInfoCard extends StatelessWidget {
           children: [
             Text(doc.title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            _InfoRow(label: 'Mã máy', value: doc.machineCode),
-            _InfoRow(label: 'Loại', value: doc.category),
-            _InfoRow(label: 'Vai tối thiểu', value: doc.minRole),
-            _InfoRow(label: 'Mô tả', value: doc.description),
-            _InfoRow(label: 'Tạo lúc', value: _formatInstant(doc.createdAt)),
+            _InfoRow(label: strings.machineCode, value: doc.machineCode),
+            _InfoRow(label: strings.category, value: doc.category),
+            _InfoRow(label: strings.minRole, value: doc.minRole),
+            _InfoRow(label: strings.description, value: doc.description),
+            _InfoRow(label: strings.createdAt, value: _formatInstant(doc.createdAt)),
           ],
         ),
       ),
@@ -176,10 +179,11 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _VersionTile extends ConsumerWidget {
-  const _VersionTile({required this.documentId, required this.version});
+  const _VersionTile({required this.documentId, required this.version, required this.strings});
 
   final String documentId;
   final VersionSummary version;
+  final dynamic strings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -187,7 +191,7 @@ class _VersionTile extends ConsumerWidget {
         version.status == 'SUPERSEDED' || version.status == 'OBSOLETE';
     final subtitleParts = [
       if (version.originalFilename != null) version.originalFilename!,
-      if (version.pageCount != null) '${version.pageCount} trang',
+      if (version.pageCount != null) '${version.pageCount} ${strings.pageNumber(version.pageCount!).toLowerCase()}',
       if (version.lang != null) version.lang!,
       if (version.fileSize != null) _formatBytes(version.fileSize!),
       if (version.ingestedAt != null)
@@ -202,7 +206,7 @@ class _VersionTile extends ConsumerWidget {
             ListTile(
               minVerticalPadding: 14,
               leading: CircleAvatar(child: Text('v${version.versionNo}')),
-              title: Text('Phiên bản ${version.versionNo}'),
+              title: Text(strings.versionNumber(version.versionNo)),
               subtitle: subtitleParts.isEmpty
                   ? null
                   : Text(subtitleParts.join(' · ')),
@@ -215,13 +219,13 @@ class _VersionTile extends ConsumerWidget {
                   OutlinedButton.icon(
                     onPressed: () => _viewPdf(context, ref),
                     icon: const Icon(Icons.picture_as_pdf, size: 18),
-                    label: const Text('Xem PDF gốc'),
+                    label: Text(strings.viewOriginalPdf),
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: () => _viewOcr(context),
                     icon: const Icon(Icons.description, size: 18),
-                    label: const Text('Xem chữ OCR'),
+                    label: Text(strings.viewOcrText),
                   ),
                 ],
               ),
@@ -235,9 +239,9 @@ class _VersionTile extends ConsumerWidget {
   Future<void> _viewPdf(BuildContext context, WidgetRef ref) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đang tải file PDF...'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(strings.loadingPdf),
+          duration: const Duration(seconds: 2),
         ),
       );
       final dio = ref.read(apiClientProvider).dio;
@@ -252,7 +256,7 @@ class _VersionTile extends ConsumerWidget {
       } else if (rawData is List<int>) {
         bytes = Uint8List.fromList(rawData);
       } else {
-        throw Exception('Dữ liệu trả về không đúng định dạng binary');
+        throw Exception(strings.invalidBinaryData);
       }
       openOrDownloadFile(
         bytes,
@@ -262,7 +266,7 @@ class _VersionTile extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không tải được file PDF: $e')),
+          SnackBar(content: Text(strings.downloadPdfFailed(e.toString()))),
         );
       }
     }
@@ -337,21 +341,22 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
   }
 
   void _copyAllText() {
+    final strings = ref.read(appStringsProvider);
     final buffer = StringBuffer();
     for (var i = 0; i < _pages.length; i++) {
       final item = _pages[i];
       final pageNo = item['pageNo'] ?? (i + 1);
       final text = item['ocrText'] ?? '';
-      buffer.writeln('--- Trang $pageNo ---');
+      buffer.writeln('--- ${strings.pageNumber(pageNo)} ---');
       buffer.writeln(text);
       buffer.writeln();
     }
     Clipboard.setData(ClipboardData(text: buffer.toString()));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã sao chép toàn bộ nội dung OCR vào clipboard'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(strings.allOcrCopied),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -359,19 +364,20 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final title =
-        'Văn bản OCR (${widget.version.originalFilename ?? 'v${widget.version.versionNo}'})';
+    final strings = ref.watch(appStringsProvider);
+    final name = widget.version.originalFilename ?? 'v${widget.version.versionNo}';
+    final title = strings.ocrDialogTitle(name);
     final scheme = Theme.of(context).colorScheme;
 
     Widget body;
     if (_loading) {
-      body = const Center(
+      body = Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Đang tải dữ liệu OCR...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(strings.loadingOcrData),
           ],
         ),
       );
@@ -385,7 +391,7 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
               Icon(Icons.error_outline, color: scheme.error, size: 40),
               const SizedBox(height: 12),
               Text(
-                'Không tải được dữ liệu OCR:\n$_error',
+                strings.loadOcrFailed(_error!),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: scheme.error),
               ),
@@ -393,15 +399,15 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
               FilledButton.icon(
                 onPressed: _fetchOcr,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Thử lại'),
+                label: Text(strings.retry),
               ),
             ],
           ),
         ),
       );
     } else if (_pages.isEmpty) {
-      body = const Center(
-        child: Text('Chưa có dữ liệu OCR cho phiên bản này.'),
+      body = Center(
+        child: Text(strings.noOcrData),
       );
     } else {
       final filteredPages = _filterQuery.trim().isEmpty
@@ -418,7 +424,7 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
               padding: const EdgeInsets.only(bottom: 12),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Tìm từ khóa trong nội dung...',
+                  hintText: strings.searchOcrKeyword,
                   prefixIcon: const Icon(Icons.search, size: 20),
                   isDense: true,
                   border: OutlineInputBorder(
@@ -437,8 +443,8 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
           ],
           Expanded(
             child: filteredPages.isEmpty
-                ? const Center(
-                    child: Text('Không tìm thấy trang nào khớp với từ khóa.'),
+                ? Center(
+                    child: Text(strings.noOcrPagesMatch),
                   )
                 : ListView.separated(
                     itemCount: filteredPages.length,
@@ -454,7 +460,7 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Trang $pageNo',
+                                strings.pageNumber(pageNo),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
@@ -463,7 +469,7 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
                               if (text.isNotEmpty)
                                 IconButton(
                                   icon: const Icon(Icons.copy, size: 16),
-                                  tooltip: 'Sao chép trang $pageNo',
+                                  tooltip: strings.copyPage(pageNo),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
                                   onPressed: () {
@@ -472,9 +478,7 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
                                     );
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                          'Đã sao chép nội dung trang $pageNo',
-                                        ),
+                                        content: Text(strings.pageCopied(pageNo)),
                                         duration: const Duration(seconds: 1),
                                       ),
                                     );
@@ -485,7 +489,7 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
                           const SizedBox(height: 6),
                           SelectableText(
                             text.isEmpty
-                                ? '(Trang trắng / không có chữ)'
+                                ? strings.blankPageNotice
                                 : text,
                             style: TextStyle(
                               color: text.isEmpty ? scheme.outline : null,
@@ -512,11 +516,11 @@ class _OcrViewerDialogState extends ConsumerState<_OcrViewerDialog> {
           OutlinedButton.icon(
             onPressed: _copyAllText,
             icon: const Icon(Icons.copy_all, size: 16),
-            label: const Text('Sao chép tất cả'),
+            label: Text(strings.copyAllOcr),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Đóng'),
+          child: Text(strings.close),
         ),
       ],
     );

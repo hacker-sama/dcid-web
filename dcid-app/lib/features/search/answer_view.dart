@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/localization/locale_controller.dart';
 import '../../data/models/answer_result.dart';
 
 /// Shared widget to display an AI answer, confidence metadata, guardrail banners,
@@ -11,7 +13,7 @@ import '../../data/models/answer_result.dart';
 /// Set [shrinkWrap] to `true` when embedding inside another scrollable widget
 /// (e.g. a `ListView.builder` in SnapAskScreen) to prevent the
 /// `box.dart:2251` unbounded-height constraint crash.
-class AnswerView extends StatelessWidget {
+class AnswerView extends ConsumerWidget {
   const AnswerView({
     required this.result,
     this.shrinkWrap = false,
@@ -26,14 +28,18 @@ class AnswerView extends StatelessWidget {
   final void Function(bool helpful)? onFeedback;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final strings = ref.watch(appStringsProvider);
 
     // Build the children list once — shared between shrinkWrap and full modes.
     final children = <Widget>[
       // ── Guardrail RED banner ───────────────────────────────────────────────
-      if (result.locked)
+      // Network/service fallbacks already contain their own precise error
+      // message. Do not stack the unrelated "insufficient data" guardrail on
+      // top of them.
+      if (result.locked && !result.isOfflineFallback)
         Container(
           width: double.infinity,
           margin: const EdgeInsets.only(bottom: 12),
@@ -44,12 +50,15 @@ class AnswerView extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '⚠ Insufficient data confidence.\n'
-                  'Engineer verification required from attached drawing.',
+                  strings.lockedAnswerWarning,
                   style: textTheme.bodyMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -80,13 +89,13 @@ class AnswerView extends StatelessWidget {
         children: [
           _MetaBadge(
             icon: Icons.analytics_outlined,
-            label: 'Confidence: ${(result.confidence * 100).toStringAsFixed(0)}%',
+            label: '${strings.confidence}: ${(result.confidence * 100).toStringAsFixed(0)}%',
             scheme: scheme,
           ),
           if (result.numericRule)
             _MetaBadge(
               icon: Icons.pin_outlined,
-              label: 'Direct Data Extraction',
+              label: strings.directDataExtraction,
               scheme: scheme,
               color: scheme.tertiaryContainer,
               onColor: scheme.onTertiaryContainer,
@@ -94,7 +103,7 @@ class AnswerView extends StatelessWidget {
           if (result.reasoningMode)
             _MetaBadge(
               icon: Icons.psychology_outlined,
-              label: 'Reasoning mode',
+              label: strings.reasoningMode,
               scheme: scheme,
               color: scheme.secondaryContainer,
               onColor: scheme.onSecondaryContainer,
@@ -112,7 +121,7 @@ class AnswerView extends StatelessWidget {
       if (result.citations.isNotEmpty) ...[
         const SizedBox(height: 14),
         Text(
-          'Reference Sources',
+          strings.referenceSources,
           style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
@@ -137,10 +146,7 @@ class AnswerView extends StatelessWidget {
     }
 
     // Top-level mode (e.g. SearchScreen): full-height scrollable list.
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: children,
-    );
+    return ListView(padding: EdgeInsets.zero, children: children);
   }
 }
 
@@ -193,7 +199,10 @@ class _MarkdownAnswer extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border(left: BorderSide(color: scheme.primary, width: 3)),
       ),
-      blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      blockquotePadding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
       // Horizontal rule
       horizontalRuleDecoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
@@ -206,7 +215,10 @@ class _MarkdownAnswer extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       tableHeadAlign: TextAlign.left,
-      tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      tableCellsPadding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 6,
+      ),
       tableColumnWidth: const FlexColumnWidth(),
       // Lists
       listBullet: textTheme.bodyMedium,
@@ -242,8 +254,8 @@ class _MetaBadge extends StatelessWidget {
     required this.scheme,
     Color? color,
     Color? onColor,
-  })  : _color = color,
-        _onColor = onColor;
+  }) : _color = color,
+       _onColor = onColor;
 
   final IconData icon;
   final String label;
@@ -266,7 +278,14 @@ class _MetaBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: fg),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: fg, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: fg,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -277,7 +296,7 @@ class _MetaBadge extends StatelessWidget {
 // Copy answer button
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CopyAnswerButton extends StatefulWidget {
+class _CopyAnswerButton extends ConsumerStatefulWidget {
   const _CopyAnswerButton({
     super.key,
     required this.textToCopy,
@@ -288,10 +307,10 @@ class _CopyAnswerButton extends StatefulWidget {
   final ColorScheme scheme;
 
   @override
-  State<_CopyAnswerButton> createState() => _CopyAnswerButtonState();
+  ConsumerState<_CopyAnswerButton> createState() => _CopyAnswerButtonState();
 }
 
-class _CopyAnswerButtonState extends State<_CopyAnswerButton> {
+class _CopyAnswerButtonState extends ConsumerState<_CopyAnswerButton> {
   bool _copied = false;
 
   Future<void> _copy() async {
@@ -302,14 +321,15 @@ class _CopyAnswerButtonState extends State<_CopyAnswerButton> {
     if (!mounted) return;
     setState(() => _copied = true);
 
+    final strings = ref.read(appStringsProvider);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        content: Row(
           children: [
-            Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('Đã sao chép nội dung câu trả lời vào clipboard'),
+            const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text(strings.copySuccessSnackbar),
           ],
         ),
         duration: const Duration(seconds: 2),
@@ -326,12 +346,15 @@ class _CopyAnswerButtonState extends State<_CopyAnswerButton> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ref.watch(appStringsProvider);
     final isDark = widget.scheme.brightness == Brightness.dark;
     final fg = _copied
         ? (isDark ? Colors.green.shade300 : Colors.green.shade800)
         : widget.scheme.onSurfaceVariant;
     final bg = _copied
-        ? (isDark ? Colors.green.shade900.withValues(alpha: 0.35) : Colors.green.shade50)
+        ? (isDark
+              ? Colors.green.shade900.withValues(alpha: 0.35)
+              : Colors.green.shade50)
         : widget.scheme.surfaceContainerHighest.withValues(alpha: 0.7);
 
     return InkWell(
@@ -360,7 +383,7 @@ class _CopyAnswerButtonState extends State<_CopyAnswerButton> {
             ),
             const SizedBox(width: 4),
             Text(
-              _copied ? 'Đã sao chép' : 'Sao chép',
+              _copied ? strings.copied : strings.copy,
               style: TextStyle(
                 fontSize: 11,
                 color: fg,
@@ -378,7 +401,7 @@ class _CopyAnswerButtonState extends State<_CopyAnswerButton> {
 // Citation card
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CitationCard extends StatelessWidget {
+class _CitationCard extends ConsumerWidget {
   const _CitationCard({
     required this.citation,
     required this.scheme,
@@ -390,7 +413,9 @@ class _CitationCard extends StatelessWidget {
   final TextTheme textTheme;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(appStringsProvider);
+
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 8),
@@ -412,20 +437,26 @@ class _CitationCard extends StatelessWidget {
             ),
           ),
         ),
-        title: Text('Page ${citation.pageNo}', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+        title: Text(strings.pageNumber(citation.pageNo), style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
         subtitle: citation.snippet != null
             ? Text(
                 citation.snippet!,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               )
             : Text(
                 citation.versionId,
-                style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
         trailing: Icon(Icons.open_in_new, size: 16, color: scheme.primary),
-        onTap: () => context.push('/viewer/${citation.versionId}?page=${citation.pageNo}'),
+        onTap: () => context.push(
+          '/viewer/${citation.versionId}?page=${citation.pageNo}',
+        ),
       ),
     );
   }
@@ -435,16 +466,16 @@ class _CitationCard extends StatelessWidget {
 // Feedback row (👍 / 👎) — stateful để disable sau khi submit
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _FeedbackRow extends StatefulWidget {
+class _FeedbackRow extends ConsumerStatefulWidget {
   const _FeedbackRow({required this.onFeedback, required this.scheme});
   final void Function(bool helpful) onFeedback;
   final ColorScheme scheme;
 
   @override
-  State<_FeedbackRow> createState() => _FeedbackRowState();
+  ConsumerState<_FeedbackRow> createState() => _FeedbackRowState();
 }
 
-class _FeedbackRowState extends State<_FeedbackRow> {
+class _FeedbackRowState extends ConsumerState<_FeedbackRow> {
   bool? _selected; // null = chưa chọn, true = helpful, false = not helpful
 
   void _pick(bool helpful) {
@@ -456,10 +487,12 @@ class _FeedbackRowState extends State<_FeedbackRow> {
   @override
   Widget build(BuildContext context) {
     final scheme = widget.scheme;
+    final strings = ref.watch(appStringsProvider);
+
     return Row(
       children: [
         Text(
-          'Câu trả lời có hữu ích không?',
+          strings.wasAnswerHelpful,
           style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
         ),
         const SizedBox(width: 10),
@@ -481,7 +514,7 @@ class _FeedbackRowState extends State<_FeedbackRow> {
         if (_selected != null) ...[
           const SizedBox(width: 8),
           Text(
-            'Cảm ơn!',
+            strings.thankYouFeedback,
             style: TextStyle(fontSize: 11, color: scheme.primary, fontWeight: FontWeight.w500),
           ),
         ],

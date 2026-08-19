@@ -30,8 +30,7 @@ class DocsRepository implements IDocsRepository {
         'reasoningMode': reasoningMode,
         if (selectedVersionIds != null && selectedVersionIds.isNotEmpty)
           'selectedVersionIds': selectedVersionIds,
-        if (history != null && history.isNotEmpty)
-          'history': history,
+        if (history != null && history.isNotEmpty) 'history': history,
       },
     );
     return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
@@ -52,8 +51,7 @@ class DocsRepository implements IDocsRepository {
           'reasoningMode': reasoningMode,
           if (selectedVersionIds != null && selectedVersionIds.isNotEmpty)
             'selectedVersionIds': selectedVersionIds,
-          if (history != null && history.isNotEmpty)
-            'history': history,
+          if (history != null && history.isNotEmpty) 'history': history,
         },
         options: Options(
           responseType: ResponseType.stream,
@@ -132,7 +130,10 @@ class DocsRepository implements IDocsRepository {
         }
       }
     } catch (e) {
-      yield SseEvent(type: SseEventType.error, errorMessage: _streamErrorMessage(e));
+      yield SseEvent(
+        type: SseEventType.error,
+        errorMessage: _streamErrorMessage(e),
+      );
     }
   }
 
@@ -157,15 +158,26 @@ class DocsRepository implements IDocsRepository {
   }
 
   @override
-  Future<AnswerResult> askWithImage(String question, Uint8List imageBytes, String fileName, {String? machineCode}) async {
+  Future<AnswerResult> askWithImage(
+    String question,
+    Uint8List imageBytes,
+    String fileName, {
+    String? machineCode,
+  }) async {
     final form = FormData.fromMap({
       'question': question,
-      if (machineCode != null && machineCode.isNotEmpty) 'machineCode': machineCode,
+      if (machineCode != null && machineCode.isNotEmpty)
+        'machineCode': machineCode,
       'file': MultipartFile.fromBytes(imageBytes, filename: fileName),
     });
     final res = await _api.dio.post<Map<String, dynamic>>(
       '/api/query/vision',
       data: form,
+      // Vision on CPU performs OCR, loads the 3B vision model, and then
+      // generates the answer. A cold request can legitimately exceed the
+      // global 180-second API timeout, so keep this endpoint aligned with the
+      // backend-to-AI timeout instead of reporting a false offline failure.
+      options: Options(receiveTimeout: const Duration(minutes: 10)),
     );
     return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
   }
@@ -205,9 +217,11 @@ class DocsRepository implements IDocsRepository {
     final form = FormData.fromMap({
       'title': title,
       'category': category,
-      if (machineCode != null && machineCode.isNotEmpty) 'machineCode': machineCode,
+      if (machineCode != null && machineCode.isNotEmpty)
+        'machineCode': machineCode,
       if (minRole != null && minRole.isNotEmpty) 'minRole': minRole,
-      if (description != null && description.isNotEmpty) 'description': description,
+      if (description != null && description.isNotEmpty)
+        'description': description,
       if (lang != null && lang.isNotEmpty) 'lang': lang,
       'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
     });

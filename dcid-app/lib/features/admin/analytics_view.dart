@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constrained_content.dart';
+import '../../core/localization/locale_controller.dart';
 import '../../core/theme.dart';
 import '../../data/models/analytics_summary.dart';
 import '../../state/providers.dart';
@@ -13,6 +14,7 @@ class AnalyticsView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncData = ref.watch(analyticsFutureProvider);
+    final strings = ref.watch(appStringsProvider);
 
     return asyncData.when(
       data: (data) => _AnalyticsContent(data: data),
@@ -23,12 +25,12 @@ class AnalyticsView extends ConsumerWidget {
           children: [
             const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 12),
-            Text('Failed to load analytics: $err'),
+            Text('${strings.error}: $err'),
             const SizedBox(height: 16),
             FilledButton.tonalIcon(
               onPressed: () => ref.invalidate(analyticsFutureProvider),
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(strings.retry),
             ),
           ],
         ),
@@ -45,6 +47,7 @@ class _AnalyticsContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final strings = ref.watch(appStringsProvider);
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(analyticsFutureProvider),
@@ -65,7 +68,7 @@ class _AnalyticsContent extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'System Analytics & KPIs',
+                          strings.adminAnalytics,
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -84,7 +87,7 @@ class _AnalyticsContent extends ConsumerWidget {
                   FilledButton.tonalIcon(
                     onPressed: () => ref.invalidate(analyticsFutureProvider),
                     icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('Refresh'),
+                    label: Text(strings.refresh),
                   ),
                 ],
               ),
@@ -103,28 +106,28 @@ class _AnalyticsContent extends ConsumerWidget {
                     childAspectRatio: isWide ? 1.6 : 1.3,
                     children: [
                       _MetricCard(
-                        title: 'Total Queries',
+                        title: strings.totalQueriesTitle,
                         value: '${data.totalQueries}',
                         subtitle: '${data.totalDocuments} Docs (${data.totalVersions} Versions)',
                         icon: Icons.question_answer_rounded,
                         color: kCobalt,
                       ),
                       _MetricCard(
-                        title: 'Avg Confidence',
+                        title: strings.avgConfidenceTitle,
                         value: '${(data.avgConfidence * 100).toStringAsFixed(1)}%',
                         subtitle: 'Semantic & OCR evidence',
                         icon: Icons.verified_rounded,
                         color: Colors.green,
                       ),
                       _MetricCard(
-                        title: 'Avg Latency',
+                        title: strings.avgLatencyTitle,
                         value: '${data.avgLatencyMs} ms',
                         subtitle: 'CPU On-Premise Inference',
                         icon: Icons.speed_rounded,
                         color: Colors.orange,
                       ),
                       _MetricCard(
-                        title: 'Guardrail Locked',
+                        title: strings.guardrailLockedTitle,
                         value: '${data.lockedRate.toStringAsFixed(1)}%',
                         subtitle: '${data.totalLockedQueries} queries blocked (Zero-tolerance)',
                         icon: Icons.security_rounded,
