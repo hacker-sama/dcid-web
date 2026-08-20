@@ -128,42 +128,32 @@ jobs:
               -f docker-compose.prod.yml \
               -f docker-compose.vps.yml"
 
-            echo "━━━ [1/7] Lưu trạng thái hiện tại ━━━"
+            echo "━━━ [1/6] Lưu trạng thái hiện tại ━━━"
             PREV_COMMIT=$(git rev-parse HEAD)
             echo "Commit hiện tại: $PREV_COMMIT"
             echo "Commit mới    : ${{ github.sha }}"
 
-            echo "━━━ [2/7] Pull code mới ━━━"
+            echo "━━━ [2/6] Pull code mới ━━━"
             # Fetch đúng nhánh đã trigger workflow (github.ref = refs/heads/main hoặc nhánh hiện tại)
             # Đảm bảo github.sha tồn tại trên VPS trước khi checkout
             git fetch origin ${{ github.ref }}
             git checkout -f ${{ github.sha }}
 
-            echo "━━━ [3/7] Build Docker images ━━━"
+            echo "━━━ [3/6] Build Docker images ━━━"
             # Layer caching Docker — không dùng --no-cache để nhanh hơn
             # Chỉ build 4 image custom; postgres/redis/minio/qdrant/ollama dùng image public
             $COMPOSE build backend ai ai-worker ai-ocr
 
-            echo "━━━ [4/7] Rolling restart ━━━"
+            echo "━━━ [4/6] Rolling restart ━━━"
             $COMPOSE up -d
             # Không dùng 'down' — tránh downtime không cần thiết
 
-            echo "━━━ [5/7] Cập nhật Nginx ━━━"
-            NGINX_TARGET="${NGINX_TARGET:-/etc/nginx/sites-available/dcid.conf}"
-            sudo install -m 0644 nginx/dcid.conf "$NGINX_TARGET"
-            if [ -d /etc/nginx/sites-enabled ]; then
-              sudo ln -sfn "$NGINX_TARGET" /etc/nginx/sites-enabled/dcid.conf
-            fi
-            sudo nginx -t
-            sudo systemctl reload nginx
-            echo "Nginx configuration deployed and reloaded."
-
-            echo "━━━ [6/7] Cập nhật Flutter static ━━━"
+            echo "━━━ [5/6] Cập nhật Flutter static ━━━"
             # Swap atomic: chỉ thay thế sau khi SCP xong
             rsync -a --delete /opt/dcid/flutter-build-incoming/ /var/www/dcid-web/
             echo "Flutter deployed."
 
-            echo "━━━ [7/7] Health check (tối đa 80 giây) ━━━"
+            echo "━━━ [6/6] Health check (tối đa 80 giây) ━━━"
             HEALTHY=false
             for i in $(seq 1 8); do
               echo "  Lần thử $i/8..."
