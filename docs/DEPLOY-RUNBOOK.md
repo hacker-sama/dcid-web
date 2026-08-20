@@ -139,6 +139,11 @@ sudo bash scripts/setup-ci-user.sh
 # Làm theo hướng dẫn in ra màn hình
 ```
 
+Lệnh trên đồng thời cài helper root-owned
+`/usr/local/sbin/dcid-deploy-nginx` và chỉ cấp cho `ci-deploy` quyền sudo helper
+này. Cần chạy lại lệnh một lần trên VPS đã được tạo trước thay đổi này; nếu chưa
+cài helper, pipeline vẫn deploy ứng dụng nhưng sẽ bỏ qua bước cập nhật Nginx.
+
 ### 6.2 GitHub Secrets cần thiết
 
 Vào: **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**

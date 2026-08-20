@@ -12,7 +12,7 @@ mật khẩu `root`, mật khẩu database của ứng dụng hoặc file `.env.
 | Thành viên nhập/sửa dữ liệu | PostgreSQL cá nhân | `dcid_editor` |
 | Nhóm trưởng | PostgreSQL cá nhân | `dcid_maintainer` |
 | Nhóm trưởng | Linux cá nhân | SSH key, `sudo`, Docker |
-| **GitHub Actions CI/CD** | Linux `ci-deploy` | SSH key, Docker (không có sudo) |
+| **GitHub Actions CI/CD** | Linux `ci-deploy` | SSH key, Docker, chỉ được sudo helper deploy Nginx |
 
 Không dùng chung một username/mật khẩu PostgreSQL. Database vẫn là database chung
 `dcid`, nhưng mỗi người có tài khoản riêng để có thể thu hồi quyền và truy vết.
@@ -20,8 +20,9 @@ Không dùng chung một username/mật khẩu PostgreSQL. Database vẫn là da
 > Thành viên nhóm trưởng thuộc nhóm `docker`. Quyền Docker gần tương đương quyền
 > root, vì vậy chỉ cấp cho người thực sự chịu trách nhiệm vận hành VPS.
 >
-> User `ci-deploy` cũng thuộc nhóm `docker` nhưng **không có `sudo`** và chỉ SSH
-> được vào bằng key của GitHub Actions.
+> User `ci-deploy` cũng thuộc nhóm `docker`, không có quyền `sudo` tổng quát và
+> chỉ được chạy helper root-owned `/usr/local/sbin/dcid-deploy-nginx` để kiểm tra
+> rồi reload cấu hình Nginx. User này chỉ SSH bằng key của GitHub Actions.
 
 ## 2. Trạng thái production chuẩn
 
