@@ -1,6 +1,0 @@
-Source: C:/project/new/dcid-web/DCID_SEM4_Defense_Deck_Expanded_17_Slides.pptx, 17 slides, 1280x720.
-Structure: flat editable PowerPoint shapes on one shared master/layout; Arial typography; white and deep-navy alternating backgrounds; cyan accents; fixed section labels, titles and footers.
-Reusable source patterns: slides 7, 10, 12, 14 and 15 are the five diagram-focused slides added for technology, AI flows and database design.
-Placeholder audit: no unresolved visible placeholders in the source deck.
-Insertion contract: duplicate all 17 source slides; preserve master, titles, section labels and footers; delete only inherited diagram content inside the bounded body zone; add one rendered UML image per edited slide; update speaker notes with exact local sources.
-

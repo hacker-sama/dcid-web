@@ -1,4 +1,0 @@
-Slide 7: replace the existing architecture image with a high-resolution reconstruction matching attached reference image 1 (pale yellow clusters, lavender nodes, detailed four-layer architecture).
-Slide 12: replace the existing dark guardrail image with a high-resolution reconstruction matching attached reference image 2 (vertical light-purple three-layer guardrail flow).
-All other slide objects remain unchanged.
-

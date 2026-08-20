@@ -1,7 +1,0 @@
-Project-local sources used for the five added slides:
-- C:/project/new/dcid-web/docs/ARCHITECTURE.md — two-plane architecture, ingestion/query sequences, component responsibilities, data model.
-- C:/project/new/dcid-web/docs/API-CONTRACT.md — Backend–AI endpoints, version lifecycle, callbacks and streaming.
-- C:/project/new/dcid-web/dcid-ai/README.md — current AI modules and runtime technologies.
-- C:/project/new/dcid-web/dcid-backend/src/main/resources/db/migration/V1__init.sql through V6__query_feedback.sql — implemented PostgreSQL tables, keys and constraints.
-
-No external web sources were used.

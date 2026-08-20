@@ -1,5 +1,0 @@
-Source: DCID_SEM4_Defense_Deck.pptx, 12 slides, 1280x720.
-Visual system: white/deep-navy backgrounds, cyan accents, Arial typography, fixed section header and footer.
-Edit scope: preserve all slide structures, notes, diagrams, images, spacing, and typography. Rewrite only the cover team label and the inherited text boxes on slide 2.
-Inherited placeholders: no structural PowerPoint placeholders were found in the imported slide inventory. Visible bracket placeholders on slides 1-2 are explicitly rewritten.
-Insertion contract: no new shapes, images, charts, or slides.

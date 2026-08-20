@@ -1,7 +1,0 @@
-Source: C:/project/new/dcid-web/DCID_SEM4_Defense_Deck_UML_Rendered.pptx, 17 slides, 1280x720.
-Structure: imported PowerPoint deck with shared master/layout, fixed section labels, titles and footers; slide 7 and slide 12 each contain one full body image in an inherited image frame.
-Reusable source pattern: keep all 17 slides and replace only the inherited image on slides 7 and 12.
-Placeholder audit: no unresolved visible placeholders in the inspected source deck.
-Image quality finding: the attached screenshots are 676x617 and 780x661, insufficient for clean full-slide enlargement. Their layouts and colors are used as references; the diagrams are redrawn deterministically from the report UML at high resolution.
-Insertion contract: no new slides or overlays; replace inherited image bytes in place, preserve frame, crop, fit, master/layout, title and footer.
-
