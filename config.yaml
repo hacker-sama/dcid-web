@@ -17,7 +17,7 @@ models:
   vision_model: "qwen2.5vl:3b"
   
   # Text LLM cho khâu Suy luận RAG
-  main_llm_model: "qwen2.5vl:3b"
+  main_llm_model: "qwen2.5:3b"
   
   # Embedding Model local
   embedding_model: "intfloat/multilingual-e5-small"

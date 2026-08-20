@@ -399,10 +399,7 @@ class _MessageBubble extends StatelessWidget {
             bottomRight: Radius.circular(4),
           ),
           // Lightweight border instead of blurry BoxShadow (GPU paint cost)
-          border: Border.all(
-            color: accent.withValues(alpha: 0.35),
-            width: 1,
-          ),
+          border: Border.all(color: accent.withValues(alpha: 0.35), width: 1),
         ),
         child: Text(
           entry.content,
@@ -474,7 +471,7 @@ class _MessageBubble extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Offline',
+                      'AI unavailable',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -543,10 +540,9 @@ class _SearchAnswerInline extends ConsumerWidget {
       onFeedback: result.queryLogId != null
           ? (helpful) async {
               try {
-                await ref.read(docsRepositoryProvider).submitFeedback(
-                      result.queryLogId!,
-                      helpful: helpful,
-                    );
+                await ref
+                    .read(docsRepositoryProvider)
+                    .submitFeedback(result.queryLogId!, helpful: helpful);
               } catch (_) {}
             }
           : null,

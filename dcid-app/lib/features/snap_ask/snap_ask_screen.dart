@@ -33,9 +33,12 @@ AnswerResult _buildFallbackAnswer(
     message =
         '⚠️ **Session expired.** Please log in again before analyzing images.';
   } else if (error is DioException &&
+      error.type == DioExceptionType.receiveTimeout) {
+    message =
+        '⚠️ **Phân tích ảnh quá thời gian chờ.** Model ảnh xử lý quá lâu; vui lòng thử lại hoặc dùng ảnh nhỏ, rõ hơn.';
+  } else if (error is DioException &&
       (error.type == DioExceptionType.connectionError ||
-          error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.receiveTimeout)) {
+          error.type == DioExceptionType.connectionTimeout)) {
     message =
         '⚠️ **Cannot connect to image analysis service.** Please check backend and AI service then retry.';
   } else {
@@ -81,7 +84,8 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   final ScrollController _thumbnailScrollController = ScrollController();
 
   static final _locRegex = RegExp(
-      r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]');
+    r'\[LOC\]\s*\(([^,]+),([^)]+)\),\s*\(([^,]+),([^)]+)\)\s*\[/LOC\]',
+  );
 
   // ── Image capture / pick ──────────────────────────────────────────────────
 
@@ -256,7 +260,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
 
     if (!mounted) return;
 
-    ref.read(snapProvider.notifier).addMessage(
+    ref
+        .read(snapProvider.notifier)
+        .addMessage(
           snapIndex,
           ChatMessage(
             question: question,
@@ -305,11 +311,7 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
   }
 
   void _openPreview(SnapEntry snap, List<Rect> boxes) {
-    showSnapPreviewDialog(
-      context: context,
-      snap: snap,
-      boxes: boxes,
-    );
+    showSnapPreviewDialog(context: context, snap: snap, boxes: boxes);
   }
 
   String _formatDate(DateTime dt) {
@@ -355,7 +357,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
               if (snaps.isEmpty) ...[
                 Expanded(
                   child: SnapEmptyState(
-                      onAdd: _openImageSourcePicker, scheme: scheme),
+                    onAdd: _openImageSourcePicker,
+                    scheme: scheme,
+                  ),
                 ),
               ] else ...[
                 const SizedBox(height: 10),
@@ -414,8 +418,11 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.chat_bubble_outline,
-                size: 40, color: scheme.outlineVariant),
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 40,
+              color: scheme.outlineVariant,
+            ),
             const SizedBox(height: 10),
             Text(
               strings.noQuestionsYet,
