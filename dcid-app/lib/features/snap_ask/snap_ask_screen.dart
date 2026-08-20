@@ -24,14 +24,25 @@ import 'widgets/snap_preview_dialog.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 AnswerResult _buildFallbackAnswer(
-    String fileName, String? machineCode, Object error, dynamic strings) {
-  final machineTag =
-      machineCode != null ? ' · Machine Code: **$machineCode**' : '';
+  String fileName,
+  String? machineCode,
+  Object error,
+  dynamic strings,
+) {
+  final machineTag = machineCode != null
+      ? ' · Machine Code: **$machineCode**'
+      : '';
   final status = error is DioException ? error.response?.statusCode : null;
   final String message;
   if (status == 401 || status == 403) {
     message =
         '⚠️ **Session expired.** Please log in again before analyzing images.';
+  } else if (status == 429 || status == 503) {
+    message =
+        '⚠️ **Hệ thống AI đang bận.** Yêu cầu chưa được xử lý; vui lòng thử lại sau ít phút.';
+  } else if (status == 504) {
+    message =
+        '⚠️ **Phân tích ảnh quá thời gian chờ.** OCR hoặc model ảnh xử lý quá lâu; vui lòng thử lại.';
   } else if (error is DioException &&
       error.type == DioExceptionType.receiveTimeout) {
     message =
@@ -94,9 +105,11 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     try {
       final XFile? photo = await _imagePicker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 80,
+        // Preserve drawing labels and dimensions for OCR. The AI service
+        // creates a smaller derivative for the vision model separately.
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 88,
       );
       if (photo == null) return;
       final bytes = await photo.readAsBytes();
@@ -112,9 +125,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     setState(() => _picking = true);
     try {
       final List<XFile> images = await _imagePicker.pickMultiImage(
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 88,
       );
       if (images.isNotEmpty) {
         final List<({Uint8List bytes, String fileName})> items = [];
@@ -202,9 +215,9 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
     final snap = snapState.selectedSnap;
 
     if (snap == null || snapIndex == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.selectImageBeforeAsking)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(strings.selectImageBeforeAsking)));
       return;
     }
     final question = _questionController.text.trim();
@@ -375,10 +388,18 @@ class _SnapAskScreenState extends ConsumerState<SnapAskScreen> {
                     scheme: scheme,
                   ),
                 ),
-                const Divider(height: 1),
-                Expanded(
-                  child: _buildChatArea(snap, scheme, strings),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: Text(
+                    'Ảnh đang chọn ${(selectedIndex ?? 0) + 1}/${snaps.length} · Mỗi câu hỏi xử lý 1 ảnh',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
                 ),
+                const Divider(height: 1),
+                Expanded(child: _buildChatArea(snap, scheme, strings)),
               ],
               RepaintBoundary(
                 child: SnapInputFooter(

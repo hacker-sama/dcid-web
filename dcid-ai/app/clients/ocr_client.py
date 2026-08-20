@@ -12,7 +12,8 @@ from app.services.resource_gate import serialized_heavy
 logger = logging.getLogger("dcid-ai.ocr_client")
 
 OCR_PATH = "/ocr"
-TIMEOUT_SECONDS = 300.0  # OCR có thể chậm với PDF nhiều trang
+PDF_TIMEOUT_SECONDS = 300.0
+IMAGE_TIMEOUT_SECONDS = 120.0
 
 
 @serialized_heavy("ocr")
@@ -37,13 +38,15 @@ def extract_pages(
         "imageKeyPrefix": image_key_prefix,
     }
     headers = {INTERNAL_TOKEN_HEADER: settings.ai_internal_token}
+    is_image = storage_key.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+    timeout_seconds = IMAGE_TIMEOUT_SECONDS if is_image else PDF_TIMEOUT_SECONDS
 
     try:
         response = httpx.post(
             f"{settings.ocr_service_url.rstrip('/')}{OCR_PATH}",
             json=payload,
             headers=headers,
-            timeout=TIMEOUT_SECONDS,
+            timeout=timeout_seconds,
         )
         response.raise_for_status()
         body = response.json()
@@ -54,6 +57,11 @@ def extract_pages(
                 width=item.get("width"),
                 height=item.get("height"),
                 boxes=[tuple(float(v) for v in box[:4]) for box in item.get("boxes", [])],
+                confidence=(
+                    float(item["confidence"])
+                    if item.get("confidence") is not None
+                    else None
+                ),
                 image_key=item.get("imageKey"),
             )
             for item in body.get("pages", [])

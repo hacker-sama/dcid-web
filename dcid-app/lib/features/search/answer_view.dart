@@ -87,11 +87,16 @@ class AnswerView extends ConsumerWidget {
         runSpacing: 6,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _MetaBadge(
-            icon: Icons.analytics_outlined,
-            label: '${strings.confidence}: ${(result.confidence * 100).toStringAsFixed(0)}%',
-            scheme: scheme,
-          ),
+          // A transport/service failure has no model confidence. Hiding the
+          // synthetic 0% avoids implying that AI analysed the image and was
+          // certain the answer was wrong.
+          if (!result.isOfflineFallback)
+            _MetaBadge(
+              icon: Icons.analytics_outlined,
+              label:
+                  '${strings.confidence}: ${(result.confidence * 100).toStringAsFixed(0)}%',
+              scheme: scheme,
+            ),
           if (result.numericRule)
             _MetaBadge(
               icon: Icons.pin_outlined,
@@ -327,7 +332,11 @@ class _CopyAnswerButtonState extends ConsumerState<_CopyAnswerButton> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+            const Icon(
+              Icons.check_circle_outline,
+              color: Colors.white,
+              size: 18,
+            ),
             const SizedBox(width: 8),
             Text(strings.copySuccessSnackbar),
           ],
@@ -437,7 +446,10 @@ class _CitationCard extends ConsumerWidget {
             ),
           ),
         ),
-        title: Text(strings.pageNumber(citation.pageNo), style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+        title: Text(
+          strings.pageNumber(citation.pageNo),
+          style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
         subtitle: citation.snippet != null
             ? Text(
                 citation.snippet!,
@@ -515,7 +527,11 @@ class _FeedbackRowState extends ConsumerState<_FeedbackRow> {
           const SizedBox(width: 8),
           Text(
             strings.thankYouFeedback,
-            style: TextStyle(fontSize: 11, color: scheme.primary, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 11,
+              color: scheme.primary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ],

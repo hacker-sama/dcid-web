@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from contextlib import contextmanager
 from functools import lru_cache, wraps
 from inspect import isgeneratorfunction
@@ -68,12 +69,14 @@ def heavy_ai_slot(operation: str) -> Iterator[None]:
         # Heartbeat renews the lease from another thread, so share the token.
         thread_local=False,
     )
+    wait_started = time.perf_counter()
     if not lock.acquire(blocking=True):
         raise ResourceBusyError(
             f"AI resources are busy; could not start {operation} within "
             f"{settings.ai_resource_lock_wait_seconds}s"
         )
 
+    wait_ms = int((time.perf_counter() - wait_started) * 1000)
     stop_heartbeat = threading.Event()
 
     def _renew() -> None:
@@ -87,7 +90,8 @@ def heavy_ai_slot(operation: str) -> Iterator[None]:
     heartbeat = threading.Thread(target=_renew, name="ai-resource-lease", daemon=True)
     heartbeat.start()
     _local.heavy_depth = 1
-    logger.info("Heavy AI slot acquired: %s", operation)
+    operation_started = time.perf_counter()
+    logger.info("Heavy AI slot acquired: operation=%s wait_ms=%d", operation, wait_ms)
     try:
         yield
     finally:
@@ -98,7 +102,12 @@ def heavy_ai_slot(operation: str) -> Iterator[None]:
             lock.release()
         except Exception as exc:  # noqa: BLE001
             logger.warning("Could not release AI resource slot for %s: %s", operation, exc)
-        logger.info("Heavy AI slot released: %s", operation)
+        logger.info(
+            "Heavy AI slot released: operation=%s wait_ms=%d operation_ms=%d",
+            operation,
+            wait_ms,
+            int((time.perf_counter() - operation_started) * 1000),
+        )
 
 
 def serialized_heavy(operation: str) -> Callable[[F], F]:

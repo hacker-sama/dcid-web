@@ -38,7 +38,7 @@ LOCKED_ANSWER = (
     "Không đủ dữ liệu chắc chắn. Yêu cầu kỹ sư xác minh từ bản vẽ đính kèm."
 )
 LOCKED_CONFIDENCE = 0.30
-VISION_IMAGE_MAX_SIDE = 800
+VISION_IMAGE_MAX_SIDE = 1024
 
 _NUMBER_RE = re.compile(r"(?<![\w])[-+]?\d+(?:[.,]\d+)?")
 _TECHNICAL_QUANTITY_RE = re.compile(
@@ -106,7 +106,7 @@ def _best_effort_answer(
     return f"**Câu trả lời tham khảo.**{numeric_note}\n\n{answer.strip()}"
 
 
-def _ocr_quality_score(text: str) -> float:
+def _ocr_quality_score(text: str, recognition_confidence: float | None = None) -> float:
     """Estimate whether OCR contains enough diverse, readable evidence.
 
     This is deliberately deterministic: it measures coverage, character density
@@ -124,9 +124,14 @@ def _ocr_quality_score(text: str) -> float:
     coverage_score = min(1.0, alnum_count / 120.0)
     density_score = min(1.0, density / 0.75)
     diversity_score = min(1.0, unique_ratio / 0.70)
-    return _clamp_score(
+    structural_score = _clamp_score(
         0.25 * coverage_score + 0.35 * density_score + 0.40 * diversity_score
     )
+    if recognition_confidence is None:
+        return structural_score
+    # Paddle's recognition probability is useful but not sufficient by itself:
+    # a single high-confidence label still has weak coverage for a full drawing.
+    return _clamp_score(0.70 * structural_score + 0.30 * recognition_confidence)
 
 
 def _numeric_values(text: str, *, technical_only: bool = False) -> set[str]:
@@ -151,6 +156,7 @@ def _image_evidence_confidence(
     image_text: str,
     *,
     has_pixels: bool,
+    ocr_confidence: float | None = None,
     answer_text: str | None = None,
     numeric_rule: bool = False,
 ) -> tuple[float, bool | None]:
@@ -166,7 +172,10 @@ def _image_evidence_confidence(
 
     score = 0.55 if has_pixels else 0.0
     if usable_ocr:
-        score = max(score, 0.58 + 0.28 * _ocr_quality_score(image_text))
+        score = max(
+            score,
+            0.58 + 0.28 * _ocr_quality_score(image_text, ocr_confidence),
+        )
 
     if answer_text is None:
         return round(_clamp_score(score), 4), None
@@ -202,6 +211,7 @@ def _calculate_confidence(
     *,
     image_text: str = "",
     has_pixels: bool = False,
+    ocr_confidence: float | None = None,
     answer_text: str | None = None,
     numeric_rule: bool = False,
 ) -> tuple[float, bool | None]:
@@ -210,6 +220,7 @@ def _calculate_confidence(
     image_score, image_numeric_verified = _image_evidence_confidence(
         image_text,
         has_pixels=has_pixels,
+        ocr_confidence=ocr_confidence,
         answer_text=answer_text,
         numeric_rule=numeric_rule,
     )
@@ -298,40 +309,69 @@ def _needs_visual_context(question: str) -> bool:
     return any(term in normalized for term in visual_terms)
 
 
-def _prepare_uploaded_image(req: QueryRequest, *, stream: bool = False) -> tuple[str | None, str]:
+def _prepare_uploaded_image(
+    req: QueryRequest,
+    *,
+    stream: bool = False,
+) -> tuple[str | None, str, float | None]:
     """OCR an uploaded image first; attach pixels only when visual reasoning is needed."""
     if not req.imageStorageKey:
-        return None, ""
+        return None, "", None
 
     from app.clients import minio_client, ocr_client
 
     mode = " (stream)" if stream else ""
     ocr_only_requested = _prefers_ocr_only(req.question)
     image_text = ""
+    ocr_confidence: float | None = None
+    ocr_started = time.perf_counter()
     try:
         pages = ocr_client.extract_pages(req.imageStorageKey, ["vi", "en"])
         image_text = "\n".join(page.text for page in pages if page.text).strip()
+        page_confidences = [
+            page.confidence for page in pages if page.confidence is not None
+        ]
+        if page_confidences:
+            ocr_confidence = sum(page_confidences) / len(page_confidences)
         if _usable_ocr_text(image_text):
             req.question = f"{req.question}\n[Thông tin OCR từ ảnh]:\n{image_text}"
-            logger.info("Vision Query%s: OCR OK (%d ký tự)", mode, len(image_text))
+            logger.info(
+                "Vision Query%s: OCR OK chars=%d ocr_ms=%d",
+                mode,
+                len(image_text),
+                int((time.perf_counter() - ocr_started) * 1000),
+            )
+    except ResourceBusyError:
+        raise
     except Exception as exc:
-        logger.warning("Vision Query%s: OCR thất bại, chuyển sang Vision: %s", mode, exc)
+        logger.warning(
+            "Vision Query%s: OCR thất bại, chuyển sang Vision ocr_ms=%d: %s",
+            mode,
+            int((time.perf_counter() - ocr_started) * 1000),
+            exc,
+        )
 
     use_vision = not (ocr_only_requested and _usable_ocr_text(image_text))
     if not use_vision:
         logger.info("Vision Query%s: chọn OCR-only để giảm độ trễ", mode)
-        return None, image_text
+        return None, image_text, ocr_confidence
 
+    image_started = time.perf_counter()
     try:
         image_base64 = minio_client.get_object_base64(
             req.imageStorageKey,
             max_side=VISION_IMAGE_MAX_SIDE,
         )
-        logger.info("Vision Query%s: chọn OCR + Vision (%dpx)", mode, VISION_IMAGE_MAX_SIDE)
-        return image_base64, image_text
+        logger.info(
+            "Vision Query%s: chọn OCR + Vision max_side=%d image_prepare_ms=%d",
+            mode,
+            VISION_IMAGE_MAX_SIDE,
+            int((time.perf_counter() - image_started) * 1000),
+        )
+        return image_base64, image_text, ocr_confidence
     except Exception as exc:
         logger.error("Vision Query%s: không thể tải ảnh %s: %s", mode, req.imageStorageKey, exc)
-        return None, image_text
+        return None, image_text, ocr_confidence
 
 
 def _retrieve_hits(
@@ -387,7 +427,11 @@ def run_query(req: QueryRequest) -> QueryResponse:
 
     # An uploaded image is a valid standalone source even when the user has not
     # selected any indexed document version.
-    image_base64, image_text = _prepare_uploaded_image(req)
+    try:
+        image_base64, image_text, ocr_confidence = _prepare_uploaded_image(req)
+    except ResourceBusyError as exc:
+        logger.warning("Vision query could not acquire OCR slot: %s", exc)
+        return _busy_response(_elapsed_ms(start_ns))
 
     # ── 0. Fast-path: allowedVersionIds rỗng → không cần query chroma ──────
     if not req.allowedVersionIds and not req.imageStorageKey:
@@ -545,6 +589,7 @@ def run_query(req: QueryRequest) -> QueryResponse:
         hits,
         image_text=image_text,
         has_pixels=has_img,
+        ocr_confidence=ocr_confidence,
         answer_text=answer_text,
         numeric_rule=numeric_rule,
     )
@@ -627,6 +672,18 @@ def _locked_response(
     )
 
 
+def _busy_response(latency_ms: int) -> QueryResponse:
+    """Return a deterministic response when the shared AI slot is occupied."""
+    return QueryResponse(
+        answer="Hệ thống AI đang xử lý một tác vụ nặng. Vui lòng thử lại sau ít phút.",
+        confidence=0.0,
+        guard=Guard(locked=True, numericRule=False, reasoningMode=False),
+        citations=[],
+        latencyMs=latency_ms,
+        model="busy-resource-gate",
+    )
+
+
 def _build_citations(hits: list[dict], locked: bool = False) -> list[Citation]:
     """Chuyển ChromaDB hits thành danh sách Citation đúng contract §2.2 kèm tọa độ Bbox (Spatial Mapping).
 
@@ -686,7 +743,22 @@ def run_query_stream(req: QueryRequest):
         """Helper tạo SSE line chuẩn RFC 8895."""
         return f"data: {json.dumps({'event': event, **data}, ensure_ascii=False)}\n\n"
 
-    image_base64, image_text = _prepare_uploaded_image(req, stream=True)
+    try:
+        image_base64, image_text, ocr_confidence = _prepare_uploaded_image(req, stream=True)
+    except ResourceBusyError as exc:
+        logger.warning("Vision stream could not acquire OCR slot: %s", exc)
+        yield _sse(
+            "meta",
+            citations=[],
+            confidence=0.0,
+            guard={"locked": True, "numericRule": False, "reasoningMode": False},
+        )
+        yield _sse(
+            "delta",
+            text="Hệ thống AI đang xử lý một tác vụ nặng. Vui lòng thử lại sau ít phút.",
+        )
+        yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="busy-resource-gate")
+        return
 
     # ── Fast-path: no versions ──────────────────────────────────────────────
     if not req.allowedVersionIds and not req.imageStorageKey:
@@ -729,6 +801,7 @@ def run_query_stream(req: QueryRequest):
             hits,
             image_text=image_text,
             has_pixels=bool(image_base64),
+            ocr_confidence=ocr_confidence,
             answer_text=None,
             numeric_rule=numeric_rule,
         )
@@ -802,6 +875,7 @@ def run_query_stream(req: QueryRequest):
             hits,
             image_text=image_text,
             has_pixels=has_img,
+            ocr_confidence=ocr_confidence,
             answer_text=answer_text,
             numeric_rule=numeric_rule,
         )

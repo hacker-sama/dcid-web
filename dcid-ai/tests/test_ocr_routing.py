@@ -49,7 +49,7 @@ def test_uploaded_image_ocr_only_skips_base64(monkeypatch) -> None:
     )
 
     request = _request("Tên bản vẽ và tỷ lệ là gì?")
-    image, text = query_service._prepare_uploaded_image(request)
+    image, text, _ocr_confidence = query_service._prepare_uploaded_image(request)
 
     assert image is None
     assert "SCALE 1:1" in text
@@ -71,7 +71,7 @@ def test_uploaded_drawing_uses_ocr_and_vision(monkeypatch) -> None:
     monkeypatch.setattr("app.clients.minio_client.get_object_base64", fake_image)
 
     request = _request("Kích thước của cụm camera trên bản vẽ là bao nhiêu?")
-    image, text = query_service._prepare_uploaded_image(request)
+    image, text, _ocr_confidence = query_service._prepare_uploaded_image(request)
 
     assert image == "data:image/jpeg;base64,abc"
     assert "42.15" in text

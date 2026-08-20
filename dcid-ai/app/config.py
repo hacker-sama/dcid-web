@@ -71,7 +71,9 @@ class Settings(BaseSettings):
     ai_resource_gate_enabled: bool = True
     ai_resource_gate_fail_open: bool = False
     ai_resource_lock_name: str = "dcid:ai:heavy"
-    ai_resource_lock_wait_seconds: int = 330
+    # Interactive requests should fail fast instead of waiting behind a long
+    # ingest until the reverse proxy times out.
+    ai_resource_lock_wait_seconds: int = 60
     ai_resource_lock_lease_seconds: int = 180
     # Soft limit: SoftTimeLimitExceeded exception được raise để task có thể cleanup
     celery_task_soft_time_limit: int = 600   # 10 phút — đủ cho PDF 100+ trang

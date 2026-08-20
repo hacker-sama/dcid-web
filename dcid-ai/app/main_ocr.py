@@ -62,6 +62,7 @@ class PageOcrDto(BaseModel):
     width: int | None = None
     height: int | None = None
     boxes: list[tuple[float, float, float, float]] = []
+    confidence: float | None = None
     imageKey: str | None = None
 
 
@@ -88,6 +89,7 @@ def run_ocr(req: OcrRequest) -> OcrResponse:
                 width=page.width,
                 height=page.height,
                 boxes=page.boxes,
+                confidence=page.confidence,
                 imageKey=image_key,
             )
         )

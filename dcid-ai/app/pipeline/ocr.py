@@ -37,6 +37,7 @@ class PageOcr:
     width: int | None = None
     height: int | None = None
     boxes: list[tuple[float, float, float, float]] = field(default_factory=list)
+    confidence: float | None = None
     image_bytes: bytes | None = None
     image_key: str | None = None
 
@@ -98,7 +99,10 @@ def _paddle_payload(result: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _run_paddle_ocr(pix: Any, langs: list[str]) -> tuple[list[str], list[tuple[float, float, float, float]]]:
+def _run_paddle_ocr(
+    pix: Any,
+    langs: list[str],
+) -> tuple[list[str], list[tuple[float, float, float, float]], list[float]]:
     """Run PaddleOCR only for scan/image pages and return filtered text plus pixel bboxes."""
     import numpy as np
 
@@ -110,39 +114,60 @@ def _run_paddle_ocr(pix: Any, langs: list[str]) -> tuple[list[str], list[tuple[f
         image = np.repeat(image, 3, axis=2)
 
     engine = _get_engine(_pick_lang(langs))
-    lines: list[str] = []
-    boxes: list[tuple[float, float, float, float]] = []
+
+    def parse(results: list[Any]) -> tuple[list[str], list[tuple[float, float, float, float]], list[float]]:
+        lines: list[str] = []
+        boxes: list[tuple[float, float, float, float]] = []
+        accepted_scores: list[float] = []
+        for result in results:
+            payload = _paddle_payload(result)
+            texts = payload.get("rec_texts") or []
+            scores = payload.get("rec_scores") or []
+            raw_boxes = payload.get("rec_boxes") or payload.get("rec_polys") or []
+
+            for idx, raw_text in enumerate(texts):
+                text = str(raw_text).strip()
+                score = float(scores[idx]) if idx < len(scores) else 1.0
+                if not text or score < MIN_OCR_SCORE:
+                    continue
+                lines.append(text)
+                accepted_scores.append(score)
+
+                if idx >= len(raw_boxes):
+                    continue
+                coords = np.asarray(raw_boxes[idx], dtype=float)
+                if coords.ndim == 1 and coords.size >= 4:
+                    x1, y1, x2, y2 = coords[:4]
+                elif coords.ndim >= 2 and coords.shape[-1] >= 2:
+                    x1, y1 = coords[:, 0].min(), coords[:, 1].min()
+                    x2, y2 = coords[:, 0].max(), coords[:, 1].max()
+                else:
+                    continue
+                boxes.append((round(float(x1), 1), round(float(y1), 1), round(float(x2), 1), round(float(y2), 1)))
+        return lines, boxes, accepted_scores
 
     # Serialize inference so concurrent uploads cannot cause a RAM spike.
     with _OCR_LOCK:
-        results = list(engine.predict(image))
+        first = parse(list(engine.predict(image)))
+        # Sparse technical labels often disappear on low-contrast screenshots.
+        # Retry only weak pages with local contrast enhancement, then keep the
+        # pass containing more confidently recognised characters.
+        if sum(len(line) for line in first[0]) < 24:
+            import cv2
 
-    for result in results:
-        payload = _paddle_payload(result)
-        texts = payload.get("rec_texts") or []
-        scores = payload.get("rec_scores") or []
-        raw_boxes = payload.get("rec_boxes") or payload.get("rec_polys") or []
+            gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+            enhanced_gray = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(gray)
+            enhanced = cv2.cvtColor(enhanced_gray, cv2.COLOR_GRAY2RGB)
+            second = parse(list(engine.predict(enhanced)))
 
-        for idx, raw_text in enumerate(texts):
-            text = str(raw_text).strip()
-            score = float(scores[idx]) if idx < len(scores) else 1.0
-            if not text or score < MIN_OCR_SCORE:
-                continue
-            lines.append(text)
+            def evidence(value) -> float:
+                lines, _boxes, scores = value
+                return sum(len(line) * score for line, score in zip(lines, scores))
 
-            if idx >= len(raw_boxes):
-                continue
-            coords = np.asarray(raw_boxes[idx], dtype=float)
-            if coords.ndim == 1 and coords.size >= 4:
-                x1, y1, x2, y2 = coords[:4]
-            elif coords.ndim >= 2 and coords.shape[-1] >= 2:
-                x1, y1 = coords[:, 0].min(), coords[:, 1].min()
-                x2, y2 = coords[:, 0].max(), coords[:, 1].max()
-            else:
-                continue
-            boxes.append((round(float(x1), 1), round(float(y1), 1), round(float(x2), 1), round(float(y2), 1)))
+            if evidence(second) > evidence(first):
+                first = second
 
-    return lines, boxes
+    return first
 
 
 def extract_pages(pdf_bytes: bytes, langs: list[str] | None = None) -> list[PageOcr]:
@@ -164,6 +189,7 @@ def extract_pages(pdf_bytes: bytes, langs: list[str] | None = None) -> list[Page
             pix = page.get_pixmap(matrix=matrix)
             lines: list[str] = []
             boxes: list[tuple[float, float, float, float]] = []
+            recognition_scores: list[float] = []
 
             native_text = page.get_text("text").strip() if ftype == "pdf" else ""
             used_paddle = len(native_text) < MIN_NATIVE_TEXT_CHARS
@@ -174,6 +200,7 @@ def extract_pages(pdf_bytes: bytes, langs: list[str] | None = None) -> list[Page
                         if txt:
                             block_lines = txt.split("\n")
                             lines.extend(block_lines)
+                            recognition_scores.extend([1.0] * len(block_lines))
                             bbox = (
                                 round(float(b[0]) * scale, 1),
                                 round(float(b[1]) * scale, 1),
@@ -183,9 +210,10 @@ def extract_pages(pdf_bytes: bytes, langs: list[str] | None = None) -> list[Page
                             boxes.extend([bbox] * len(block_lines))
                 if not lines:
                     lines = native_text.split("\n")
+                    recognition_scores = [1.0] * len(lines)
             else:
                 try:
-                    lines, boxes = _run_paddle_ocr(pix, langs)
+                    lines, boxes, recognition_scores = _run_paddle_ocr(pix, langs)
                 except Exception as exc:
                     logger.warning("PaddleOCR thất bại ở trang %d, dùng text có sẵn nếu có: %s", i, exc)
                     lines = native_text.splitlines() if native_text else []
@@ -202,6 +230,11 @@ def extract_pages(pdf_bytes: bytes, langs: list[str] | None = None) -> list[Page
                     width=pix.width,
                     height=pix.height,
                     boxes=boxes,
+                    confidence=(
+                        sum(recognition_scores) / len(recognition_scores)
+                        if recognition_scores
+                        else None
+                    ),
                     image_bytes=png_bytes,
                 )
             )
