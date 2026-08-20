@@ -91,6 +91,7 @@ class DocsRepository implements IDocsRepository {
               // The AI service includes the event name in its JSON payload.
               // Standard SSE `event:` lines remain supported as a fallback.
               final effectiveEvent = json['event'] as String? ?? eventType;
+              final logId = json['logId'] as String? ?? json['queryLogId'] as String?;
               if (effectiveEvent == 'meta') {
                 final citations = (json['citations'] as List<dynamic>? ?? [])
                     .map((e) => Citation.fromJson(e as Map<String, dynamic>))
@@ -104,6 +105,7 @@ class DocsRepository implements IDocsRepository {
                   reasoningMode:
                       guard['reasoningMode'] as bool? ?? reasoningMode,
                   confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+                  queryLogId: logId,
                 );
               } else if (effectiveEvent == 'delta') {
                 yield SseEvent(
@@ -115,6 +117,7 @@ class DocsRepository implements IDocsRepository {
                 yield SseEvent(
                   type: SseEventType.done,
                   latencyMs: (json['latencyMs'] as num?)?.toInt(),
+                  queryLogId: logId,
                 );
               } else if (effectiveEvent == 'error') {
                 yield SseEvent(

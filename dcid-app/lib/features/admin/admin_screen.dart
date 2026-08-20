@@ -359,7 +359,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           bottom: TabBar(
             tabs: [
               Tab(icon: const Icon(Icons.people_alt_rounded), text: strings.usersTab),
-              Tab(icon: const Icon(Icons.rate_review_rounded), text: strings.feedbackTab),
+              Tab(icon: const Icon(Icons.thumbs_up_down_rounded), text: strings.feedbackTab),
               Tab(icon: const Icon(Icons.analytics_rounded), text: strings.adminAnalytics),
             ],
           ),

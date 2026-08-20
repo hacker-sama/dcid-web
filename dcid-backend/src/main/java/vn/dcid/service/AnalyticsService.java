@@ -23,13 +23,16 @@ public class AnalyticsService {
     private final DocumentRepository documentRepository;
     private final DocumentVersionRepository versionRepository;
     private final QueryLogRepository queryLogRepository;
+    private final AuditLogService auditLogService;
 
     public AnalyticsService(DocumentRepository documentRepository,
                             DocumentVersionRepository versionRepository,
-                            QueryLogRepository queryLogRepository) {
+                            QueryLogRepository queryLogRepository,
+                            AuditLogService auditLogService) {
         this.documentRepository = documentRepository;
         this.versionRepository = versionRepository;
         this.queryLogRepository = queryLogRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -109,6 +112,21 @@ public class AnalyticsService {
                 queriesByDay,
                 documentsByCategory,
                 topMachines
+        );
+    }
+
+    @Transactional
+    public void resetSystemAnalytics(UUID adminActorId, String ipAddress) {
+        long deletedCount = queryLogRepository.count();
+        queryLogRepository.deleteAllInBatch();
+
+        auditLogService.log(
+                adminActorId,
+                "RESET_ANALYTICS",
+                "QUERY_LOGS",
+                null,
+                ipAddress,
+                "Deleted " + deletedCount + " query log entries and reset system KPIs."
         );
     }
 }

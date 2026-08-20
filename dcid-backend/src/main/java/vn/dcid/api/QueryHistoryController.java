@@ -43,6 +43,24 @@ public class QueryHistoryController {
         return ResponseEntity.ok(ApiResponse.of(paged));
     }
 
+    /** Xóa toàn bộ lịch sử hỏi–đáp của user đang đăng nhập. */
+    @org.springframework.web.bind.annotation.DeleteMapping
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<ApiResponse<String>> clearHistory() {
+        User user = userService.getCurrentUser();
+        queryLogRepository.deleteByActorId(user.getId());
+        return ResponseEntity.ok(ApiResponse.of("Query history cleared successfully."));
+    }
+
+    /** Xóa một bản ghi lịch sử hỏi–đáp của user đang đăng nhập. */
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<ApiResponse<String>> deleteHistoryById(@org.springframework.web.bind.annotation.PathVariable java.util.UUID id) {
+        User user = userService.getCurrentUser();
+        queryLogRepository.deleteByIdAndActorId(id, user.getId());
+        return ResponseEntity.ok(ApiResponse.of("Query log deleted successfully."));
+    }
+
     private QueryHistoryDTO toDto(QueryLog log) {
         return new QueryHistoryDTO(
                 log.getId(),

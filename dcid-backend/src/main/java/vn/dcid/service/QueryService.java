@@ -203,12 +203,12 @@ public class QueryService {
 
         if (allowed.isEmpty()) {
             try {
-                saveLog(actorId, request.question(), null, null, false, true,
+                UUID logId = saveLog(actorId, request.question(), null, null, false, true,
                         NO_ACCESS_MESSAGE, elapsedMs(requestStart));
                 emitter.send("{\"event\":\"meta\",\"citations\":[],\"confidence\":0.0,"
                         + "\"guard\":{\"locked\":true,\"numericRule\":false,\"reasoningMode\":false}}");
                 emitter.send("{\"event\":\"delta\",\"text\":\"" + NO_ACCESS_MESSAGE + "\"}");
-                emitter.send("{\"event\":\"done\",\"latencyMs\":" + elapsedMs(requestStart)
+                emitter.send("{\"event\":\"done\",\"logId\":\"" + (logId != null ? logId.toString() : "") + "\",\"latencyMs\":" + elapsedMs(requestStart)
                         + ",\"model\":\"guardrail-no-access\"}");
                 emitter.complete();
             } catch (Exception e) {
@@ -222,12 +222,14 @@ public class QueryService {
             long start = System.nanoTime();
             AiStreamAuditAccumulator audit = new AiStreamAuditAccumulator();
             AtomicBoolean auditSaved = new AtomicBoolean(false);
-            Runnable saveStreamAudit = () -> {
+            java.util.concurrent.atomic.AtomicReference<UUID> savedLogId = new java.util.concurrent.atomic.AtomicReference<>(null);
+
+            java.util.function.Supplier<UUID> saveStreamAudit = () -> {
                 if (!auditSaved.compareAndSet(false, true)) {
-                    return;
+                    return savedLogId.get();
                 }
                 Double confidence = audit.confidence();
-                saveLog(
+                UUID id = saveLog(
                         actorId,
                         request.question(),
                         audit.matchedVersionId(),
@@ -239,7 +241,10 @@ public class QueryService {
                         audit.answerPreview(),
                         elapsedMs(start)
                 );
+                savedLogId.set(id);
+                return id;
             };
+
             aiPipelineClient.queryStream(
                 new AiQueryRequest(
                     request.question(),
@@ -253,18 +258,31 @@ public class QueryService {
                 token -> {
                     try {
                         audit.accept(token);
+                        if (token.contains("\"event\":\"done\"") || token.contains("\"event\": \"done\"")) {
+                            UUID logId = saveStreamAudit.get();
+                            if (logId != null) {
+                                String enrichedDone = token.replaceFirst("\\{", "{\"logId\":\"" + logId + "\",");
+                                emitter.send(enrichedDone);
+                                return;
+                            }
+                        }
                         emitter.send(token);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 },
                 () -> {
-                    saveStreamAudit.run();
+                    UUID logId = saveStreamAudit.get();
+                    if (!audit.locked() && logId != null) {
+                        try {
+                            emitter.send("{\"event\":\"done\",\"logId\":\"" + logId + "\",\"latencyMs\":" + elapsedMs(start) + "}");
+                        } catch (Exception ignored) {}
+                    }
                     emitter.complete();
                 },
                 e -> {
                     audit.markTransportError(e);
-                    saveStreamAudit.run();
+                    saveStreamAudit.get();
                     emitter.completeWithError(e);
                 }
             );

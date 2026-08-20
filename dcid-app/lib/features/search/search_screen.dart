@@ -177,10 +177,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           );
 
       List<Citation> currentCitations = [];
-      bool isLocked = false;
-      bool isNumeric = false;
-      const bool isReasoning = true;
-      double confidenceVal = 0.0;
+      String? logId;
 
       await for (final event in stream) {
         if (!mounted) break;
@@ -189,8 +186,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           isLocked = event.locked;
           isNumeric = event.numericRule;
           confidenceVal = event.confidence;
+          if (event.queryLogId != null) logId = event.queryLogId;
 
           assistantMessage.result = AnswerResult(
+            queryLogId: logId,
             answer: assistantMessage.content,
             confidence: confidenceVal,
             locked: isLocked,
@@ -205,6 +204,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           if (event.textDelta != null) {
             assistantMessage.content += event.textDelta!;
             assistantMessage.result = AnswerResult(
+              queryLogId: logId,
               answer: assistantMessage.content,
               confidence: confidenceVal,
               locked: isLocked,
@@ -217,6 +217,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 .updateMessage(sessionId, assistantMessage);
             _scrollToBottom();
           }
+        } else if (event.type == SseEventType.done) {
+          if (event.queryLogId != null) logId = event.queryLogId;
+          assistantMessage.result = AnswerResult(
+            queryLogId: logId,
+            answer: assistantMessage.content,
+            confidence: confidenceVal,
+            locked: isLocked,
+            numericRule: isNumeric,
+            reasoningMode: isReasoning,
+            citations: currentCitations,
+          );
+          ref
+              .read(chatSessionsProvider.notifier)
+              .updateMessage(sessionId, assistantMessage);
         } else if (event.type == SseEventType.error) {
           final strings = ref.read(appStringsProvider);
           if (event.errorMessage != null &&
