@@ -9,7 +9,8 @@
 #   - SSH key riêng (không dùng key cá nhân)
 #   - Thuộc nhóm docker (cần để chạy docker compose)
 #   - KHÔNG có password login
-#   - KHÔNG có sudo (chỉ cần docker + đọc/ghi /opt/dcid và /var/www/dcid-web)
+#   - Chỉ được sudo một helper cố định để kiểm tra/reload Nginx
+#   - Có quyền docker + đọc/ghi /opt/dcid và /var/www/dcid-web
 # =============================================================================
 set -euo pipefail
 
@@ -43,6 +44,19 @@ chmod -R g+rw "$PROJECT_DIR" 2>/dev/null || true
 mkdir -p "$WEB_DIR"
 chown -R "$CI_USER:$CI_USER" "$WEB_DIR"
 echo "  ✅ Quyền $PROJECT_DIR và $WEB_DIR đã set"
+
+echo "=== Cấp quyền deploy Nginx giới hạn cho CI ==="
+# Không cho CI chạy sudo tùy ý. Helper được copy thành file root-owned và không
+# nhận tham số, vì vậy sudoers chỉ cho phép đúng thao tác deploy Nginx của DCID.
+NGINX_HELPER="/usr/local/sbin/dcid-deploy-nginx"
+install -m 0755 -o root -g root \
+  "$PROJECT_DIR/scripts/deploy-nginx-root.sh" "$NGINX_HELPER"
+cat > /etc/sudoers.d/dcid-ci-nginx <<EOF
+$CI_USER ALL=(root) NOPASSWD: $NGINX_HELPER
+EOF
+chmod 0440 /etc/sudoers.d/dcid-ci-nginx
+visudo -cf /etc/sudoers.d/dcid-ci-nginx
+echo "  ✅ $CI_USER có quyền deploy/reload riêng cho Nginx DCID"
 
 echo "=== Thiết lập SSH authorized_keys ==="
 CI_HOME="$(getent passwd "$CI_USER" | cut -d: -f6)"
