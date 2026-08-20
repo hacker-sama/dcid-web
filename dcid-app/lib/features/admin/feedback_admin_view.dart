@@ -301,7 +301,7 @@ class _FeedbackAdminViewState extends ConsumerState<FeedbackAdminView> {
                 _buildStatCard(
                   title: strings.totalFeedbacks,
                   value: '$total',
-                  icon: Icons.rate_review_rounded,
+                  icon: Icons.reviews_rounded,
                   color: Colors.blue.shade700,
                   scheme: scheme,
                 ),

@@ -265,6 +265,12 @@ abstract class AppStrings {
   String get guardrailLockedTitle;
   String get guardrailInterventions;
   String get activeSessions;
+  String get resetMetrics;
+  String get resetMetricsConfirmTitle;
+  String get resetMetricsConfirmContent;
+  String get resetMetricsSuccess;
+  String get resetMetricsFailed;
+  String get confirmReset;
 
   // Common & Errors
   String get forbiddenTitle;
@@ -796,6 +802,18 @@ class AppStringsVi implements AppStrings {
   String get guardrailInterventions => 'Can thiệp quy chuẩn';
   @override
   String get activeSessions => 'Phiên hoạt động';
+  @override
+  String get resetMetrics => 'Đặt lại số liệu';
+  @override
+  String get resetMetricsConfirmTitle => 'Xác nhận Đặt lại Dữ liệu & Số liệu';
+  @override
+  String get resetMetricsConfirmContent => 'Bạn có chắc chắn muốn xóa toàn bộ nhật ký câu hỏi và đặt lại các chỉ số phân tích về 0? Thao tác này không thể hoàn tác.';
+  @override
+  String get resetMetricsSuccess => 'Đã đặt lại dữ liệu phân tích và nhật ký thành công.';
+  @override
+  String get resetMetricsFailed => 'Không thể đặt lại dữ liệu. Vui lòng thử lại sau.';
+  @override
+  String get confirmReset => 'Xác nhận Đặt lại';
 
   @override
   String get forbiddenTitle => 'Không có quyền truy cập';
@@ -1324,6 +1342,18 @@ class AppStringsEn implements AppStrings {
   String get guardrailInterventions => 'Guardrail Interventions';
   @override
   String get activeSessions => 'Active Sessions';
+  @override
+  String get resetMetrics => 'Reset Metrics';
+  @override
+  String get resetMetricsConfirmTitle => 'Reset Analytics & Query Logs';
+  @override
+  String get resetMetricsConfirmContent => 'Are you sure you want to delete all query logs and reset system metrics back to zero? This action cannot be undone.';
+  @override
+  String get resetMetricsSuccess => 'System analytics and query logs have been reset successfully.';
+  @override
+  String get resetMetricsFailed => 'Failed to reset analytics. Please try again later.';
+  @override
+  String get confirmReset => 'Confirm Reset';
 
   @override
   String get forbiddenTitle => 'Access Restricted';
@@ -1852,6 +1882,18 @@ class AppStringsHi implements AppStrings {
   String get guardrailInterventions => 'गार्डरेल हस्तक्षेप';
   @override
   String get activeSessions => 'सक्रिय सत्र';
+  @override
+  String get resetMetrics => 'मेट्रिक्स रीसेट करें';
+  @override
+  String get resetMetricsConfirmTitle => 'एनालिटिक्स और लॉग रीसेट करें';
+  @override
+  String get resetMetricsConfirmContent => 'क्या आप वाकई सभी क्वेरी लॉग हटाना और सिस्टम मेट्रिक्स को शून्य पर रीसेट करना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।';
+  @override
+  String get resetMetricsSuccess => 'सिस्टम एनालिटिक्स और क्वेरी लॉग सफलतापूर्वक रीसेट कर दिए गए हैं।';
+  @override
+  String get resetMetricsFailed => 'एनालिटिक्स रीसेट करने में विफल। बाद में पुनः प्रयास करें।';
+  @override
+  String get confirmReset => 'रीसेट की पुष्टि करें';
 
   @override
   String get forbiddenTitle => 'पहुंच प्रतिबंधित';
@@ -2380,6 +2422,18 @@ class AppStringsJa implements AppStrings {
   String get guardrailInterventions => 'ガードレール介入';
   @override
   String get activeSessions => 'アクティブセッション';
+  @override
+  String get resetMetrics => '指標リセット';
+  @override
+  String get resetMetricsConfirmTitle => '分析データとログのリセット';
+  @override
+  String get resetMetricsConfirmContent => 'すべてのクエリログを削除し、システム指標をゼロにリセットしてもよろしいですか？この操作は取り消せません。';
+  @override
+  String get resetMetricsSuccess => 'システム分析とクエリログが正常にリセットされました。';
+  @override
+  String get resetMetricsFailed => '分析データのリセットに失敗しました。後でもう一度お試しください。';
+  @override
+  String get confirmReset => 'リセットを実行';
 
   @override
   String get forbiddenTitle => 'アクセス拒否';

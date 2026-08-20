@@ -44,6 +44,72 @@ class _AnalyticsContent extends ConsumerWidget {
 
   final AnalyticsSummary data;
 
+  Future<void> _showResetConfirmDialog(BuildContext context, WidgetRef ref) async {
+    final strings = ref.read(appStringsProvider);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded, size: 44, color: Colors.redAccent),
+        title: Text(strings.resetMetricsConfirmTitle),
+        content: Text(
+          strings.resetMetricsConfirmContent,
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.redAccent.shade700,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: Text(strings.confirmReset),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final repo = ref.read(analyticsRepositoryProvider);
+      await repo.resetAnalytics();
+      if (!context.mounted) return;
+      ref.invalidate(analyticsFutureProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text(strings.resetMetricsSuccess)),
+            ],
+          ),
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text('${strings.resetMetricsFailed}: $e')),
+            ],
+          ),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -75,7 +141,7 @@ class _AnalyticsContent extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Real-time metrics, guardrail adherence, and query performance.',
+                          strings.analyticsSubtitle,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: isDark ? Colors.white70 : Colors.black54,
                               ),
@@ -84,10 +150,26 @@ class _AnalyticsContent extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  FilledButton.tonalIcon(
-                    onPressed: () => ref.invalidate(analyticsFutureProvider),
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: Text(strings.refresh),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.redAccent,
+                          side: const BorderSide(color: Colors.redAccent),
+                        ),
+                        onPressed: () => _showResetConfirmDialog(context, ref),
+                        icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+                        label: Text(strings.resetMetrics),
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: () => ref.invalidate(analyticsFutureProvider),
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: Text(strings.refresh),
+                      ),
+                    ],
                   ),
                 ],
               ),

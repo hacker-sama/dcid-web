@@ -12,6 +12,7 @@ class SseEvent {
     this.reasoningMode = false,
     this.confidence = 0.0,
     this.latencyMs,
+    this.queryLogId,
     this.errorMessage,
   });
 
@@ -23,5 +24,6 @@ class SseEvent {
   final bool reasoningMode;
   final double confidence;
   final int? latencyMs;
+  final String? queryLogId;
   final String? errorMessage;
 }

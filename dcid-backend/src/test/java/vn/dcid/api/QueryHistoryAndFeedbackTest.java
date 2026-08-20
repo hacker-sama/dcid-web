@@ -145,4 +145,42 @@ class QueryHistoryAndFeedbackTest {
         assertEquals((short) 1, response.getBody().data().items().get(0).feedback());
         assertEquals("Rất tốt", response.getBody().data().items().get(0).feedbackNote());
     }
+
+    @Test
+    void clearHistory_Success() {
+        when(userService.getCurrentUser()).thenReturn(sampleUser);
+
+        ResponseEntity<ApiResponse<String>> response = historyController.clearHistory();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(queryLogRepository).deleteByActorId(sampleUserId);
+    }
+
+    @Test
+    void deleteHistoryById_Success() {
+        when(userService.getCurrentUser()).thenReturn(sampleUser);
+
+        ResponseEntity<ApiResponse<String>> response = historyController.deleteHistoryById(sampleLogId);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(queryLogRepository).deleteByIdAndActorId(sampleLogId, sampleUserId);
+    }
+
+    @Mock
+    private vn.dcid.service.AnalyticsService analyticsService;
+
+    @InjectMocks
+    private AnalyticsController analyticsController;
+
+    @Test
+    void resetAnalytics_Success() {
+        when(userService.getCurrentUser()).thenReturn(sampleUser);
+        org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+
+        ResponseEntity<ApiResponse<String>> response = analyticsController.resetAnalytics(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(analyticsService).resetSystemAnalytics(eq(sampleUserId), eq("127.0.0.1"));
+    }
 }
