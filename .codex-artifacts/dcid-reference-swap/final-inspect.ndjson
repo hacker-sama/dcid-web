@@ -1,0 +1,361 @@
+{"kind":"layout","layoutId":"/ppt/slideMasters/slideMaster1.xml","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout1.xml","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"PROJECT SEM4 · 2026","textShapes":6}
+{"kind":"shape","id":"sh/547294r6","slide":1,"bbox":[592,0,176,720]}
+{"kind":"textbox","id":"sh/7qp4be9c","slide":1,"text":"PROJECT SEM4 · 2026","textPreview":"PROJECT SEM4 · 2026","textChars":19,"textLines":1,"bbox":[132,54,340,24]}
+{"kind":"textbox","id":"sh/65g3298r","slide":1,"text":"DCID","textPreview":"DCID","textChars":4,"textLines":1,"bbox":[56,152,500,76]}
+{"kind":"textbox","id":"sh/ts7md4r2","slide":1,"text":"Digital Cognitive\nIndustrial System","textPreview":"Digital Cognitive | Industrial System","textChars":35,"textLines":2,"bbox":[56,224,530,132]}
+{"kind":"shape","id":"sh/sryl4zqx","slide":1,"bbox":[56,382,132,5]}
+{"kind":"textbox","id":"sh/fu94fe98","slide":1,"text":"Đúng tri thức · Đúng phiên bản\nNgay tại hiện trường","textPreview":"Đúng tri thức · Đúng phiên bản | Ngay tại hiện trường","textChars":51,"textLines":2,"bbox":[56,414,520,92]}
+{"kind":"textbox","id":"sh/utg3698n","slide":1,"text":"Trợ lý tri thức kỹ thuật on-premise cho nhà máy","textPreview":"Trợ lý tri thức kỹ thuật on-premise cho nhà máy","textChars":47,"textLines":1,"bbox":[56,582,530,32]}
+{"kind":"textbox","id":"sh/wn6dc7eh","slide":1,"text":"Nhóm thực hiện: Nhóm DCID","textPreview":"Nhóm thực hiện: Nhóm DCID","textChars":25,"textLines":1,"bbox":[56,625,520,24]}
+{"kind":"image","id":"im/ipofexcz","slide":1,"name":"","bbox":[646,0,634,720]}
+{"kind":"image","id":"im/5cze9svq","slide":1,"name":"","bbox":[56,42,58,58]}
+{"kind":"notes","id":"nt/y90nupkv","slide":1,"text":"Mở đầu bằng bài toán ra quyết định kỹ thuật tại hiện trường, không giới thiệu hệ thống như một chatbot PDF thông thường.\n\n[Sources]\n- C:\\Users\\HACOM\\Downloads\\report_presentation (1).md — project positioning and presentation brief\n- C:\\project\\new\\dcid-web\\dcid-app\\web\\icons\\Icon-512.png — project-owned app icon\n- OpenAI image generation — custom hero generated for this deck; prompt recorded in source-notes.txt"}
+{"kind":"slide","id":"sl/hwbqtkby","slide":2,"title":"01 · TEAM","textShapes":27}
+{"kind":"textbox","id":"sh/9o7ulg3y","slide":2,"text":"01 · TEAM","textPreview":"01 · TEAM","textChars":9,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/9072xkry","slide":2,"text":"5 vai trò, một luồng bàn giao rõ ràng","textPreview":"5 vai trò, một luồng bàn giao rõ ràng","textChars":37,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"textbox","id":"sh/ozy1ofad","slide":2,"text":"Tên thành viên","textPreview":"Tên thành viên","textChars":14,"textLines":1,"bbox":[56,166,340,26]}
+{"kind":"textbox","id":"sh/b29kza94","slide":2,"text":"Phụ trách chính","textPreview":"Phụ trách chính","textChars":15,"textLines":1,"bbox":[418,166,330,26]}
+{"kind":"textbox","id":"sh/a10jqpsj","slide":2,"text":"Đầu ra chịu trách nhiệm","textPreview":"Đầu ra chịu trách nhiệm","textChars":23,"textLines":1,"bbox":[775,166,449,26]}
+{"kind":"shape","id":"sh/x4r21kru","slide":2,"bbox":[56,198,1168,2]}
+{"kind":"shape","id":"sh/w3i1sfa9","slide":2,"bbox":[50,210,1180,70]}
+{"kind":"textbox","id":"sh/r65knqtk","slide":2,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[64,226,44,28]}
+{"kind":"textbox","id":"sh/q5wjelsz","slide":2,"text":"Phạm Hải Đông","textPreview":"Phạm Hải Đông","textChars":13,"textLines":1,"bbox":[122,225,270,32]}
+{"kind":"textbox","id":"sh/ove9o7yd","slide":2,"text":"Leader · Backend · Governance","textPreview":"Leader · Backend · Governance","textChars":29,"textLines":1,"bbox":[418,225,330,32]}
+{"kind":"textbox","id":"sh/9wnqhczy","slide":2,"text":"Điều phối · Auth/RBAC · version · audit","textPreview":"Điều phối · Auth/RBAC · version · audit","textChars":39,"textLines":1,"bbox":[775,225,430,42]}
+{"kind":"textbox","id":"sh/mtwrmxg7","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[64,308,44,28]}
+{"kind":"textbox","id":"sh/nu58f2hs","slide":2,"text":"Lê Nhật Huy","textPreview":"Lê Nhật Huy","textChars":11,"textLines":1,"bbox":[122,307,270,32]}
+{"kind":"textbox","id":"sh/wjy9sry9","slide":2,"text":"Phó nhóm · AI/RAG","textPreview":"Phó nhóm · AI/RAG","textChars":17,"textLines":1,"bbox":[418,307,330,32]}
+{"kind":"textbox","id":"sh/xk7qlczu","slide":2,"text":"OCR · RAG · guardrail · tích hợp Backend–AI","textPreview":"OCR · RAG · guardrail · tích hợp Backend–AI","textChars":43,"textLines":1,"bbox":[775,307,430,42]}
+{"kind":"shape","id":"sh/ahwrqhgj","slide":2,"bbox":[50,374,1180,70]}
+{"kind":"textbox","id":"sh/bip8jmho","slide":2,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[64,390,44,28]}
+{"kind":"textbox","id":"sh/cnupgny5","slide":2,"text":"Phạm Anh Vũ","textPreview":"Phạm Anh Vũ","textChars":11,"textLines":1,"bbox":[122,389,270,32]}
+{"kind":"textbox","id":"sh/do3q9szq","slide":2,"text":"Backend / Full-stack","textPreview":"Backend / Full-stack","textChars":20,"textLines":1,"bbox":[418,389,330,32]}
+{"kind":"textbox","id":"sh/t8byxkn2","slide":2,"text":"API · dữ liệu · tích hợp giao diện","textPreview":"API · dữ liệu · tích hợp giao diện","textChars":34,"textLines":1,"bbox":[775,389,430,42]}
+{"kind":"textbox","id":"sh/s72xofmh","slide":2,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[64,472,44,28]}
+{"kind":"textbox","id":"sh/76twva5c","slide":2,"text":"Nguyễn Minh Hà","textPreview":"Nguyễn Minh Hà","textChars":14,"textLines":1,"bbox":[122,471,270,32]}
+{"kind":"textbox","id":"sh/65kfmpor","slide":2,"text":"Data · Evaluation · Tài liệu","textPreview":"Data · Evaluation · Tài liệu","textChars":28,"textLines":1,"bbox":[418,471,330,32]}
+{"kind":"textbox","id":"sh/hcvy14ne","slide":2,"text":"Dataset · eval · chuẩn hóa tài liệu","textPreview":"Dataset · eval · chuẩn hóa tài liệu","textChars":35,"textLines":1,"bbox":[775,471,430,42]}
+{"kind":"shape","id":"sh/gbmxszmt","slide":2,"bbox":[50,538,1180,70]}
+{"kind":"textbox","id":"sh/fadgzu58","slide":2,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[64,554,44,28]}
+{"kind":"textbox","id":"sh/u94fqp4n","slide":2,"text":"Dương Anh Vũ","textPreview":"Dương Anh Vũ","textChars":12,"textLines":1,"bbox":[122,553,270,32]}
+{"kind":"textbox","id":"sh/p0vy54na","slide":2,"text":"Flutter Frontend","textPreview":"Flutter Frontend","textChars":16,"textLines":1,"bbox":[418,553,330,32]}
+{"kind":"textbox","id":"sh/4zmxwzmp","slide":2,"text":"Web kiosk · Android · citation viewer","textPreview":"Web kiosk · Android · citation viewer","textChars":37,"textLines":1,"bbox":[775,553,430,42]}
+{"kind":"shape","id":"sh/mlgvq147","slide":2,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/nmpcj6ls","slide":2,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/onydsbmd","slide":2,"text":"2/17","textPreview":"2/17","textChars":4,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/hwbqtkby","slide":2,"text":"Giới thiệu từng thành viên trong một câu: tên, vai trò và đầu ra. Thay các placeholder bằng tên thật trước khi trình chiếu.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\docs\\PLAN-THESIS.md — five-role responsibility model"}
+{"kind":"slide","id":"sl/ofy9wn61","slide":3,"title":"02 · CORE BUSINESS","textShapes":18}
+{"kind":"textbox","id":"sh/f29gbyx0","slide":3,"text":"02 · CORE BUSINESS","textPreview":"02 · CORE BUSINESS","textChars":18,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/cza94vmx","slide":3,"text":"Bài toán thật: tìm đúng tài liệu dưới áp lực hiện trường","textPreview":"Bài toán thật: tìm đúng tài liệu dưới áp lực hiện trường","textChars":56,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"textbox","id":"sh/d0jax03i","slide":3,"text":"Khi máy dừng, kỹ sư không cần thêm một chatbot — họ cần bằng chứng kỹ thuật đúng, có hiệu lực và được phép xem.","textPreview":"Khi máy dừng, kỹ sư không cần thêm một chatbot — họ cần bằng chứng kỹ thuật đúng, có hiệu lực và được phép xem.","textChars":111,"textLines":1,"bbox":[56,150,1160,68]}
+{"kind":"shape","id":"sh/298ryl4v","slide":3,"bbox":[56,236,1168,3]}
+{"kind":"textbox","id":"sh/3ah8rqlg","slide":3,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[56,278,46,34]}
+{"kind":"textbox","id":"sh/obq90bml","slide":3,"text":"Tài liệu phân tán","textPreview":"Tài liệu phân tán","textChars":17,"textLines":1,"bbox":[114,278,482,30]}
+{"kind":"textbox","id":"sh/pcjqtg36","slide":3,"text":"SOP, manual và bản vẽ nằm ở nhiều nơi; tìm thủ công làm tăng thời gian xử lý sự cố.","textPreview":"SOP, manual và bản vẽ nằm ở nhiều nơi; tìm thủ công làm tăng thời gian xử lý sự cố.","textChars":83,"textLines":1,"bbox":[114,312,482,58]}
+{"kind":"textbox","id":"sh/m5cra54z","slide":3,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[56,408,46,34]}
+{"kind":"textbox","id":"sh/n6ls3alk","slide":3,"text":"Nhiều phiên bản","textPreview":"Nhiều phiên bản","textChars":15,"textLines":1,"bbox":[114,408,482,30]}
+{"kind":"textbox","id":"sh/n2l4fq98","slide":3,"text":"Dùng nhầm bản cũ có thể tạo thao tác sai, ảnh hưởng an toàn, chất lượng và tuân thủ.","textPreview":"Dùng nhầm bản cũ có thể tạo thao tác sai, ảnh hưởng an toàn, chất lượng và tuân thủ.","textChars":84,"textLines":1,"bbox":[114,442,482,58]}
+{"kind":"textbox","id":"sh/m1c3mlsn","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[650,278,46,34]}
+{"kind":"textbox","id":"sh/943mhgre","slide":3,"text":"Không thể đưa lên cloud","textPreview":"Không thể đưa lên cloud","textChars":23,"textLines":1,"bbox":[708,278,496,30]}
+{"kind":"textbox","id":"sh/83ulovat","slide":3,"text":"Bản vẽ và quy trình nội bộ chứa bí mật công nghệ, cần giữ trong mạng nhà máy.","textPreview":"Bản vẽ và quy trình nội bộ chứa bí mật công nghệ, cần giữ trong mạng nhà máy.","textChars":77,"textLines":1,"bbox":[708,312,496,58]}
+{"kind":"textbox","id":"sh/v6l4jq94","slide":3,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[650,408,46,34]}
+{"kind":"textbox","id":"sh/a5c3ql8z","slide":3,"text":"AI có thể suy đoán","textPreview":"AI có thể suy đoán","textChars":18,"textLines":1,"bbox":[708,408,496,30]}
+{"kind":"textbox","id":"sh/x8nml0ra","slide":3,"text":"Một con số sai về điện áp, áp suất hoặc dung sai có thể gây hậu quả vận hành nghiêm trọng.","textPreview":"Một con số sai về điện áp, áp suất hoặc dung sai có thể gây hậu quả vận hành nghiêm trọng.","textChars":90,"textLines":1,"bbox":[708,442,496,58]}
+{"kind":"textbox","id":"sh/w7ulsvqp","slide":3,"text":"Mục tiêu kinh doanh: giảm thời gian tìm tri thức\nvà giảm rủi ro quyết định sai","textPreview":"Mục tiêu kinh doanh: giảm thời gian tìm tri thức | và giảm rủi ro quyết định sai","textChars":78,"textLines":2,"bbox":[650,548,554,78]}
+{"kind":"shape","id":"sh/ja54na9g","slide":3,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/i9w3u58v","slide":3,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/e10f2twf","slide":3,"text":"3/17","textPreview":"3/17","textChars":4,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/ofy9wn61","slide":3,"text":"Nhấn mạnh tác động vận hành: downtime, an toàn, chất lượng và tuân thủ. Không hứa thay thế chuyên gia; DCID hỗ trợ quyết định có căn cứ.\n\n[Sources]\n- C:\\Users\\HACOM\\Downloads\\report_presentation (1).md — pain points\n- C:\\project\\new\\dcid-web\\README.md — official document governance scope"}
+{"kind":"slide","id":"sl/jyx0ra1s","slide":4,"title":"02 · CORE BUSINESS","textShapes":21}
+{"kind":"textbox","id":"sh/et0reh8f","slide":4,"text":"02 · CORE BUSINESS","textPreview":"02 · CORE BUSINESS","textChars":18,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/1cj2d8b6","slide":4,"text":"DCID trả lời từ tài liệu có kiểm soát","textPreview":"DCID trả lời từ tài liệu có kiểm soát","textChars":37,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"textbox","id":"sh/0ba143al","slide":4,"text":"Ba cam kết sản phẩm","textPreview":"Ba cam kết sản phẩm","textChars":19,"textLines":1,"bbox":[56,160,470,30]}
+{"kind":"textbox","id":"sh/rm1k7yt4","slide":4,"text":"PRIVATE","textPreview":"PRIVATE","textChars":7,"textLines":1,"bbox":[56,216,132,30]}
+{"kind":"textbox","id":"sh/ql8jytsj","slide":4,"text":"Chạy on-premise; dữ liệu không rời hệ thống nội bộ.","textPreview":"Chạy on-premise; dữ liệu không rời hệ thống nội bộ.","textChars":51,"textLines":1,"bbox":[210,214,350,64]}
+{"kind":"shape","id":"sh/doj29oba","slide":4,"bbox":[56,298,504,1]}
+{"kind":"textbox","id":"sh/sna103ap","slide":4,"text":"GROUNDED","textPreview":"GROUNDED","textChars":8,"textLines":1,"bbox":[56,334,132,30]}
+{"kind":"textbox","id":"sh/3ihk3et8","slide":4,"text":"Câu trả lời gắn trang, đoạn trích và vị trí nguồn.","textPreview":"Câu trả lời gắn trang, đoạn trích và vị trí nguồn.","textChars":50,"textLines":1,"bbox":[210,332,350,64]}
+{"kind":"shape","id":"sh/ih8ju9sn","slide":4,"bbox":[56,416,504,1]}
+{"kind":"textbox","id":"sh/kbm987y5","slide":4,"text":"GOVERNED","textPreview":"GOVERNED","textChars":8,"textLines":1,"bbox":[56,452,132,30]}
+{"kind":"textbox","id":"sh/5cva1cfq","slide":4,"text":"RBAC, phiên bản ACTIVE, audit và feedback.","textPreview":"RBAC, phiên bản ACTIVE, audit và feedback.","textChars":42,"textLines":1,"bbox":[210,450,350,64]}
+{"kind":"shape","id":"sh/i94r6xgz","slide":4,"bbox":[56,534,504,1]}
+{"kind":"shape","id":"sh/jadsz2xk","slide":4,"bbox":[616,158,608,442]}
+{"kind":"textbox","id":"sh/w72947yt","slide":4,"text":"Người dùng và công việc chính","textPreview":"Người dùng và công việc chính","textChars":29,"textLines":1,"bbox":[656,194,500,34]}
+{"kind":"textbox","id":"sh/x8vaxsfe","slide":4,"text":"OPERATOR","textPreview":"OPERATOR","textChars":8,"textLines":1,"bbox":[656,260,150,26]}
+{"kind":"textbox","id":"sh/a5kr2xg3","slide":4,"text":"Tra SOP vận hành và an toàn","textPreview":"Tra SOP vận hành và an toàn","textChars":27,"textLines":1,"bbox":[830,258,330,40]}
+{"kind":"textbox","id":"sh/v6tsv2xo","slide":4,"text":"ENGINEER","textPreview":"ENGINEER","textChars":8,"textLines":1,"bbox":[656,332,150,26]}
+{"kind":"textbox","id":"sh/g36tgryd","slide":4,"text":"Tra bản vẽ, lỗi máy, thông số và hướng dẫn","textPreview":"Tra bản vẽ, lỗi máy, thông số và hướng dẫn","textChars":42,"textLines":1,"bbox":[830,330,330,40]}
+{"kind":"textbox","id":"sh/h4fa9wfy","slide":4,"text":"QA_ADMIN","textPreview":"QA_ADMIN","textChars":8,"textLines":1,"bbox":[656,404,150,26]}
+{"kind":"textbox","id":"sh/p0batw72","slide":4,"text":"Upload, quản lý phiên bản và phát hành","textPreview":"Upload, quản lý phiên bản và phát hành","textChars":38,"textLines":1,"bbox":[830,402,330,40]}
+{"kind":"textbox","id":"sh/oz29krqh","slide":4,"text":"ADMIN","textPreview":"ADMIN","textChars":5,"textLines":1,"bbox":[656,476,150,26]}
+{"kind":"textbox","id":"sh/3ytsrmpw","slide":4,"text":"Quản trị người dùng, audit và hệ thống","textPreview":"Quản trị người dùng, audit và hệ thống","textChars":38,"textLines":1,"bbox":[830,474,330,40]}
+{"kind":"textbox","id":"sh/2xkrih8b","slide":4,"text":"Kênh phụ trợ: Guest / Ask cho dùng thử tài liệu tạm thời","textPreview":"Kênh phụ trợ: Guest / Ask cho dùng thử tài liệu tạm thời","textChars":56,"textLines":1,"bbox":[656,552,500,30]}
+{"kind":"shape","id":"sh/1wbapc7q","slide":4,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/gv29g7q5","slide":4,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/fu9sn2p0","slide":4,"text":"4/17","textPreview":"4/17","textChars":4,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/jyx0ra1s","slide":4,"text":"Core business là kho tri thức chính thức có quản trị. Guest / Ask là kênh dùng thử, không phải trọng tâm giá trị.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\README.md — dual-plane and role model\n- C:\\Users\\HACOM\\Downloads\\report_presentation (1).md — private/grounded/governed proposition"}
+{"kind":"slide","id":"sl/i107q5of","slide":5,"title":"03 · ARCHITECTURE","textShapes":15}
+{"kind":"textbox","id":"sh/ud0ne10b","slide":5,"text":"03 · ARCHITECTURE","textPreview":"03 · ARCHITECTURE","textChars":17,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/dgbulwnm","slide":5,"text":"Dual-plane tách quản trị nghiệp vụ khỏi xử lý AI","textPreview":"Dual-plane tách quản trị nghiệp vụ khỏi xử lý AI","textChars":48,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/cf2tcr61","slide":5,"bbox":[615,188,32,54]}
+{"kind":"shape","id":"sh/z2tcnm5s","slide":5,"bbox":[552,341,66,36]}
+{"kind":"shape","id":"sh/yhkbe1o7","slide":5,"bbox":[310,508,30,48]}
+{"kind":"shape","id":"sh/l4bupwny","slide":5,"bbox":[930,508,30,48]}
+{"kind":"textbox","id":"sh/032tgr6d","slide":5,"text":"FLUTTER CLIENTS\nWeb kiosk · Admin · Android","textPreview":"FLUTTER CLIENTS | Web kiosk · Admin · Android","textChars":43,"textLines":2,"bbox":[410,146,460,74]}
+{"kind":"shape","id":"sh/n6dcr65o","slide":5,"bbox":[56,276,496,230]}
+{"kind":"textbox","id":"sh/m5kbi1oj","slide":5,"text":"GOVERNANCE PLANE","textPreview":"GOVERNANCE PLANE","textChars":16,"textLines":1,"bbox":[88,306,410,30]}
+{"kind":"textbox","id":"sh/w32dkbuh","slide":5,"text":"Spring Boot 3.3 · Java 21","textPreview":"Spring Boot 3.3 · Java 21","textChars":25,"textLines":1,"bbox":[88,344,410,28]}
+{"kind":"textbox","id":"sh/x4vedgvm","slide":5,"text":"Auth / RBAC\nDocument & version lifecycle\nGuest session & TTL\nAudit · API · file proxy","textPreview":"Auth / RBAC | Document & version lifecycle | Guest session & TTL | Audit · API · file proxy","textChars":85,"textLines":4,"bbox":[88,388,410,104]}
+{"kind":"shape","id":"sh/ahkvi1cb","slide":5,"bbox":[618,276,606,230]}
+{"kind":"textbox","id":"sh/v2twb6dw","slide":5,"text":"AI INTELLIGENCE PLANE","textPreview":"AI INTELLIGENCE PLANE","textChars":21,"textLines":1,"bbox":[650,306,510,30]}
+{"kind":"textbox","id":"sh/k7mxovud","slide":5,"text":"FastAPI · Celery · Local LLM/VLM","textPreview":"FastAPI · Celery · Local LLM/VLM","textChars":32,"textLines":1,"bbox":[650,344,510,28]}
+{"kind":"textbox","id":"sh/58vehgvy","slide":5,"text":"OCR / vision\nChunk + embedding\nHybrid retrieval\nGuardrail + grounded answer","textPreview":"OCR / vision | Chunk + embedding | Hybrid retrieval | Guardrail + grounded answer","textChars":75,"textLines":4,"bbox":[650,388,510,104]}
+{"kind":"textbox","id":"sh/i54fmlc7","slide":5,"text":"PostgreSQL\nnghiệp vụ","textPreview":"PostgreSQL | nghiệp vụ","textChars":20,"textLines":2,"bbox":[56,566,254,76]}
+{"kind":"textbox","id":"sh/j6dwfqds","slide":5,"text":"MinIO\nPDF / ảnh","textPreview":"MinIO | PDF / ảnh","textChars":15,"textLines":2,"bbox":[348,566,254,76]}
+{"kind":"textbox","id":"sh/sb6xsvu9","slide":5,"text":"Qdrant\nvector","textPreview":"Qdrant | vector","textChars":13,"textLines":2,"bbox":[640,566,254,76]}
+{"kind":"textbox","id":"sh/tcfel0vu","slide":5,"text":"Redis\nqueue / cache","textPreview":"Redis | queue / cache","textChars":19,"textLines":2,"bbox":[932,566,254,76]}
+{"kind":"shape","id":"sh/hgrmpwj2","slide":5,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/gfi5grih","slide":5,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/fe94nm1w","slide":5,"text":"5/17","textPreview":"5/17","textChars":4,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/i107q5of","slide":5,"text":"Giải thích ranh giới trách nhiệm: backend là single writer của PostgreSQL; AI chỉ nhận contract nội bộ và xử lý tri thức. Đây là quyết định quan trọng nhất của kiến trúc.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\docs\\ARCHITECTURE.md — dual-plane architecture\n- C:\\project\\new\\dcid-web\\docs\\API-CONTRACT.md — backend/AI contract\n- C:\\Users\\HACOM\\Downloads\\report_presentation (1).md — architecture summary"}
+{"kind":"slide","id":"sl/x8f69ofe","slide":6,"title":"04 · TECHNOLOGY","textShapes":25}
+{"kind":"textbox","id":"sh/jet8nm1c","slide":6,"text":"04 · TECHNOLOGY","textPreview":"04 · TECHNOLOGY","textChars":15,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/yhg7epsj","slide":6,"text":"Mỗi công nghệ giữ một trách nhiệm rõ ràng","textPreview":"Mỗi công nghệ giữ một trách nhiệm rõ ràng","textChars":41,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"textbox","id":"sh/zi98nu94","slide":6,"text":"LỚP","textPreview":"LỚP","textChars":3,"textLines":1,"bbox":[56,156,160,26]}
+{"kind":"textbox","id":"sh/87ipkzal","slide":6,"text":"CÔNG NGHỆ","textPreview":"CÔNG NGHỆ","textChars":9,"textLines":1,"bbox":[246,156,430,26]}
+{"kind":"textbox","id":"sh/98rqt4r6","slide":6,"text":"VÌ SAO DÙNG","textPreview":"VÌ SAO DÙNG","textChars":11,"textLines":1,"bbox":[712,156,512,26]}
+{"kind":"shape","id":"sh/ml07i9sv","slide":6,"bbox":[56,190,1168,2]}
+{"kind":"textbox","id":"sh/7m98ru9g","slide":6,"text":"Client","textPreview":"Client","textChars":6,"textLines":1,"bbox":[56,208,150,30]}
+{"kind":"textbox","id":"sh/oryp8fah","slide":6,"text":"Flutter · Riverpod · Dio · SSE/STOMP","textPreview":"Flutter · Riverpod · Dio · SSE/STOMP","textChars":36,"textLines":1,"bbox":[246,208,430,42]}
+{"kind":"textbox","id":"sh/pc76hkr2","slide":6,"text":"Một codebase cho Web kiosk và Android","textPreview":"Một codebase cho Web kiosk và Android","textChars":37,"textLines":1,"bbox":[712,208,500,42]}
+{"kind":"textbox","id":"sh/h4bupgn6","slide":6,"text":"Governance","textPreview":"Governance","textChars":10,"textLines":1,"bbox":[56,278,150,30]}
+{"kind":"textbox","id":"sh/w32twb6l","slide":6,"text":"Java 21 · Spring Boot · Security · JPA","textPreview":"Java 21 · Spring Boot · Security · JPA","textChars":38,"textLines":1,"bbox":[246,278,430,42]}
+{"kind":"textbox","id":"sh/v2tcn650","slide":6,"text":"RBAC, version, audit, API và single-writer","textPreview":"RBAC, version, audit, API và single-writer","textChars":42,"textLines":1,"bbox":[712,278,500,42]}
+{"kind":"shape","id":"sh/u1kbu1ov","slide":6,"bbox":[48,342,1184,58]}
+{"kind":"textbox","id":"sh/5svutgni","slide":6,"text":"AI","textPreview":"AI","textChars":2,"textLines":1,"bbox":[56,348,150,30]}
+{"kind":"textbox","id":"sh/47mt0b6x","slide":6,"text":"Python · FastAPI · Celery · PyMuPDF · PaddleOCR","textPreview":"Python · FastAPI · Celery · PyMuPDF · PaddleOCR","textChars":47,"textLines":1,"bbox":[246,348,430,42]}
+{"kind":"textbox","id":"sh/j6dcr65c","slide":6,"text":"OCR, RAG, vision và xử lý nền","textPreview":"OCR, RAG, vision và xử lý nền","textChars":29,"textLines":1,"bbox":[712,348,500,42]}
+{"kind":"shape","id":"sh/i54bylor","slide":6,"bbox":[48,412,1184,58]}
+{"kind":"textbox","id":"sh/twfux0ne","slide":6,"text":"Retrieval","textPreview":"Retrieval","textChars":9,"textLines":1,"bbox":[56,418,150,30]}
+{"kind":"textbox","id":"sh/svmt4v6t","slide":6,"text":"multilingual-e5 · BM25 · Qdrant","textPreview":"multilingual-e5 · BM25 · Qdrant","textChars":31,"textLines":1,"bbox":[246,418,430,42]}
+{"kind":"textbox","id":"sh/cbe5g3ih","slide":6,"text":"Bắt cả ý nghĩa lẫn mã máy / mã lỗi chính xác","textPreview":"Bắt cả ý nghĩa lẫn mã máy / mã lỗi chính xác","textChars":44,"textLines":1,"bbox":[712,418,500,42]}
+{"kind":"textbox","id":"sh/dcnm98zm","slide":6,"text":"Storage","textPreview":"Storage","textChars":7,"textLines":1,"bbox":[56,488,150,30]}
+{"kind":"textbox","id":"sh/qpwnet0b","slide":6,"text":"PostgreSQL · MinIO · Redis","textPreview":"PostgreSQL · MinIO · Redis","textChars":26,"textLines":1,"bbox":[246,488,430,42]}
+{"kind":"textbox","id":"sh/bq547yhw","slide":6,"text":"Tách metadata, file nhị phân và hàng đợi","textPreview":"Tách metadata, file nhị phân và hàng đợi","textChars":40,"textLines":1,"bbox":[712,488,500,42]}
+{"kind":"textbox","id":"sh/0fy5k3id","slide":6,"text":"Ops","textPreview":"Ops","textChars":3,"textLines":1,"bbox":[56,558,150,30]}
+{"kind":"textbox","id":"sh/lg76d8zy","slide":6,"text":"Docker Compose · Nginx · GitHub Actions","textPreview":"Docker Compose · Nginx · GitHub Actions","textChars":39,"textLines":1,"bbox":[246,558,430,42]}
+{"kind":"textbox","id":"sh/ydgnit07","slide":6,"text":"Đóng gói, triển khai nội bộ và CI/CD","textPreview":"Đóng gói, triển khai nội bộ và CI/CD","textChars":36,"textLines":1,"bbox":[712,558,500,42]}
+{"kind":"shape","id":"sh/zep4byhs","slide":6,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/gju58ji9","slide":6,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/1k3mhozu","slide":6,"text":"6/17","textPreview":"6/17","textChars":4,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/x8f69ofe","slide":6,"text":"Không đọc danh sách công nghệ. Nêu tiêu chí chọn: phân tách trách nhiệm, chạy on-premise, chịu lỗi và đủ nhẹ cho hạ tầng edge.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\README.md — repository stack\n- C:\\project\\new\\dcid-web\\docker-compose.yml — deployed services\n- C:\\project\\new\\dcid-web\\docs\\ARCHITECTURE.md — technology decisions"}
+{"kind":"slide","id":"sl/gnmp4jqx","slide":7,"title":"04 · TECHNOLOGY","textShapes":4}
+{"kind":"textbox","id":"sh/p0zmlk7u","slide":7,"text":"04 · TECHNOLOGY","textPreview":"04 · TECHNOLOGY","textChars":15,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/cb2tkvap","slide":7,"text":"Kiến trúc công nghệ: mỗi tầng một trách nhiệm","textPreview":"Kiến trúc công nghệ: mỗi tầng một trách nhiệm","textChars":45,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/d4f2t0nm","slide":7,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/e5o32lor","slide":7,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/f6xkvq5c","slide":7,"text":"7/17","textPreview":"7/17","textChars":4,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"image","id":"im/bapkral4","slide":7,"name":"","alt":"Sơ đồ kiến trúc DCID độ phân giải cao, dựng lại theo ảnh tham chiếu số 1","bbox":[223,145,834,505]}
+{"kind":"notes","id":"nt/gnmp4jqx","slide":7,"text":"Ảnh kiến trúc được dựng lại ở độ phân giải cao theo bố cục và màu của ảnh tham chiếu; không phóng trực tiếp screenshot 676x617 nên chữ và đường nối không bị mờ.\n\n[Sources]\n- C:/Users/HACOM/AppData/Local/Temp/codex-clipboard-c1ae28ef-1139-4846-b87b-6a3071bf3373.png (visual reference)\n- C:/Users/HACOM/Downloads/report_presentation (1).md (Mermaid 2.1, lines 45-98)\n- C:/project/new/dcid-web/docs/ARCHITECTURE.md"}
+{"kind":"slide","id":"sl/fu1gfa1s","slide":8,"title":"05 · USE CASES","textShapes":12}
+{"kind":"textbox","id":"sh/ehgvihwr","slide":8,"text":"05 · USE CASES","textPreview":"05 · USE CASES","textChars":14,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/18byd4zy","slide":8,"text":"Hai phân hệ, hai mức tin cậy và vòng đời dữ liệu khác nhau","textPreview":"Hai phân hệ, hai mức tin cậy và vòng đời dữ liệu khác nhau","textChars":58,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/g72x4zyd","slide":8,"bbox":[56,160,552,430]}
+{"kind":"textbox","id":"sh/ri9g7uhw","slide":8,"text":"A · KHO TÀI LIỆU CHÍNH THỨC","textPreview":"A · KHO TÀI LIỆU CHÍNH THỨC","textChars":27,"textLines":1,"bbox":[88,194,460,28]}
+{"kind":"textbox","id":"sh/6h0fypgb","slide":8,"text":"Dùng hằng ngày trong nhà máy","textPreview":"Dùng hằng ngày trong nhà máy","textChars":28,"textLines":1,"bbox":[88,240,460,42]}
+{"kind":"textbox","id":"sh/tkby9kzm","slide":8,"text":"• Đăng nhập JWT và lọc theo RBAC\n• Upload SOP / manual / bản vẽ\n• Quản lý version và trạng thái ACTIVE\n• Hỏi đáp RAG + trích dẫn\n• Ghi query log và audit","textPreview":"• Đăng nhập JWT và lọc theo RBAC | • Upload SOP / manual / bản vẽ | • Quản lý version và trạng thái ACTIVE | • Hỏi đáp RAG + trích dẫn | ...","textChars":153,"textLines":5,"bbox":[88,316,450,190]}
+{"kind":"textbox","id":"sh/sjix0zy1","slide":8,"text":"CORE BUSINESS","textPreview":"CORE BUSINESS","textChars":13,"textLines":1,"bbox":[88,532,162,30]}
+{"kind":"shape","id":"sh/je9g3ahk","slide":8,"bbox":[648,160,576,430]}
+{"kind":"textbox","id":"sh/id0fu50z","slide":8,"text":"B · GUEST / ASK","textPreview":"B · GUEST / ASK","textChars":15,"textLines":1,"bbox":[682,194,470,28]}
+{"kind":"textbox","id":"sh/o7ydoret","slide":8,"text":"Trải nghiệm nhanh với tài liệu tạm","textPreview":"Trải nghiệm nhanh với tài liệu tạm","textChars":34,"textLines":1,"bbox":[682,240,470,42]}
+{"kind":"textbox","id":"sh/98rehwve","slide":8,"text":"• Không cần tài khoản\n• Session token ngẫu nhiên\n• File và vector cô lập theo session\n• TTL 2 giờ; cleanup định kỳ\n• Không trộn vào kho chính thức","textPreview":"• Không cần tài khoản | • Session token ngẫu nhiên | • File và vector cô lập theo session | • TTL 2 giờ; cleanup định kỳ | • Không trộn v...","textChars":146,"textLines":5,"bbox":[682,316,470,190]}
+{"kind":"textbox","id":"sh/m5gvmhwn","slide":8,"text":"KÊNH DÙNG THỬ","textPreview":"KÊNH DÙNG THỬ","textChars":13,"textLines":1,"bbox":[682,532,162,30]}
+{"kind":"shape","id":"sh/n6pwfmd8","slide":8,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/0jydkreh","slide":8,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/1k7edwv2","slide":8,"text":"8/17","textPreview":"8/17","textChars":4,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/fu1gfa1s","slide":8,"text":"Use case A chứng minh governance và giá trị vận hành. Use case B chứng minh cô lập dữ liệu và trải nghiệm không cần tài khoản.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\README.md — official and guest workflows\n- C:\\Users\\HACOM\\Downloads\\report_presentation (1).md — dual-system workflows"}
+{"kind":"slide","id":"sl/udsvah03","slide":9,"title":"06 · MAIN FLOW","textShapes":22}
+{"kind":"textbox","id":"sh/apofe5of","slide":9,"text":"06 · MAIN FLOW","textPreview":"06 · MAIN FLOW","textChars":14,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/1cfmhgne","slide":9,"text":"Tài liệu được biến thành tri thức có vị trí nguồn","textPreview":"Tài liệu được biến thành tri thức có vị trí nguồn","textChars":49,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/0b65obm9","slide":9,"bbox":[222,300,48,30]}
+{"kind":"shape","id":"sh/nex4jq5k","slide":9,"bbox":[438,300,48,30]}
+{"kind":"shape","id":"sh/mdonql4z","slide":9,"bbox":[654,300,48,30]}
+{"kind":"shape","id":"sh/9gzml0nq","slide":9,"bbox":[870,300,48,30]}
+{"kind":"textbox","id":"sh/ofq5svm5","slide":9,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[56,206,52,26]}
+{"kind":"shape","id":"sh/bih4na5w","slide":9,"bbox":[56,248,166,162]}
+{"kind":"textbox","id":"sh/ah8nu54b","slide":9,"text":"UPLOAD","textPreview":"UPLOAD","textChars":6,"textLines":1,"bbox":[74,270,130,28]}
+{"kind":"textbox","id":"sh/oza1gfyh","slide":9,"text":"PDF vào MinIO\nVersion = PROCESSING","textPreview":"PDF vào MinIO | Version = PROCESSING","textChars":34,"textLines":2,"bbox":[72,320,134,68]}
+{"kind":"textbox","id":"sh/p0ji9kf2","slide":9,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[272,206,52,26]}
+{"kind":"shape","id":"sh/2xsjepgb","slide":9,"bbox":[272,248,166,162]}
+{"kind":"textbox","id":"sh/3y107axw","slide":9,"text":"EXTRACT","textPreview":"EXTRACT","textChars":7,"textLines":1,"bbox":[290,270,130,28]}
+{"kind":"textbox","id":"sh/cnu1kzyd","slide":9,"text":"Native text hoặc\nPaddleOCR 200 DPI","textPreview":"Native text hoặc | PaddleOCR 200 DPI","textChars":34,"textLines":2,"bbox":[288,320,134,68]}
+{"kind":"textbox","id":"sh/do3id4fy","slide":9,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[488,206,52,26]}
+{"kind":"shape","id":"sh/qlcjipgn","slide":9,"bbox":[488,248,166,162]}
+{"kind":"textbox","id":"sh/bml0buxs","slide":9,"text":"CHUNK","textPreview":"CHUNK","textChars":5,"textLines":1,"bbox":[506,270,130,28]}
+{"kind":"textbox","id":"sh/0ru1ozyp","slide":9,"text":"Giữ bảng + Bbox\n+ snippet nguồn","textPreview":"Giữ bảng + Bbox | + snippet nguồn","textChars":31,"textLines":2,"bbox":[504,320,134,68]}
+{"kind":"textbox","id":"sh/lsn2h4fa","slide":9,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[704,206,52,26]}
+{"kind":"shape","id":"sh/98ji147e","slide":9,"bbox":[704,248,166,162]}
+{"kind":"textbox","id":"sh/87a18zqt","slide":9,"text":"EMBED","textPreview":"EMBED","textChars":5,"textLines":1,"bbox":[722,270,130,28]}
+{"kind":"textbox","id":"sh/76h0zup8","slide":9,"text":"multilingual-e5\nvector 384 chiều","textPreview":"multilingual-e5 | vector 384 chiều","textChars":32,"textLines":2,"bbox":[720,320,134,68]}
+{"kind":"textbox","id":"sh/ml8j6p8n","slide":9,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[920,206,52,26]}
+{"kind":"shape","id":"sh/hcji5o7a","slide":9,"bbox":[920,248,166,162]}
+{"kind":"textbox","id":"sh/wba1cjqp","slide":9,"text":"INDEX","textPreview":"INDEX","textChars":5,"textLines":1,"bbox":[938,270,130,28]}
+{"kind":"textbox","id":"sh/va103ep4","slide":9,"text":"Qdrant + payload\ncallback READY","textPreview":"Qdrant + payload | callback READY","textChars":31,"textLines":2,"bbox":[936,320,134,68]}
+{"kind":"shape","id":"sh/u9sja98z","slide":9,"bbox":[56,470,1030,112]}
+{"kind":"textbox","id":"sh/xgzitk76","slide":9,"text":"Điểm khác biệt","textPreview":"Điểm khác biệt","textChars":14,"textLines":1,"bbox":[80,492,180,28]}
+{"kind":"textbox","id":"sh/cf6h0fql","slide":9,"text":"Mỗi chunk giữ page_no + bbox + snippet, nên câu trả lời có thể mở đúng trang và khoanh đúng vùng bằng chứng.","textPreview":"Mỗi chunk giữ page_no + bbox + snippet, nên câu trả lời có thể mở đúng trang và khoanh đúng vùng bằng chứng.","textChars":108,"textLines":1,"bbox":[276,488,780,58]}
+{"kind":"textbox","id":"sh/2l4faloj","slide":9,"text":"ASYNC\nCelery + Redis","textPreview":"ASYNC | Celery + Redis","textChars":20,"textLines":2,"bbox":[1108,470,116,112]}
+{"kind":"shape","id":"sh/nmdg3q54","slide":9,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/onmxcv69","slide":9,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/pofy50nu","slide":9,"text":"9/17","textPreview":"9/17","textChars":4,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/udsvah03","slide":9,"text":"Đi theo 5 bước. Nhấn mạnh ingestion chạy nền để upload không phải chờ OCR/embedding, và metadata không gian được giữ xuyên suốt.\n\n[Sources]\n- C:\\Users\\HACOM\\Downloads\\report_presentation (1).md — ingestion sequence\n- C:\\project\\new\\dcid-web\\dcid-ai\\app\\pipeline\\ocr.py — hybrid extraction\n- C:\\project\\new\\dcid-web\\docs\\API-CONTRACT.md — ingest callback"}
+{"kind":"slide","id":"sl/m90b6t0r","slide":10,"title":"06 · AI INGESTION","textShapes":4}
+{"kind":"textbox","id":"sh/exsrmhsf","slide":10,"text":"06 · AI INGESTION","textPreview":"06 · AI INGESTION","textChars":17,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/xc3mho32","slide":10,"text":"AI ingest chạy bất đồng bộ, có callback trạng thái","textPreview":"AI ingest chạy bất đồng bộ, có callback trạng thái","textChars":50,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/ru18r2to","slide":10,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/cva9k7a9","slide":10,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/dwjqtcbu","slide":10,"text":"10/17","textPreview":"10/17","textChars":5,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"image","id":"im/g7axozap","slide":10,"name":"","bbox":[50,245.34,1180,304.33]}
+{"kind":"notes","id":"nt/m90b6t0r","slide":10,"text":"Sơ đồ render từ Mermaid sequence ingestion. Backend trả nhận yêu cầu sớm; Celery xử lý OCR, chunk, embedding và Qdrant trước khi callback READY/FAILED.\n\n[Sources]\n- C:/Users/HACOM/Downloads/report_presentation (1).md (Mermaid A2, lines 277-306)\n- C:/project/new/dcid-web/docs/ai_processing.puml"}
+{"kind":"slide","id":"sl/jetc3ut0","slide":11,"title":"06 · MAIN FLOW","textShapes":21}
+{"kind":"textbox","id":"sh/03qxg7mx","slide":11,"text":"06 · MAIN FLOW","textPreview":"06 · MAIN FLOW","textChars":14,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/xcryxg7y","slide":11,"text":"Câu hỏi chỉ đi tới LLM sau khi qua quyền và bằng chứng","textPreview":"Câu hỏi chỉ đi tới LLM sau khi qua quyền và bằng chứng","textChars":54,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/wbih4b6d","slide":11,"bbox":[202,276,44,28]}
+{"kind":"shape","id":"sh/n69grmpw","slide":11,"bbox":[396,276,44,28]}
+{"kind":"shape","id":"sh/250zy18b","slide":11,"bbox":[590,276,44,28]}
+{"kind":"shape","id":"sh/98rytw72","slide":11,"bbox":[784,276,44,28]}
+{"kind":"shape","id":"sh/o7ih0r6h","slide":11,"bbox":[978,276,44,28]}
+{"kind":"shape","id":"sh/72t03qp0","slide":11,"bbox":[58,224,144,154]}
+{"kind":"textbox","id":"sh/61kzalof","slide":11,"text":"QUESTION","textPreview":"QUESTION","textChars":8,"textLines":1,"bbox":[70,246,120,24]}
+{"kind":"textbox","id":"sh/ofqtgnyt","slide":11,"text":"Câu hỏi +\nmachine code","textPreview":"Câu hỏi + | machine code","textChars":22,"textLines":2,"bbox":[70,292,120,60]}
+{"kind":"shape","id":"sh/9gza9sze","slide":11,"bbox":[252,224,144,154]}
+{"kind":"textbox","id":"sh/mdobedg3","slide":11,"text":"POLICY","textPreview":"POLICY","textChars":6,"textLines":1,"bbox":[264,246,120,24]}
+{"kind":"textbox","id":"sh/nehs7iho","slide":11,"text":"RBAC + chỉ\nversion ACTIVE","textPreview":"RBAC + chỉ | version ACTIVE","textChars":25,"textLines":2,"bbox":[264,292,120,60]}
+{"kind":"shape","id":"sh/0b6tc3yx","slide":11,"bbox":[446,224,144,154]}
+{"kind":"textbox","id":"sh/1cfa58zi","slide":11,"text":"RETRIEVE","textPreview":"RETRIEVE","textChars":8,"textLines":1,"bbox":[458,246,120,24]}
+{"kind":"textbox","id":"sh/epobatgr","slide":11,"text":"Dense + BM25\nTop-K evidence","textPreview":"Dense + BM25 | Top-K evidence","textChars":27,"textLines":2,"bbox":[458,292,120,60]}
+{"kind":"shape","id":"sh/zaxs3yhc","slide":11,"bbox":[640,224,144,154]}
+{"kind":"textbox","id":"sh/cn6t83y1","slide":11,"text":"GUARD","textPreview":"GUARD","textChars":5,"textLines":1,"bbox":[652,246,120,24]}
+{"kind":"textbox","id":"sh/dofa18z6","slide":11,"text":"Score gate +\nkiểm số liệu","textPreview":"Score gate + | kiểm số liệu","textChars":25,"textLines":2,"bbox":[652,292,120,60]}
+{"kind":"shape","id":"sh/tsnip0ny","slide":11,"bbox":[834,224,144,154]}
+{"kind":"textbox","id":"sh/87ehgv6d","slide":11,"text":"GENERATE","textPreview":"GENERATE","textChars":8,"textLines":1,"bbox":[846,246,120,24]}
+{"kind":"textbox","id":"sh/7650nq5s","slide":11,"text":"Local LLM/VLM\ntrả lời theo context","textPreview":"Local LLM/VLM | trả lời theo context","textChars":34,"textLines":2,"bbox":[846,292,120,60]}
+{"kind":"shape","id":"sh/65wzelo7","slide":11,"bbox":[1028,224,144,154]}
+{"kind":"textbox","id":"sh/l43ilgn2","slide":11,"text":"PROVE","textPreview":"PROVE","textChars":5,"textLines":1,"bbox":[1040,246,120,24]}
+{"kind":"textbox","id":"sh/k3uhcb6h","slide":11,"text":"Citation + audit\nhoặc từ chối","textPreview":"Citation + audit | hoặc từ chối","textChars":29,"textLines":2,"bbox":[1040,292,120,60]}
+{"kind":"shape","id":"sh/j2lgjq5w","slide":11,"bbox":[58,438,552,126]}
+{"kind":"textbox","id":"sh/y1czalob","slide":11,"text":"Khi bằng chứng đủ","textPreview":"Khi bằng chứng đủ","textChars":17,"textLines":1,"bbox":[86,462,230,26]}
+{"kind":"textbox","id":"sh/p07ixkn6","slide":11,"text":"Trả lời + confidence + citations\n→ người dùng mở trang nguồn để đối chiếu","textPreview":"Trả lời + confidence + citations | → người dùng mở trang nguồn để đối chiếu","textChars":73,"textLines":2,"bbox":[86,500,480,52]}
+{"kind":"shape","id":"sh/4zyhofml","slide":11,"bbox":[670,438,554,126]}
+{"kind":"textbox","id":"sh/m58fih43","slide":11,"text":"Khi bằng chứng yếu","textPreview":"Khi bằng chứng yếu","textChars":18,"textLines":1,"bbox":[698,462,230,26]}
+{"kind":"textbox","id":"sh/n61wbmlo","slide":11,"text":"Khóa hoặc gắn nhãn câu trả lời tham khảo\n→ yêu cầu kỹ sư kiểm tra bản vẽ gốc","textPreview":"Khóa hoặc gắn nhãn câu trả lời tham khảo | → yêu cầu kỹ sư kiểm tra bản vẽ gốc","textChars":76,"textLines":2,"bbox":[698,500,480,52]}
+{"kind":"textbox","id":"sh/o7axk7m9","slide":11,"text":"Thông điệp an toàn: giảm câu trả lời thiếu căn cứ — không tuyên bố AI không bao giờ sai.","textPreview":"Thông điệp an toàn: giảm câu trả lời thiếu căn cứ — không tuyên bố AI không bao giờ sai.","textChars":88,"textLines":1,"bbox":[58,612,1166,32]}
+{"kind":"shape","id":"sh/98jedc3u","slide":11,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/eh8fex47","slide":11,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/z2hw72lc","slide":11,"text":"11/17","textPreview":"11/17","textChars":5,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/jetc3ut0","slide":11,"text":"Đây là slide quan trọng nhất. Trình bày theo thứ tự: policy trước retrieval, guardrail trước generation, và luôn có bằng chứng hoặc từ chối. Không dùng tuyên bố tuyệt đối '0% hallucination'.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\dcid-backend\\src\\main\\java\\vn\\dcid\\service\\QueryService.java — allowed ACTIVE versions by role\n- C:\\project\\new\\dcid-web\\dcid-ai\\app\\services\\query_service.py — RAG orchestration\n- C:\\project\\new\\dcid-web\\dcid-ai\\app\\pipeline\\guardrails.py — threshold and numeric rules"}
+{"kind":"slide","id":"sl/8f2psfyx","slide":12,"title":"06 · AI QUERY","textShapes":4}
+{"kind":"textbox","id":"sh/ojutgjah","slide":12,"text":"06 · AI QUERY","textPreview":"06 · AI QUERY","textChars":13,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/1gbm9s3a","slide":12,"text":"Câu hỏi qua quyền và guardrail trước khi sinh đáp án","textPreview":"Câu hỏi qua quyền và guardrail trước khi sinh đáp án","textChars":52,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/xonutobe","slide":12,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/mhcbe9sr","slide":12,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/nilsnetc","slide":12,"text":"12/17","textPreview":"12/17","textChars":5,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"image","id":"im/ulw3mxc7","slide":12,"name":"","alt":"Sơ đồ guardrail ba lớp độ phân giải cao, dựng lại theo ảnh tham chiếu số 2","bbox":[405,145,470,505]}
+{"kind":"notes","id":"nt/8f2psfyx","slide":12,"text":"Ảnh guardrail được dựng lại ở độ phân giải cao theo bố cục dọc và màu tím nhạt của ảnh tham chiếu; quan hệ và điều kiện lấy từ Mermaid trong báo cáo.\n\n[Sources]\n- C:/Users/HACOM/AppData/Local/Temp/codex-clipboard-34d0134c-1f5c-4e04-b73f-5991dfeedaf8.png (visual reference)\n- C:/Users/HACOM/Downloads/report_presentation (1).md (Mermaid 5.4, lines 384-399)\n- C:/project/new/dcid-web/docs/ai_sequence.puml"}
+{"kind":"slide","id":"sl/hgzapcr6","slide":13,"title":"07 · DATABASE DESIGN","textShapes":26}
+{"kind":"textbox","id":"sh/z25kne5g","slide":13,"text":"07 · DATABASE DESIGN","textPreview":"07 · DATABASE DESIGN","textChars":20,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/q50nydsj","slide":13,"text":"PostgreSQL giữ nghiệp vụ; file và vector tách riêng","textPreview":"PostgreSQL giữ nghiệp vụ; file và vector tách riêng","textChars":51,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/bq9orito","slide":13,"bbox":[222,280,96,0]}
+{"kind":"shape","id":"sh/o3i5w3ad","slide":13,"bbox":[510,280,94,0]}
+{"kind":"shape","id":"sh/p4r6p8by","slide":13,"bbox":[414,322,0,86]}
+{"kind":"shape","id":"sh/21gnuts7","slide":13,"bbox":[700,322,0,86]}
+{"kind":"shape","id":"sh/32ponyts","slide":13,"bbox":[892,280,94,0]}
+{"kind":"shape","id":"sh/gzy5s3a1","slide":13,"bbox":[1082,322,0,86]}
+{"kind":"shape","id":"sh/1076lobm","slide":13,"bbox":[56,228,166,94]}
+{"kind":"textbox","id":"sh/hcfy9k3u","slide":13,"text":"USERS","textPreview":"USERS","textChars":5,"textLines":1,"bbox":[70,246,138,24]}
+{"kind":"textbox","id":"sh/gb6x0zm9","slide":13,"text":"role · status","textPreview":"role · status","textChars":13,"textLines":1,"bbox":[68,280,142,26]}
+{"kind":"shape","id":"sh/vaxg7ulo","slide":13,"bbox":[318,228,192,94]}
+{"kind":"textbox","id":"sh/u9ofyp43","slide":13,"text":"DOCUMENTS","textPreview":"DOCUMENTS","textChars":9,"textLines":1,"bbox":[332,246,164,24]}
+{"kind":"textbox","id":"sh/t8fy5k3i","slide":13,"text":"machine_code · min_role","textPreview":"machine_code · min_role","textChars":23,"textLines":1,"bbox":[330,280,168,26]}
+{"kind":"shape","id":"sh/876xwfmx","slide":13,"bbox":[604,228,192,94]}
+{"kind":"textbox","id":"sh/7mdg3als","slide":13,"text":"VERSIONS","textPreview":"VERSIONS","textChars":8,"textLines":1,"bbox":[618,246,164,24]}
+{"kind":"textbox","id":"sh/6l4fu547","slide":13,"text":"status · version_no","textPreview":"status · version_no","textChars":19,"textLines":1,"bbox":[616,280,168,26]}
+{"kind":"shape","id":"sh/lkvy103m","slide":13,"bbox":[986,228,190,94]}
+{"kind":"textbox","id":"sh/kjmxsfm1","slide":13,"text":"QUERY_LOGS","textPreview":"QUERY_LOGS","textChars":10,"textLines":1,"bbox":[1000,246,162,24]}
+{"kind":"textbox","id":"sh/cnqh8fux","slide":13,"text":"confidence · locked","textPreview":"confidence · locked","textChars":19,"textLines":1,"bbox":[998,280,166,26]}
+{"kind":"shape","id":"sh/xozyhkbi","slide":13,"bbox":[318,408,192,94]}
+{"kind":"textbox","id":"sh/q18f65cr","slide":13,"text":"AUDIT_LOGS","textPreview":"AUDIT_LOGS","textChars":10,"textLines":1,"bbox":[332,426,164,24]}
+{"kind":"textbox","id":"sh/bmhgfatc","slide":13,"text":"actor · action · detail","textPreview":"actor · action · detail","textChars":23,"textLines":1,"bbox":[330,460,168,26]}
+{"kind":"shape","id":"sh/oz6x4vul","slide":13,"bbox":[604,408,192,94]}
+{"kind":"textbox","id":"sh/p0zyd0b6","slide":13,"text":"PAGES","textPreview":"PAGES","textChars":5,"textLines":1,"bbox":[618,426,164,24]}
+{"kind":"textbox","id":"sh/2xof2lcv","slide":13,"text":"page_no · image_key","textPreview":"page_no · image_key","textChars":19,"textLines":1,"bbox":[616,460,168,26]}
+{"kind":"shape","id":"sh/3yxgbqdg","slide":13,"bbox":[986,408,190,94]}
+{"kind":"textbox","id":"sh/8vahgzu5","slide":13,"text":"GUEST SESSIONS","textPreview":"GUEST SESSIONS","textChars":14,"textLines":1,"bbox":[1000,426,162,24]}
+{"kind":"textbox","id":"sh/9wjyp4bq","slide":13,"text":"token_hash · expires_at","textPreview":"token_hash · expires_at","textChars":23,"textLines":1,"bbox":[998,460,166,26]}
+{"kind":"textbox","id":"sh/jqlkfyds","slide":13,"text":"1 → N","textPreview":"1 → N","textChars":5,"textLines":1,"bbox":[236,258,64,22]}
+{"kind":"textbox","id":"sh/ipcjmtw7","slide":13,"text":"1 → N","textPreview":"1 → N","textChars":5,"textLines":1,"bbox":[522,258,64,22]}
+{"kind":"textbox","id":"sh/5cn2h8vy","slide":13,"text":"N → 1","textPreview":"N → 1","textChars":5,"textLines":1,"bbox":[904,258,64,22]}
+{"kind":"textbox","id":"sh/4re1o3ed","slide":13,"text":"Ngoài PostgreSQL","textPreview":"Ngoài PostgreSQL","textChars":16,"textLines":1,"bbox":[56,558,240,26]}
+{"kind":"textbox","id":"sh/re5kjydo","slide":13,"text":"MINIO · PDF / ảnh","textPreview":"MINIO · PDF / ảnh","textChars":17,"textLines":1,"bbox":[298,554,230,30]}
+{"kind":"textbox","id":"sh/6dwjqtw3","slide":13,"text":"QDRANT · vector + bbox","textPreview":"QDRANT · vector + bbox","textChars":22,"textLines":1,"bbox":[548,554,270,30]}
+{"kind":"textbox","id":"sh/tgn2l8vu","slide":13,"text":"REDIS · queue / cache","textPreview":"REDIS · queue / cache","textChars":21,"textLines":1,"bbox":[838,554,250,30]}
+{"kind":"textbox","id":"sh/sfe1s3e9","slide":13,"text":"Nguyên tắc: chỉ Backend ghi PostgreSQL","textPreview":"Nguyên tắc: chỉ Backend ghi PostgreSQL","textChars":38,"textLines":1,"bbox":[56,620,1168,28]}
+{"kind":"shape","id":"sh/7i107edk","slide":13,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/mhsje9wz","slide":13,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/y1wju94v","slide":13,"text":"13/17","textPreview":"13/17","textChars":5,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/hgzapcr6","slide":13,"text":"Không đọc toàn bộ schema. Nêu ba quan hệ cốt lõi: document–version, version–page, query–matched version; sau đó giải thích polyglot persistence.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\docs\\ERD.md — relational schema and storage separation\n- C:\\project\\new\\dcid-web\\dcid-backend\\src\\main\\resources\\db\\migration — implemented schema"}
+{"kind":"slide","id":"sl/6lsnupw7","slide":14,"title":"07 · DATABASE DESIGN","textShapes":4}
+{"kind":"textbox","id":"sh/uhw3axcj","slide":14,"text":"07 · DATABASE DESIGN","textPreview":"07 · DATABASE DESIGN","textChars":20,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/xc7eds76","slide":14,"text":"ERD quan hệ: version là trục của tài liệu và truy vấn","textPreview":"ERD quan hệ: version là trục của tài liệu và truy vấn","textChars":53,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/6l0nqxkf","slide":14,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/7m94j210","slide":14,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/fi5432t4","slide":14,"text":"14/17","textPreview":"14/17","textChars":5,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"image","id":"im/yh8vi5cj","slide":14,"name":"","bbox":[50,172.03,1180,450.94]}
+{"kind":"notes","id":"nt/6lsnupw7","slide":14,"text":"ERD render từ Mermaid trong báo cáo và docs/ERD.md. Trục chính là documents → document_versions → document_pages; query_logs và work_orders cùng tham chiếu version.\n\n[Sources]\n- C:/Users/HACOM/Downloads/report_presentation (1).md (Mermaid 3.2, lines 123-220)\n- C:/project/new/dcid-web/docs/ERD.md"}
+{"kind":"slide","id":"sl/vaxsvy10","slide":15,"title":"07 · DATABASE DESIGN","textShapes":4}
+{"kind":"textbox","id":"sh/ehsfyt43","slide":15,"text":"07 · DATABASE DESIGN","textPreview":"07 · DATABASE DESIGN","textChars":20,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/547mhg3m","slide":15,"text":"Vòng đời version kiểm soát tài liệu hiệu lực","textPreview":"Vòng đời version kiểm soát tài liệu hiệu lực","textChars":44,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/1kjyt83e","slide":15,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/gjax03m9","slide":15,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/fi1grylo","slide":15,"text":"15/17","textPreview":"15/17","textChars":5,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"image","id":"im/e9wnahcf","slide":15,"name":"","bbox":[50,228.45,1180,338.09]}
+{"kind":"notes","id":"nt/vaxsvy10","slide":15,"text":"State machine render từ Mermaid. Chỉ version ACTIVE được retrieval và database bảo đảm tối đa một ACTIVE trên mỗi document.\n\n[Sources]\n- C:/Users/HACOM/Downloads/report_presentation (1).md (Mermaid 3.3, lines 224-235)\n- C:/project/new/dcid-web/docs/ERD.md (section 4)"}
+{"kind":"slide","id":"sl/gny5sjyp","slide":16,"title":"08 · DELIVERY STATUS","textShapes":10}
+{"kind":"textbox","id":"sh/nqlg3a5k","slide":16,"text":"08 · DELIVERY STATUS","textPreview":"08 · DELIVERY STATUS","textChars":20,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/8z2h8bq1","slide":16,"text":"Lõi end-to-end đã chạy; đánh giá khoa học còn thiếu","textPreview":"Lõi end-to-end đã chạy; đánh giá khoa học còn thiếu","textChars":51,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/9kby1g7m","slide":16,"bbox":[56,158,552,428]}
+{"kind":"textbox","id":"sh/ytkf2h8j","slide":16,"text":"ĐÃ LÀM ĐƯỢC","textPreview":"ĐÃ LÀM ĐƯỢC","textChars":11,"textLines":1,"bbox":[88,190,470,28]}
+{"kind":"textbox","id":"sh/zutgvm94","slide":16,"text":"✓ Auth/RBAC, tài liệu/version, audit\n✓ Upload → OCR → chunk → embed → index\n✓ RAG thật + local LLM/VLM + citations\n✓ Flutter Web/Android + SSE + Snap & Ask\n✓ Docker, Nginx, CI/CD và deploy nội bộ","textPreview":"✓ Auth/RBAC, tài liệu/version, audit | ✓ Upload → OCR → chunk → embed → index | ✓ RAG thật + local LLM/VLM + citations | ✓ Flutter Web/An...","textChars":195,"textLines":5,"bbox":[88,244,456,206]}
+{"kind":"textbox","id":"sh/kv2h4rqp","slide":16,"text":"OCR spike nhỏ: EN 100% · VI 89,6%\n(8 câu; chưa phải benchmark cuối)","textPreview":"OCR spike nhỏ: EN 100% · VI 89,6% | (8 câu; chưa phải benchmark cuối)","textChars":67,"textLines":2,"bbox":[88,476,456,78]}
+{"kind":"shape","id":"sh/lwbyxwra","slide":16,"bbox":[648,158,576,428]}
+{"kind":"textbox","id":"sh/ip4zel83","slide":16,"text":"CHƯA HOÀN THIỆN","textPreview":"CHƯA HOÀN THIỆN","textChars":15,"textLines":1,"bbox":[682,190,480,28]}
+{"kind":"textbox","id":"sh/3qdg7qpo","slide":16,"text":"○ Dataset VI/EN và degradation set\n○ Eval set + harness đo Recall / faithfulness\n○ OCR preprocessing để giảm lỗi dấu tiếng Việt\n○ Upload progress thời gian thực hoàn chỉnh\n○ Pilot/UAT trên một dây chuyền thực tế","textPreview":"○ Dataset VI/EN và degradation set | ○ Eval set + harness đo Recall / faithfulness | ○ OCR preprocessing để giảm lỗi dấu tiếng Việt | ○ U...","textChars":211,"textLines":5,"bbox":[682,244,474,206]}
+{"kind":"textbox","id":"sh/fm1gzq5o","slide":16,"text":"Không công bố Recall 95,4% hay 0% hallucination\nkhi chưa có eval set tái lập","textPreview":"Không công bố Recall 95,4% hay 0% hallucination | khi chưa có eval set tái lập","textChars":76,"textLines":2,"bbox":[682,476,474,78]}
+{"kind":"shape","id":"sh/e1sf65o3","slide":16,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/1ojy10ne","slide":16,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/gnax8v6t","slide":16,"text":"16/17","textPreview":"16/17","textChars":5,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/gny5sjyp","slide":16,"text":"Tách rõ implemented và measured. Đây là cách trả lời an toàn nếu hội đồng hỏi 'số liệu lấy ở đâu'. Chỉ dùng baseline có mô tả mẫu đo.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\docs\\ROADMAP.md — verified implementation status updated 2026-08-06\n- C:\\project\\new\\dcid-web\\docs\\PLAN-THESIS.md — OCR spike and pending evaluation work"}
+{"kind":"slide","id":"sl/14bup87q","slide":17,"title":"09 · LESSONS","textShapes":16}
+{"kind":"textbox","id":"sh/8ze9gbyx","slide":17,"text":"09 · LESSONS","textPreview":"09 · LESSONS","textChars":12,"textLines":1,"bbox":[56,34,420,22]}
+{"kind":"textbox","id":"sh/1c7e50ni","slide":17,"text":"Ba bài học quyết định chất lượng của dự án","textPreview":"Ba bài học quyết định chất lượng của dự án","textChars":42,"textLines":1,"bbox":[56,68,1165,64]}
+{"kind":"shape","id":"sh/gbedwfmx","slide":17,"bbox":[56,174,360,300]}
+{"kind":"textbox","id":"sh/rm5czq50","slide":17,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[84,204,58,32]}
+{"kind":"textbox","id":"sh/6lwvql4v","slide":17,"text":"Contract trước, code sau","textPreview":"Contract trước, code sau","textChars":24,"textLines":1,"bbox":[84,258,304,62]}
+{"kind":"textbox","id":"sh/t8ne10n6","slide":17,"text":"Chốt ranh giới Backend ↔ AI giúp thay OCR, vector DB hoặc LLM mà không phá nghiệp vụ.","textPreview":"Chốt ranh giới Backend ↔ AI giúp thay OCR, vector DB hoặc LLM mà không phá nghiệp vụ.","textChars":85,"textLines":1,"bbox":[84,346,304,94]}
+{"kind":"shape","id":"sh/snedsvml","slide":17,"bbox":[456,174,360,300]}
+{"kind":"textbox","id":"sh/jilcvq54","slide":17,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[484,204,58,32]}
+{"kind":"textbox","id":"sh/ihcvml4j","slide":17,"text":"Đo thật thay vì tuyên bố","textPreview":"Đo thật thay vì tuyên bố","textChars":24,"textLines":1,"bbox":[484,258,304,62]}
+{"kind":"textbox","id":"sh/4by9or6l","slide":17,"text":"E2E và benchmark tái lập quan trọng hơn KPI đẹp nhưng không có dataset và ground truth.","textPreview":"E2E và benchmark tái lập quan trọng hơn KPI đẹp nhưng không có dataset và ground truth.","textChars":87,"textLines":1,"bbox":[484,346,304,94]}
+{"kind":"shape","id":"sh/pc7qhwn6","slide":17,"bbox":[856,174,360,300]}
+{"kind":"textbox","id":"sh/29grm1of","slide":17,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[884,204,58,32]}
+{"kind":"textbox","id":"sh/3ap8fm50","slide":17,"text":"AI an toàn là một hệ thống","textPreview":"AI an toàn là một hệ thống","textChars":26,"textLines":1,"bbox":[884,258,304,62]}
+{"kind":"textbox","id":"sh/gnepkr69","slide":17,"text":"RBAC, version, retrieval, guardrail, citation và audit cùng tạo niềm tin — không phải riêng mô hình.","textPreview":"RBAC, version, retrieval, guardrail, citation và audit cùng tạo niềm tin — không phải riêng mô hình.","textChars":100,"textLines":1,"bbox":[884,346,304,94]}
+{"kind":"textbox","id":"sh/honqdwnu","slide":17,"text":"DCID đã chứng minh một kiến trúc khả thi cho trợ lý tri thức công nghiệp on-premise.","textPreview":"DCID đã chứng minh một kiến trúc khả thi cho trợ lý tri thức công nghiệp on-premise.","textChars":84,"textLines":1,"bbox":[80,524,1120,44]}
+{"kind":"textbox","id":"sh/ulw7ihoj","slide":17,"text":"Bước tiếp theo: hoàn thiện eval → pilot một dây chuyền → đo tác động vận hành","textPreview":"Bước tiếp theo: hoàn thiện eval → pilot một dây chuyền → đo tác động vận hành","textChars":77,"textLines":1,"bbox":[80,584,1120,36]}
+{"kind":"textbox","id":"sh/fm58bm54","slide":17,"text":"Q&A / LIVE DEMO","textPreview":"Q&A / LIVE DEMO","textChars":15,"textLines":1,"bbox":[510,632,260,30]}
+{"kind":"shape","id":"sh/0ji9wb6t","slide":17,"bbox":[56,674,1168,1]}
+{"kind":"textbox","id":"sh/14rqpgne","slide":17,"text":"DCID · Digital Cognitive Industrial System","textPreview":"DCID · Digital Cognitive Industrial System","textChars":42,"textLines":1,"bbox":[56,682,560,18]}
+{"kind":"textbox","id":"sh/90nq9gfi","slide":17,"text":"17/17","textPreview":"17/17","textChars":5,"textLines":1,"bbox":[1150,682,74,18]}
+{"kind":"notes","id":"nt/14bup87q","slide":17,"text":"Kết thúc bằng kết luận có thể bảo vệ: kiến trúc đã chạy, giá trị đã rõ, nhưng cần đánh giá và pilot trước khi khẳng định hiệu quả sản xuất. Sau đó chuyển sang live demo.\n\n[Sources]\n- C:\\project\\new\\dcid-web\\docs\\ROADMAP.md — implementation lessons and next milestones\n- C:\\project\\new\\dcid-web\\docs\\SETUP.md — E2E issues and fixes\n- C:\\project\\new\\dcid-web\\docs\\PLAN-THESIS.md — evaluation plan"}

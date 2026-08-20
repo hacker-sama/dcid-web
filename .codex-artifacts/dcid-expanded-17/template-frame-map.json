@@ -1,0 +1,67 @@
+{
+  "outputSlides": [
+    { "outputSlide": 1, "sourceSlide": 1, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 2, "sourceSlide": 2, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/onydsbmd" }] },
+    { "outputSlide": 3, "sourceSlide": 3, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/e10f2twf" }] },
+    { "outputSlide": 4, "sourceSlide": 4, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/fu9sn2p0" }] },
+    { "outputSlide": 5, "sourceSlide": 5, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/fe94nm1w" }] },
+    { "outputSlide": 6, "sourceSlide": 6, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/1k3mhozu" }] },
+    {
+      "outputSlide": 7,
+      "sourceSlide": 6,
+      "narrativeRole": "technology responsibility map",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeIds": ["sh/jet8nm1c","sh/yhg7epsj","sh/zi98nu94","sh/87ipkzal","sh/98rqt4r6","sh/7m98ru9g","sh/oryp8fah","sh/pc76hkr2","sh/h4bupgn6","sh/w32twb6l","sh/v2tcn650","sh/5svutgni","sh/47mt0b6x","sh/j6dcr65c","sh/twfux0ne","sh/svmt4v6t","sh/cbe5g3ih","sh/dcnm98zm","sh/qpwnet0b","sh/bq547yhw","sh/0fy5k3id","sh/lg76d8zy","sh/ydgnit07","sh/1k3mhozu"] },
+        { "action": "rewrite", "sourceElementId": "nt/x8f69ofe" }
+      ]
+    },
+    { "outputSlide": 8, "sourceSlide": 7, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/25ojml43" }] },
+    { "outputSlide": 9, "sourceSlide": 8, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/9w3uds36" }] },
+    {
+      "outputSlide": 10,
+      "sourceSlide": 8,
+      "narrativeRole": "asynchronous AI ingestion flow",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeIds": ["sh/y5sbed4j","sh/18byd4zy","sh/sjix0zy1","sh/id0fu50z","sh/o7ydoret","sh/98rehwve","sh/n6pwfmd8","sh/0jydkreh","sh/1k7edwv2","sh/zipwbmdc","sh/kfixwbe1","sh/lgbepgvm","sh/svydgb65","sh/7u5w765k","sh/6twve1oz","sh/kredcr6t","sh/jq5w365o","sh/x4ne1wni","sh/w3ed8r6x","sh/m9sb2x4v","sh/9w3uds36"] },
+        { "action": "rewrite", "sourceElementId": "nt/fu1gfa1s" }
+      ]
+    },
+    { "outputSlide": 11, "sourceSlide": 9, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/bqxg7q50" }] },
+    {
+      "outputSlide": 12,
+      "sourceSlide": 9,
+      "narrativeRole": "synchronous AI query and guardrail flow",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeIds": ["sh/cr6xgv6l","sh/1cfmhgne","sh/ah8nu54b","sh/oza1gfyh","sh/2xsjepgb","sh/3y107axw","sh/do3id4fy","sh/qlcjipgn","sh/0ru1ozyp","sh/lsn2h4fa","sh/87a18zqt","sh/76h0zup8","sh/hcji5o7a","sh/wba1cjqp","sh/u9sja98z","sh/xgzitk76","sh/2l4faloj","sh/nmdg3q54","sh/onmxcv69","sh/bqxg7q50"] },
+        { "action": "rewrite", "sourceElementId": "nt/udsvah03" }
+      ]
+    },
+    { "outputSlide": 13, "sourceSlide": 10, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/bmpgrah8" }] },
+    {
+      "outputSlide": 14,
+      "sourceSlide": 10,
+      "narrativeRole": "relational ERD with keys",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeIds": ["sh/algfy50n","sh/xc3mho32","sh/s7yt4b21","sh/d87uxg3m","sh/r6pcv6lw","sh/0bit8b2d","sh/e9gb61k7","sh/fapcz6ls","sh/p0ru503u","sh/xwnupgvy","sh/bu5cnqd8","sh/atwbelcn","sh/kjytkvup","sh/jypcrqd4","sh/1o3ahwvq","sh/0nut8rul","sh/q9srixs3","sh/ru18r2to","sh/cva9k7a9","sh/dwjqtcbu","sh/exsrmhsf","sh/zyl8vmt0","sh/0zu9ora5","sh/103qxcbq","sh/bmpgrah8"] },
+        { "action": "rewrite", "sourceElementId": "nt/m90b6t0r" }
+      ]
+    },
+    {
+      "outputSlide": 15,
+      "sourceSlide": 5,
+      "narrativeRole": "polyglot database ownership topology",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeIds": ["sh/ud0ne10b","sh/dgbulwnm","sh/032tgr6d","sh/m5kbi1oj","sh/w32dkbuh","sh/x4vedgvm","sh/v2twb6dw","sh/k7mxovud","sh/58vehgvy","sh/i54fmlc7","sh/j6dwfqds","sh/sb6xsvu9","sh/tcfel0vu","sh/fe94nm1w"] },
+        { "action": "rewrite", "sourceElementId": "nt/i107q5of" }
+      ]
+    },
+    { "outputSlide": 16, "sourceSlide": 11, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/nehs7iho" }] },
+    { "outputSlide": 17, "sourceSlide": 12, "narrativeRole": "renumber footer", "reuseMode": "duplicate-slide", "editTargets": [{ "action": "rewrite", "shapeId": "sh/hkbm5wzu" }] }
+  ],
+  "omittedSourceSlides": []
+}

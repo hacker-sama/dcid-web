@@ -1,0 +1,617 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/r9omsc",
+    "id": "r9omsc",
+    "slide": 1,
+    "layoutId": "/ppt/slideLayouts/slideLayout1.xml",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "fontScheme": {
+      "name": "Office",
+      "majorFont": {
+        "latinTypeface": "Calibri Light",
+        "eastAsianTypeface": "Calibri Light",
+        "complexScriptTypeface": "Calibri Light"
+      },
+      "minorFont": {
+        "latinTypeface": "Calibri",
+        "eastAsianTypeface": "Calibri",
+        "complexScriptTypeface": "Calibri"
+      }
+    },
+    "typefaces": [
+      "Arial",
+      "Calibri",
+      "Calibri Light"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "/ppt/slideLayouts/slideLayout1.xml",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "/ppt/slideMasters/slideMaster1.xml",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "/ppt/slideMasters/slideMaster1.xml",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/xsrmp4ve",
+      "id": "11",
+      "bbox": [
+        646,
+        0,
+        634,
+        720
+      ],
+      "contentType": "image/png",
+      "imageCrop": {
+        "left": 0,
+        "top": 0.12145,
+        "right": 0,
+        "bottom": 0.12145
+      },
+      "asset": {
+        "assetId": "/ppt/media/image.png",
+        "contentType": "image/png",
+        "byteLength": 2094135
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image.png",
+        "contentType": "image/png",
+        "byteLength": 2094135
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/obexkf65",
+      "id": "2",
+      "bbox": [
+        592,
+        0,
+        176,
+        720
+      ],
+      "geometry": "rect",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/apgnu9cn",
+      "id": "12",
+      "bbox": [
+        56,
+        42,
+        58,
+        58
+      ],
+      "contentType": "image/png",
+      "asset": {
+        "assetId": "/ppt/media/image2.png",
+        "contentType": "image/png",
+        "byteLength": 4561
+      },
+      "fillImage": {
+        "assetId": "/ppt/media/image2.png",
+        "contentType": "image/png",
+        "byteLength": 4561
+      }
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/adwfmpov",
+      "id": "4",
+      "bbox": [
+        132,
+        54,
+        340,
+        24
+      ],
+      "geometry": "rect",
+      "text": "PROJECT SEM4 · 2026",
+      "textPreview": "PROJECT SEM4 · 2026",
+      "resolvedFontSize": 20.57,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.86,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "PROJECT SEM4 · 2026"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "PROJECT SEM4 · 2026",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "Arial",
+            "color": "#16A8E0",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "PROJECT SEM4 · 2026",
+              "fontSize": 14,
+              "typeface": "Arial",
+              "color": "#16A8E0",
+              "bold": true
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/be5gvu5g",
+      "id": "5",
+      "bbox": [
+        56,
+        152,
+        500,
+        76
+      ],
+      "geometry": "rect",
+      "text": "DCID",
+      "textPreview": "DCID",
+      "resolvedFontSize": 21.42,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.89,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "DCID"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "DCID",
+          "resolvedTextStyle": {
+            "fontSize": 62,
+            "typeface": "Arial",
+            "color": "#111A2E",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "DCID",
+              "fontSize": 62,
+              "typeface": "Arial",
+              "color": "#111A2E",
+              "bold": true
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wfehoz61",
+      "id": "6",
+      "bbox": [
+        56,
+        224,
+        530,
+        132
+      ],
+      "geometry": "rect",
+      "text": "Digital Cognitive\nIndustrial System",
+      "textPreview": "Digital Cognitive | Industrial System",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Digital Cognitive"
+          },
+          {
+            "index": 2,
+            "text": "Industrial System"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Digital Cognitive",
+          "resolvedTextStyle": {
+            "fontSize": 42,
+            "typeface": "Arial",
+            "color": "#101828",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Digital Cognitive",
+              "fontSize": 42,
+              "typeface": "Arial",
+              "color": "#101828",
+              "bold": true
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Industrial System",
+          "resolvedTextStyle": {
+            "fontSize": 42,
+            "typeface": "Arial",
+            "color": "#101828",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Industrial System",
+              "fontSize": 42,
+              "typeface": "Arial",
+              "color": "#101828",
+              "bold": true
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x0nyx4nm",
+      "id": "7",
+      "bbox": [
+        56,
+        382,
+        132,
+        5
+      ],
+      "geometry": "rect",
+      "fillColor": "#16A8E0",
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y1wzq9o7",
+      "id": "8",
+      "bbox": [
+        56,
+        414,
+        520,
+        92
+      ],
+      "geometry": "rect",
+      "text": "Đúng tri thức · Đúng phiên bản\nNgay tại hiện trường",
+      "textPreview": "Đúng tri thức · Đúng phiên bản | Ngay tại hiện trường",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Đúng tri thức · Đúng phiên bản"
+          },
+          {
+            "index": 2,
+            "text": "Ngay tại hiện trường"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Đúng tri thức · Đúng phiên bản",
+          "resolvedTextStyle": {
+            "fontSize": 25,
+            "typeface": "Arial",
+            "color": "#344054",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Đúng tri thức · Đúng phiên bản",
+              "fontSize": 25,
+              "typeface": "Arial",
+              "color": "#344054"
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Ngay tại hiện trường",
+          "resolvedTextStyle": {
+            "fontSize": 25,
+            "typeface": "Arial",
+            "color": "#344054",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Ngay tại hiện trường",
+              "fontSize": 25,
+              "typeface": "Arial",
+              "color": "#344054"
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j25gzu5s",
+      "id": "9",
+      "bbox": [
+        56,
+        582,
+        530,
+        32
+      ],
+      "geometry": "rect",
+      "text": "Trợ lý tri thức kỹ thuật on-premise cho nhà máy",
+      "textPreview": "Trợ lý tri thức kỹ thuật on-premise cho nhà máy",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 1,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Trợ lý tri thức kỹ thuật on-premise cho nhà máy"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Trợ lý tri thức kỹ thuật on-premise cho nhà máy",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Arial",
+            "color": "#111A2E",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Trợ lý tri thức kỹ thuật on-premise cho nhà máy",
+              "fontSize": 17,
+              "typeface": "Arial",
+              "color": "#111A2E",
+              "bold": true
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ja1obuxo",
+      "id": "10",
+      "bbox": [
+        56,
+        625,
+        520,
+        24
+      ],
+      "geometry": "rect",
+      "text": "Nhóm thực hiện: Nhóm DCID",
+      "textPreview": "Nhóm thực hiện: Nhóm DCID",
+      "resolvedFontSize": 19.2,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 24,
+        "typeface": "Calibri",
+        "color": "tx1",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "autoFit": "shrinkText",
+        "autoFitScale": 0.8,
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Nhóm thực hiện: Nhóm DCID"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Nhóm thực hiện: Nhóm DCID",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "typeface": "Arial",
+            "color": "#667085",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Nhóm thực hiện: Nhóm DCID",
+              "fontSize": 15,
+              "typeface": "Arial",
+              "color": "#667085"
+            }
+          ],
+          "bulletCharacter": "",
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

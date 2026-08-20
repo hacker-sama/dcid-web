@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "checkedAt": "2026-08-19T15:28:09.450Z",
+  "workspace": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-reference-swap",
+  "finalPptx": "C:\\project\\new\\dcid-web\\DCID_SEM4_Defense_Deck_Reference_Images_HiRes.pptx",
+  "starterPptx": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-reference-swap\\template-starter.pptx",
+  "mapPath": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-reference-swap\\template-frame-map.json",
+  "starterLayoutDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-reference-swap\\template-starter-layout",
+  "finalLayoutDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-reference-swap\\final-layout",
+  "editDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-reference-swap",
+  "issueCount": 0,
+  "issues": []
+}

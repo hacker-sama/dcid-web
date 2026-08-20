@@ -1,0 +1,6 @@
+Output 7 duplicates source 6 and becomes a detailed technology responsibility map.
+Output 10 duplicates source 8 and becomes the asynchronous AI ingestion sequence.
+Output 12 duplicates source 9 and becomes the synchronous query/guardrail sequence.
+Output 14 duplicates source 10 and becomes a key-aware relational ERD.
+Output 15 duplicates source 5 and becomes the database ownership/topology diagram.
+All original slides are preserved in narrative order; only their footer page numbers change.

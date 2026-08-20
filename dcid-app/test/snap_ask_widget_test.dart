@@ -62,9 +62,35 @@ void main() {
       );
 
       expect(find.textContaining('Phân tích kỹ thuật'), findsOneWidget);
-      expect(find.textContaining('Confidence:'), findsNothing);
+      expect(find.textContaining('Confidence: 95%'), findsOneWidget);
       expect(find.textContaining('Direct Data Extraction'), findsOneWidget);
       expect(find.textContaining('Detailed Reasoning Mode'), findsOneWidget);
+    });
+
+    testWidgets('hides synthetic confidence for service failures', (
+      WidgetTester tester,
+    ) async {
+      const result = AnswerResult(
+        answer: 'Image analysis timed out.',
+        confidence: 0.0,
+        locked: true,
+        numericRule: false,
+        isOfflineFallback: true,
+        citations: [],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appStringsProvider.overrideWithValue(const AppStringsEn()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: AnswerView(result: result, shrinkWrap: true)),
+          ),
+        ),
+      );
+
+      expect(find.textContaining('Confidence:'), findsNothing);
     });
 
     testWidgets('renders locked guardrail red banner when locked is true', (

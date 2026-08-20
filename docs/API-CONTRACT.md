@@ -152,6 +152,34 @@ từ bản vẽ đính kèm."*, `citations` vẫn trả top-k để kỹ sư t�
 
 **Lỗi:** AI không phản hồi → BE trả `503 SERVICE_UNAVAILABLE` (không giả vờ có câu trả lời).
 
+### 2.4. Snap & Ask Vision job (không giữ request dài)
+
+`POST /api/query/vision/jobs` — `multipart/form-data` gồm `question`, `file`,
+`machineCode?`, `reasoningMode?`. BE sao chép bytes ảnh vào hàng đợi giới hạn,
+trả `202` ngay:
+
+```json
+{
+  "data": {
+    "jobId": "d93b4a8c-...",
+    "status": "QUEUED",
+    "stage": "QUEUED",
+    "result": null,
+    "error": null
+  }
+}
+```
+
+`GET /api/query/vision/jobs/{jobId}` trả snapshot. Chỉ user tạo job được đọc.
+`status`: `QUEUED | PROCESSING | SUCCEEDED | FAILED`; khi `SUCCEEDED`, `result`
+có cùng shape `AnswerDTO` ở §2.3.
+
+`GET /api/query/vision/jobs/{jobId}/events` trả SSE event `vision-job` cho client
+cần progress push. Server gửi heartbeat 15 giây/lần để proxy không cắt luồng.
+
+Endpoint cũ `POST /api/query/vision` vẫn được giữ trong giai đoạn rolling
+deployment; client mới chỉ fallback sang endpoint này khi API job chưa tồn tại.
+
 ---
 
 ## 3. Quy ước lưu trữ chung

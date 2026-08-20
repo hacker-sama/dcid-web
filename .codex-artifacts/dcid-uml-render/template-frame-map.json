@@ -1,0 +1,74 @@
+{
+  "outputSlides": [
+    { "outputSlide": 1, "sourceSlide": 1, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 2, "sourceSlide": 2, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 3, "sourceSlide": 3, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 4, "sourceSlide": 4, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 5, "sourceSlide": 5, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 6, "sourceSlide": 6, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    {
+      "outputSlide": 7,
+      "sourceSlide": 7,
+      "narrativeRole": "UML-derived technology architecture",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeId": "sh/cb2tkvap" },
+        { "action": "delete", "shapeIds": ["sh/dcbud0ra","sh/ydkbm5sv","sh/zedcfa9g","sh/kzmdova1","sh/l0vuh0rm","sh/eh0ba1sr","sh/fi9c369c","sh/baxkjqlk","sh/a9ojq5kz","sh/xcz2l03q","sh/cbq1sv25","sh/n6x0fqlo","sh/25ojml43","sh/p8fih03e","sh/o761ov2t","sh/f2d0b6lc","sh/eh4jil4r","sh/id4ju1oz","sh/jedkn654","sh/4fm1wb6p","sh/50v2pgna","sh/q143ylov","sh/r2dkrq5g","sh/s3ml0v61"] },
+        { "action": "add", "newPrimitiveAllowed": true, "mustNotOverlapInherited": true, "reason": "Replace deleted body diagram with a deterministic UML render", "zone": { "left": 50, "top": 145, "width": 1180, "height": 505 } },
+        { "action": "rewrite", "sourceElementId": "nt/gnmp4jqx" }
+      ]
+    },
+    { "outputSlide": 8, "sourceSlide": 8, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 9, "sourceSlide": 9, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    {
+      "outputSlide": 10,
+      "sourceSlide": 10,
+      "narrativeRole": "UML-derived asynchronous ingestion sequence",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "delete", "shapeIds": ["sh/cbu58j2h","sh/zelojyl8","sh/ydcnatkn","sh/l036l83y","sh/kzu5c32t","sh/725onyl4","sh/m1cnetkj","sh/s7yt4b21","sh/d87uxg3m","sh/q5gb21kb","sh/r6pcv6lw","sh/0bit8b2d","sh/1cru1g3y","sh/e9gb61k7","sh/fapcz6ls","sh/ozitcv29","sh/p0ru503u","sh/xwnupgvy","sh/wvetgbud","sh/bu5cnqd8","sh/atwbelcn","sh/lk7ut0va","sh/kjytkvup","sh/jypcrqd4","sh/yxgbilcj","sh/1o3ahwvq","sh/0nut8rul","sh/q9srixs3"] },
+        { "action": "add", "newPrimitiveAllowed": true, "mustNotOverlapInherited": true, "reason": "Replace deleted body diagram with a deterministic UML render", "zone": { "left": 50, "top": 145, "width": 1180, "height": 505 } },
+        { "action": "rewrite", "sourceElementId": "nt/m90b6t0r" }
+      ]
+    },
+    { "outputSlide": 11, "sourceSlide": 11, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    {
+      "outputSlide": 12,
+      "sourceSlide": 12,
+      "narrativeRole": "UML-derived AI query and guardrail flow",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "delete", "shapeIds": ["sh/0f2lgnmp","sh/ra943il8","sh/q903ad4n","sh/dcbm583y","sh/sb2lcnmd","sh/b6d4f2lc","sh/a543mx4r","sh/wvupgz6t","sh/xw3q94ne","sh/atc7epon","sh/bulo7u58","sh/orapcf6h","sh/9sj65kn2","sh/mps7a5or","sh/nq1o3a5w","sh/0nap8f6l","sh/1oj61kn6","sh/hkbm5wzu","sh/gj25cry9","sh/fit436ho","sh/uh0na1g3","sh/tgrm1wzy","sh/sfi58ryd","sh/7u94zmhs","sh/6t0n6hg7","sh/dcv6dgz2","sh/cbm5kbyh","sh/alwbitsn","sh/bm5sryt8","sh/wnetkjat"] },
+        { "action": "add", "newPrimitiveAllowed": true, "mustNotOverlapInherited": true, "reason": "Replace deleted body diagram with a deterministic UML render", "zone": { "left": 50, "top": 145, "width": 1180, "height": 505 } },
+        { "action": "rewrite", "sourceElementId": "nt/8f2psfyx" }
+      ]
+    },
+    { "outputSlide": 13, "sourceSlide": 13, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    {
+      "outputSlide": 14,
+      "sourceSlide": 14,
+      "narrativeRole": "UML-derived PostgreSQL ERD",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "delete", "shapeIds": ["sh/wbydknq1","sh/jepwf2pc","sh/idgvmx8r","sh/5grehs7i","sh/kfidonqx","sh/zi5c3y98","sh/ehwvat8n","sh/c3e1gjyd","sh/x4ni9ofy","sh/a1wze9g7","sh/b2507exs","sh/kre1k3y9","sh/ls7idofu","sh/y5wjitgj","sh/z650byxo","sh/0buh8zy5","sh/1w3i14fq","sh/hsvy50re","sh/grmxwvqt","sh/fqdg3q98","sh/up4fal83","sh/pwvy90rq","sh/4vmh0vq5","sh/3udg7q9k","sh/2t4fyl8z","sh/d0fydk7m","sh/cz6h4fq1","sh/atg3idk7","sh/bup4rils","sh/cvylkn2d","sh/xw7mts3y","sh/yxgnmxkj","sh/jyp4fil4","sh/kzy5on2p","sh/lkrmhsju"] },
+        { "action": "add", "newPrimitiveAllowed": true, "mustNotOverlapInherited": true, "reason": "Replace deleted body diagram with a deterministic UML render", "zone": { "left": 50, "top": 145, "width": 1180, "height": 505 } },
+        { "action": "rewrite", "sourceElementId": "nt/6lsnupw7" }
+      ]
+    },
+    {
+      "outputSlide": 15,
+      "sourceSlide": 15,
+      "narrativeRole": "UML-derived document version state machine",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeId": "sh/547mhg3m" },
+        { "action": "delete", "shapeIds": ["sh/k3y5ov21","sh/76p4jqls","sh/65gnqlk7","sh/t87ml0ji","sh/s7y5sv2x","sh/na5476l8","sh/m9c3e1kn","sh/wrm9kvep","sh/hsvat0fa","sh/upkrilwj","sh/vqdsrqx4","sh/4vm9ovel","sh/5wvax0f6","sh/it4rm5wv","sh/judsvqxg","sh/0z29cbyh","sh/l0bqlgf2"] },
+        { "action": "add", "newPrimitiveAllowed": true, "mustNotOverlapInherited": true, "reason": "Replace deleted body diagram with a deterministic UML render", "zone": { "left": 50, "top": 145, "width": 1180, "height": 505 } },
+        { "action": "rewrite", "sourceElementId": "nt/vaxsvy10" }
+      ]
+    },
+    { "outputSlide": 16, "sourceSlide": 16, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 17, "sourceSlide": 17, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] }
+  ],
+  "omittedSourceSlides": []
+}
