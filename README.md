@@ -56,7 +56,7 @@ Work orders (completed):
 
 ## Quick Start
 
-See [docs/SETUP.md](docs/SETUP.md) for full prerequisites and step-by-step instructions. The following is a summary of the main startup sequence.
+See [docs/SETUP.md](docs/SETUP.md) for full prerequisites and step-by-step instructions. The following is a summary of the main startup sequence. 
 
 ```bash
 # 1. Infrastructure
