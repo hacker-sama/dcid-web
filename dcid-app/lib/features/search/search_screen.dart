@@ -177,6 +177,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           );
 
       List<Citation> currentCitations = [];
+      bool isLocked = false;
+      bool isNumeric = false;
+      const bool isReasoning = true;
+      double confidenceVal = 0.0;
       String? logId;
 
       await for (final event in stream) {
