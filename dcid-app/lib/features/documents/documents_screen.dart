@@ -1,4 +1,3 @@
-import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -92,11 +91,54 @@ List<DocumentSummary> _applySorting(
   return list;
 }
 
+Color _getCategoryColor(String? category) {
+  final c = (category ?? '').trim().toUpperCase();
+  switch (c) {
+    case 'SOP':
+      return Colors.teal;
+    case 'CIRCUIT':
+      return Colors.indigo;
+    case 'SAFETY':
+      return Colors.deepOrange;
+    case 'MANUAL':
+      return Colors.blue;
+    case 'SPEC':
+      return Colors.purple;
+    default:
+      return Colors.blueGrey;
+  }
+}
+
+Widget _buildCategoryBadge(String? category, ColorScheme scheme) {
+  final text = (category == null || category.trim().isEmpty)
+      ? 'OTHER'
+      : category.trim().toUpperCase();
+  final color = _getCategoryColor(text);
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withValues(alpha: 0.35)),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: color,
+        letterSpacing: 0.3,
+      ),
+    ),
+  );
+}
+
 /// Màn hình danh sách tài liệu (`/documents`):
 /// - Role-based filtering.
-/// - Desktop (≥1024px): DataTable2 với action bar + header upload.
-/// - Tablet (600–1023px): Card list kèm thanh sort bằng filter chips.
-/// - Mobile (<600px): Card list + compact sort dropdown + FAB.
+/// - Thanh Filter: Tìm kiếm real-time (tên, mã máy, danh mục), lọc Category, Sort.
+/// - Phân trang (Pagination): Desktop (bảng co giãn mượt mà + footer phân trang) và Mobile/Tablet.
+/// - Desktop (≥1024px): DataTable trong Card shrink-wrap không bị cắt góc.
+/// - Tablet (600–1023px) & Mobile (<600px): Card list kèm thanh filter và phân trang gọn gàng.
 class DocumentsScreen extends ConsumerStatefulWidget {
   const DocumentsScreen({super.key});
 
@@ -105,7 +147,31 @@ class DocumentsScreen extends ConsumerStatefulWidget {
 }
 
 class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
+  final _searchController = TextEditingController();
+  String _selectedCategory = '';
   _SortOption _sort = _SortOption.updatedNewest;
+  int _currentPage = 1;
+  int _pageSize = 10;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _searchController.clear();
+      _selectedCategory = '';
+      _sort = _SortOption.updatedNewest;
+      _currentPage = 1;
+    });
+  }
+
+  bool get _hasActiveFilters =>
+      _searchController.text.trim().isNotEmpty ||
+      _selectedCategory.isNotEmpty ||
+      _sort != _SortOption.updatedNewest;
 
   // ── Open upload modal ─────────────────────────────────────────────────────
 
@@ -120,7 +186,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         context: context,
         barrierDismissible: false,
         builder: (_) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 620),
             child: const UploadDocumentSheet(),
@@ -188,127 +255,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     }
   }
 
-  // ── Sort bar (mobile: compact dropdown / tablet: filter chips) ───────────
-
-  Widget _buildSortBar(ColorScheme scheme, AppStrings strings, {required bool isMobile}) {
-    if (isMobile) {
-      // ── Compact dropdown for narrow phone screens ─────────────────────────
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        child: Row(
-          children: [
-            Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
-            const SizedBox(width: 6),
-            Text(
-              '${strings.sortBy}:',
-              style: TextStyle(
-                fontSize: 13,
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            // Pill-shaped dropdown button
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: scheme.primaryContainer,
-                  width: 1,
-                ),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<_SortOption>(
-                  value: _sort,
-                  isDense: true,
-                  icon: Icon(Icons.expand_more,
-                      size: 18, color: scheme.primary),
-                  borderRadius: BorderRadius.circular(12),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  items: _SortOption.values
-                      .map((opt) => DropdownMenuItem(
-                            value: opt,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(opt.icon,
-                                    size: 15,
-                                    color: scheme.onSurface),
-                                const SizedBox(width: 8),
-                                Text(opt.localized(strings)),
-                              ],
-                            ),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _sort = v);
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // ── Scrollable FilterChip row for tablet ─────────────────────────────────
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-      child: Row(
-        children: [
-          Icon(Icons.sort, size: 18, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 8),
-          Text(
-            '${strings.sortBy}:',
-            style: TextStyle(
-              fontSize: 13,
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _SortOption.values.map((opt) {
-                  final selected = _sort == opt;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: FilterChip(
-                      avatar: Icon(opt.icon, size: 14),
-                      label: Text(opt.localized(strings),
-                          style: const TextStyle(fontSize: 12)),
-                      selected: selected,
-                      onSelected: (_) => setState(() => _sort = opt),
-                      showCheckmark: false,
-                      visualDensity: VisualDensity.compact,
-                      selectedColor: scheme.primaryContainer,
-                      labelStyle: TextStyle(
-                        color: selected
-                            ? scheme.onPrimaryContainer
-                            : scheme.onSurface,
-                        fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -338,8 +284,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 onRetry: () => ref.invalidate(documentsProvider),
               ),
               data: (allDocs) {
-                // Role-based filtering.
-                final filtered = visibleCategories.isEmpty
+                // 1. Role-based filtering
+                final roleFiltered = visibleCategories.isEmpty
                     ? allDocs
                     : allDocs
                         .where((d) =>
@@ -347,119 +293,134 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             visibleCategories.contains(d.category))
                         .toList();
 
-                // Apply sort.
-                final docs = _applySorting(filtered, _sort);
-
-                if (docs.isEmpty) {
-                  return RefreshIndicator(
-                    onRefresh: () => ref.refresh(documentsProvider.future),
-                    child: _EmptyState(
-                      isAdminLevel: canUpload,
-                      strings: strings,
-                      onUploadPressed: () => _openUploadSheet(context),
-                    ),
-                  );
+                // Build category list dynamically from available docs
+                final extractedCategories = <String>{};
+                for (final d in roleFiltered) {
+                  final cat = (d.category ?? '').trim().toUpperCase();
+                  if (cat.isNotEmpty) extractedCategories.add(cat);
                 }
+                final standardCats = {'SOP', 'CIRCUIT', 'SAFETY', 'OTHER'};
+                final availableCategories =
+                    {...standardCats, ...extractedCategories}.toList()..sort();
+
+                // 2. Category filtering
+                final categoryFiltered = (_selectedCategory.isEmpty ||
+                        _selectedCategory == 'ALL')
+                    ? roleFiltered
+                    : roleFiltered
+                        .where((d) =>
+                            (d.category ?? 'OTHER').trim().toUpperCase() ==
+                            _selectedCategory.toUpperCase())
+                        .toList();
+
+                // 3. Search query filtering (Title, Machine Code, Category)
+                final query = _searchController.text.trim().toLowerCase();
+                final searchFiltered = query.isEmpty
+                    ? categoryFiltered
+                    : categoryFiltered.where((d) {
+                        final matchesTitle =
+                            d.title.toLowerCase().contains(query);
+                        final matchesCode =
+                            (d.machineCode ?? '').toLowerCase().contains(query);
+                        final matchesCategory =
+                            (d.category ?? '').toLowerCase().contains(query);
+                        return matchesTitle || matchesCode || matchesCategory;
+                      }).toList();
+
+                // 4. Sorting
+                final sortedDocs = _applySorting(searchFiltered, _sort);
+
+                // 5. Pagination calculations
+                final totalItems = sortedDocs.length;
+                final totalPages =
+                    (totalItems / _pageSize).ceil().clamp(1, 999999).toInt();
+                final safePage = _currentPage.clamp(1, totalPages);
+                final startIndex =
+                    totalItems == 0 ? 0 : (safePage - 1) * _pageSize;
+                final endIndex =
+                    (startIndex + _pageSize).clamp(0, totalItems);
+                final pageDocs = totalItems == 0
+                    ? <DocumentSummary>[]
+                    : sortedDocs.sublist(startIndex, endIndex);
 
                 if (isDesktop) {
                   return _DesktopView(
-                    docs: docs,
+                    allDocs: allDocs,
+                    filteredDocs: sortedDocs,
+                    pageDocs: pageDocs,
+                    totalItems: totalItems,
+                    currentPage: safePage,
+                    totalPages: totalPages,
+                    pageSize: _pageSize,
+                    startIndex: startIndex,
+                    endIndex: endIndex,
+                    availableCategories: availableCategories,
+                    selectedCategory: _selectedCategory,
+                    searchController: _searchController,
+                    hasActiveFilters: _hasActiveFilters,
                     canUpload: canUpload,
                     canDelete: canDelete,
                     sort: _sort,
                     scheme: scheme,
                     strings: strings,
+                    onSearchChanged: () =>
+                        setState(() => _currentPage = 1),
+                    onCategoryChanged: (cat) => setState(() {
+                      _selectedCategory = cat;
+                      _currentPage = 1;
+                    }),
                     onSortChanged: (s) => setState(() => _sort = s),
+                    onPageChanged: (p) => setState(() => _currentPage = p),
+                    onPageSizeChanged: (s) => setState(() {
+                      _pageSize = s;
+                      _currentPage = 1;
+                    }),
+                    onClearFilters: _clearFilters,
                     onUpload: () => _openUploadSheet(context),
                     onDelete: (id, title) =>
                         _confirmAndDeleteDocument(context, id, title),
-                    onRefresh: () => ref.refresh(documentsProvider.future),
+                    onRefresh: () =>
+                        ref.refresh(documentsProvider.future),
                   );
                 }
 
-                // Mobile / tablet list.
-                final listBody = Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _IngestProgressBannerList(),
-                    _buildSortBar(scheme, strings, isMobile: isMobile),
-                    Expanded(
-                      child: ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        itemCount: docs.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final doc = docs[index];
-                          final subtitleParts = <String>[
-                            if (doc.category != null &&
-                                doc.category!.isNotEmpty)
-                              doc.category!,
-                            if (doc.machineCode != null &&
-                                doc.machineCode!.isNotEmpty)
-                              'Code: ${doc.machineCode}',
-                            if (doc.updatedAt != null &&
-                                doc.updatedAt!.isNotEmpty)
-                              'Updated: ${_formatRelative(doc.updatedAt)}',
-                          ];
-                          return RepaintBoundary(
-                            child: Card(
-                              margin: EdgeInsets.zero,
-                              child: ListTile(
-                              minVerticalPadding: isTablet ? 10 : 14,
-                              leading:
-                                  const Icon(Icons.description_outlined),
-                              title: Text(doc.title),
-                              subtitle: subtitleParts.isEmpty
-                                  ? null
-                                  : Text(
-                                      subtitleParts.join(' · '),
-                                      style:
-                                          const TextStyle(fontSize: 12),
-                                    ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (canDelete)
-                                    IconButton(
-                                      icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.red),
-                                      tooltip: strings.deleteDocument,
-                                      onPressed: () =>
-                                          _confirmAndDeleteDocument(
-                                              context,
-                                              doc.id,
-                                              doc.title),
-                                    ),
-                                  const Icon(Icons.chevron_right),
-                                ],
-                              ),
-                              onTap: () =>
-                                  context.push('/documents/${doc.id}'),
-                            ),
-                          ),
-                        );
-                        },
-                      ),
-                    ),
-                  ],
+                // Mobile & Tablet view
+                return _MobileTabletView(
+                  allDocs: allDocs,
+                  filteredDocs: sortedDocs,
+                  pageDocs: pageDocs,
+                  totalItems: totalItems,
+                  currentPage: safePage,
+                  totalPages: totalPages,
+                  pageSize: _pageSize,
+                  startIndex: startIndex,
+                  endIndex: endIndex,
+                  availableCategories: availableCategories,
+                  selectedCategory: _selectedCategory,
+                  searchController: _searchController,
+                  hasActiveFilters: _hasActiveFilters,
+                  isTablet: isTablet,
+                  isMobile: isMobile,
+                  canUpload: canUpload,
+                  canDelete: canDelete,
+                  sort: _sort,
+                  scheme: scheme,
+                  strings: strings,
+                  onSearchChanged: () =>
+                      setState(() => _currentPage = 1),
+                  onCategoryChanged: (cat) => setState(() {
+                    _selectedCategory = cat;
+                    _currentPage = 1;
+                  }),
+                  onSortChanged: (s) => setState(() => _sort = s),
+                  onPageChanged: (p) => setState(() => _currentPage = p),
+                  onClearFilters: _clearFilters,
+                  onUpload: () => _openUploadSheet(context),
+                  onDelete: (id, title) =>
+                      _confirmAndDeleteDocument(context, id, title),
+                  onRefresh: () =>
+                      ref.refresh(documentsProvider.future),
                 );
-
-                final refreshed = RefreshIndicator(
-                  onRefresh: () => ref.refresh(documentsProvider.future),
-                  child: listBody,
-                );
-
-                if (isTablet) {
-                  return ConstrainedContent(
-                    maxWidth: 840,
-                    child: refreshed,
-                  );
-                }
-                return refreshed;
               },
             ),
           ),
@@ -481,30 +442,64 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Desktop table view
+// Desktop view (Adaptive Card + Natural Scroll + Table + Pagination)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _DesktopView extends StatelessWidget {
   const _DesktopView({
-    required this.docs,
+    required this.allDocs,
+    required this.filteredDocs,
+    required this.pageDocs,
+    required this.totalItems,
+    required this.currentPage,
+    required this.totalPages,
+    required this.pageSize,
+    required this.startIndex,
+    required this.endIndex,
+    required this.availableCategories,
+    required this.selectedCategory,
+    required this.searchController,
+    required this.hasActiveFilters,
     required this.canUpload,
     required this.canDelete,
     required this.sort,
     required this.scheme,
     required this.strings,
+    required this.onSearchChanged,
+    required this.onCategoryChanged,
     required this.onSortChanged,
+    required this.onPageChanged,
+    required this.onPageSizeChanged,
+    required this.onClearFilters,
     required this.onUpload,
     required this.onDelete,
     required this.onRefresh,
   });
 
-  final List<DocumentSummary> docs;
+  final List<DocumentSummary> allDocs;
+  final List<DocumentSummary> filteredDocs;
+  final List<DocumentSummary> pageDocs;
+  final int totalItems;
+  final int currentPage;
+  final int totalPages;
+  final int pageSize;
+  final int startIndex;
+  final int endIndex;
+  final List<String> availableCategories;
+  final String selectedCategory;
+  final TextEditingController searchController;
+  final bool hasActiveFilters;
   final bool canUpload;
   final bool canDelete;
   final _SortOption sort;
   final ColorScheme scheme;
   final AppStrings strings;
+  final VoidCallback onSearchChanged;
+  final ValueChanged<String> onCategoryChanged;
   final ValueChanged<_SortOption> onSortChanged;
+  final ValueChanged<int> onPageChanged;
+  final ValueChanged<int> onPageSizeChanged;
+  final VoidCallback onClearFilters;
   final VoidCallback onUpload;
   final void Function(String id, String title) onDelete;
   final Future<void> Function() onRefresh;
@@ -515,131 +510,680 @@ class _DesktopView extends StatelessWidget {
       onRefresh: onRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         children: [
           ConstrainedContent(
             maxWidth: 1400,
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── Toolbar header ────────────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        strings.documentsTitle,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      Row(
-                        children: [
-                          // Sort dropdown
-                          DropdownButton<_SortOption>(
-                            value: sort,
-                            underline: const SizedBox.shrink(),
-                            icon: const Icon(Icons.sort),
-                            borderRadius: BorderRadius.circular(10),
-                            items: _SortOption.values
-                                .map((opt) => DropdownMenuItem(
-                                      value: opt,
-                                      child: Row(
-                                        children: [
-                                          Icon(opt.icon, size: 16),
-                                          const SizedBox(width: 8),
-                                          Text(opt.localized(strings),
-                                              style: const TextStyle(
-                                                  fontSize: 14)),
-                                        ],
-                                      ),
-                                    ))
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) onSortChanged(v);
-                            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── 1. Header Toolbar ─────────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          strings.documentsTitle,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          strings.documentsSubtitle,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: scheme.onSurfaceVariant,
                           ),
-                          if (canUpload) ...[
-                            const SizedBox(width: 12),
-                            FilledButton.icon(
-                              onPressed: onUpload,
-                              icon: const Icon(Icons.upload_file),
-                              label: Text(strings.uploadNewDocument),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const _IngestProgressBannerList(),
-                  SizedBox(
-                    height: 600,
-                    child: DataTable2(
-                      columnSpacing: 24,
-                      horizontalMargin: 12,
-                      minWidth: 800,
-                      columns: [
-                        DataColumn2(
-                          label: Text(strings.docTableTitle),
-                          size: ColumnSize.L,
-                        ),
-                        DataColumn2(
-                          label: Text(strings.category),
-                          size: ColumnSize.M,
-                        ),
-                        DataColumn2(
-                          label: Text(strings.machineCode),
-                          size: ColumnSize.M,
-                        ),
-                        DataColumn2(
-                          label: Text(strings.docTableUpdated),
-                          size: ColumnSize.M,
-                        ),
-                        const DataColumn2(
-                          label: Text(''),
-                          size: ColumnSize.S,
                         ),
                       ],
-                      rows: docs.map((doc) {
-                        return DataRow2(
-                          onTap: () =>
-                              context.push('/documents/${doc.id}'),
-                          cells: [
-                            DataCell(Text(doc.title)),
-                            DataCell(Chip(
-                              label: Text(doc.category ?? 'OTHER'),
-                              visualDensity: VisualDensity.compact,
-                            )),
-                            DataCell(Text(doc.machineCode ?? '—')),
-                            DataCell(
-                                Text(_formatInstant(doc.updatedAt) ?? '—')),
-                            DataCell(
-                              Row(
+                    ),
+                    if (canUpload)
+                      FilledButton.icon(
+                        onPressed: onUpload,
+                        icon: const Icon(Icons.upload_file),
+                        label: Text(strings.uploadNewDocument),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Live Ingestion Progress Banners
+                const _IngestProgressBannerList(),
+
+                // ── 2. Filter & Search Card ───────────────────────────────────
+                Card(
+                  elevation: 0,
+                  color: scheme.surfaceContainerLow,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: scheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        // Search Field
+                        Expanded(
+                          flex: 5,
+                          child: SizedBox(
+                            height: 42,
+                            child: TextField(
+                              controller: searchController,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: scheme.onSurface,
+                              ),
+                              textAlignVertical: TextAlignVertical.center,
+                              onChanged: (_) => onSearchChanged(),
+                              decoration: InputDecoration(
+                                hintText: strings.searchDocsPlaceholder,
+                                hintStyle: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.outline,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search,
+                                  size: 18,
+                                  color: scheme.outline,
+                                ),
+                                suffixIcon: searchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        onPressed: () {
+                                          searchController.clear();
+                                          onSearchChanged();
+                                        },
+                                      )
+                                    : null,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: scheme.outlineVariant,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: scheme.outlineVariant,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: scheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Category Dropdown
+                        SizedBox(
+                          width: 180,
+                          height: 42,
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              isDense: true,
+                              labelText: strings.docTableCategory,
+                              labelStyle: TextStyle(
+                                fontSize: 13,
+                                color: scheme.outline,
+                              ),
+                              floatingLabelStyle: TextStyle(
+                                fontSize: 12,
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: scheme.outlineVariant,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: scheme.outlineVariant,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: scheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedCategory.isEmpty ? 'ALL' : selectedCategory,
+                                borderRadius: BorderRadius.circular(10),
+                                menuMaxHeight: 300,
+                                isExpanded: true,
+                                isDense: true,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.onSurface,
+                                ),
+                                icon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: scheme.outline,
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: 'ALL',
+                                    child: Text(
+                                      strings.allCategories,
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                                  ...availableCategories.map((c) => DropdownMenuItem(
+                                        value: c,
+                                        child: Text(
+                                          c,
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                      )),
+                                ],
+                                onChanged: (v) =>
+                                    onCategoryChanged(v == 'ALL' ? '' : (v ?? '')),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Sort Dropdown
+                        SizedBox(
+                          width: 190,
+                          height: 42,
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              isDense: true,
+                              labelText: strings.sortBy,
+                              labelStyle: TextStyle(
+                                fontSize: 13,
+                                color: scheme.outline,
+                              ),
+                              floatingLabelStyle: TextStyle(
+                                fontSize: 12,
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: scheme.outlineVariant,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: scheme.outlineVariant,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: scheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<_SortOption>(
+                                value: sort,
+                                borderRadius: BorderRadius.circular(10),
+                                menuMaxHeight: 300,
+                                isExpanded: true,
+                                isDense: true,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.onSurface,
+                                ),
+                                icon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: scheme.outline,
+                                ),
+                                items: _SortOption.values
+                                    .map((opt) => DropdownMenuItem(
+                                          value: opt,
+                                          child: Row(
+                                            children: [
+                                              Icon(opt.icon,
+                                                  size: 14,
+                                                  color: scheme.onSurfaceVariant),
+                                              const SizedBox(width: 6),
+                                              Flexible(
+                                                child: Text(
+                                                  opt.localized(strings),
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style:
+                                                      const TextStyle(fontSize: 13),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ))
+                                    .toList(),
+                                onChanged: (v) {
+                                  if (v != null) onSortChanged(v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Clear Filters Button
+                        if (hasActiveFilters) ...[
+                          const SizedBox(width: 10),
+                          IconButton.outlined(
+                            tooltip: strings.clearFilters,
+                            icon: const Icon(Icons.filter_alt_off_rounded,
+                                size: 18),
+                            onPressed: onClearFilters,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // ── 3. Table Card (Shrink-wrap height + Pagination footer) ────
+                Card(
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: scheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (totalItems == 0)
+                          Padding(
+                            padding: const EdgeInsets.all(48.0),
+                            child: Center(
+                              child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (canDelete)
-                                    IconButton(
-                                      icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.red),
-                                      tooltip: strings.deleteDocument,
-                                      onPressed: () =>
-                                          onDelete(doc.id, doc.title),
+                                  Icon(Icons.folder_open,
+                                      size: 52, color: scheme.outline),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    strings.noDocsFound,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.onSurface,
                                     ),
-                                  IconButton(
-                                    icon: const Icon(Icons.chevron_right),
-                                    onPressed: () => context
-                                        .push('/documents/${doc.id}'),
                                   ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    strings.noDocsFoundDesc,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  if (hasActiveFilters) ...[
+                                    const SizedBox(height: 16),
+                                    OutlinedButton.icon(
+                                      onPressed: onClearFilters,
+                                      icon: const Icon(Icons.refresh, size: 16),
+                                      label: Text(strings.clearFilters),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
-                          ],
-                        );
-                      }).toList(),
+                          )
+                        else
+                          LayoutBuilder(
+                            builder: (context, tableConstraints) {
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minWidth: tableConstraints.maxWidth,
+                                  ),
+                                  child: DataTable(
+                                    headingRowHeight: 48,
+                                    dataRowMinHeight: 54,
+                                    dataRowMaxHeight: 60,
+                                    horizontalMargin: 20,
+                                    columnSpacing: 24,
+                                    showCheckboxColumn: false,
+                                    headingRowColor: WidgetStateProperty.all(
+                                      scheme.surfaceContainerHighest
+                                          .withValues(alpha: 0.4),
+                                    ),
+                                    columns: [
+                                      DataColumn(
+                                        label: Text(
+                                          strings.docTableTitle,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          strings.docTableCategory,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          strings.docTableMachineCode,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          strings.docTableUpdated,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Text(
+                                            strings.docTableActions,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    rows: pageDocs.map((doc) {
+                                      return DataRow(
+                                        onSelectChanged: (_) => context
+                                            .push('/documents/${doc.id}'),
+                                        cells: [
+                                          // Title
+                                          DataCell(
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.description_outlined,
+                                                  size: 18,
+                                                  color: scheme.primary,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                ConstrainedBox(
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                          maxWidth: 380),
+                                                  child: Text(
+                                                    doc.title,
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 13.5,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          // Category Badge
+                                          DataCell(
+                                            _buildCategoryBadge(
+                                                doc.category, scheme),
+                                          ),
+                                          // Machine Code
+                                          DataCell(
+                                            Text(
+                                              doc.machineCode?.isNotEmpty == true
+                                                  ? doc.machineCode!
+                                                  : '—',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: doc.machineCode
+                                                            ?.isNotEmpty ==
+                                                        true
+                                                    ? scheme.onSurface
+                                                    : scheme.outline,
+                                                fontFamily: doc.machineCode
+                                                            ?.isNotEmpty ==
+                                                        true
+                                                    ? 'monospace'
+                                                    : null,
+                                                fontWeight: doc.machineCode
+                                                            ?.isNotEmpty ==
+                                                        true
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
+                                              ),
+                                            ),
+                                          ),
+                                          // Updated At
+                                          DataCell(
+                                            Text(
+                                              _formatInstant(doc.updatedAt) ??
+                                                  '—',
+                                              style: TextStyle(
+                                                fontSize: 12.5,
+                                                color: scheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ),
+                                          // Actions
+                                          DataCell(
+                                            Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  if (canDelete)
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                        Icons.delete_outline,
+                                                        color: Colors.red,
+                                                        size: 20,
+                                                      ),
+                                                      tooltip:
+                                                          strings.deleteDocument,
+                                                      onPressed: () => onDelete(
+                                                          doc.id, doc.title),
+                                                    ),
+                                                  IconButton(
+                                                    icon: const Icon(
+                                                      Icons.chevron_right,
+                                                      size: 20,
+                                                    ),
+                                                    onPressed: () => context
+                                                        .push('/documents/${doc.id}'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                        // ── 4. Pagination Footer ─────────────────────────────
+                        if (totalItems > 0) ...[
+                          const Divider(height: 1),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Total records counter
+                                Text(
+                                  strings.showingDocsCount(
+                                    startIndex + 1,
+                                    endIndex,
+                                    totalItems,
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+
+                                // Rows per page & Navigation controls
+                                Row(
+                                  children: [
+                                    Text(
+                                      strings.rowsPerPage,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    DropdownButtonHideUnderline(
+                                      child: DropdownButton<int>(
+                                        value: pageSize,
+                                        isDense: true,
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.onSurface,
+                                        ),
+                                        items: [10, 25, 50]
+                                            .map((s) => DropdownMenuItem(
+                                                  value: s,
+                                                  child: Text('$s'),
+                                                ))
+                                            .toList(),
+                                        onChanged: (v) {
+                                          if (v != null) onPageSizeChanged(v);
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 20),
+
+                                    // First Page
+                                    IconButton(
+                                      icon: const Icon(Icons.first_page,
+                                          size: 18),
+                                      tooltip: strings.firstPage,
+                                      onPressed: currentPage > 1
+                                          ? () => onPageChanged(1)
+                                          : null,
+                                    ),
+
+                                    // Previous Page
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_left,
+                                          size: 18),
+                                      tooltip: strings.previousPage,
+                                      onPressed: currentPage > 1
+                                          ? () =>
+                                              onPageChanged(currentPage - 1)
+                                          : null,
+                                    ),
+
+                                    // Page Number Indicator
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6),
+                                      child: Text(
+                                        strings.pageOf(
+                                            currentPage, totalPages),
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: scheme.primary,
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Next Page
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_right,
+                                          size: 18),
+                                      tooltip: strings.nextPage,
+                                      onPressed: currentPage < totalPages
+                                          ? () =>
+                                              onPageChanged(currentPage + 1)
+                                          : null,
+                                    ),
+
+                                    // Last Page
+                                    IconButton(
+                                      icon: const Icon(Icons.last_page,
+                                          size: 18),
+                                      tooltip: strings.lastPage,
+                                      onPressed: currentPage < totalPages
+                                          ? () => onPageChanged(totalPages)
+                                          : null,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -649,47 +1193,465 @@ class _DesktopView extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Empty / Error states
+// Mobile & Tablet view (Card list + Filter chips + Pagination bar)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({this.isAdminLevel = false, this.onUploadPressed, required this.strings});
+class _MobileTabletView extends StatelessWidget {
+  const _MobileTabletView({
+    required this.allDocs,
+    required this.filteredDocs,
+    required this.pageDocs,
+    required this.totalItems,
+    required this.currentPage,
+    required this.totalPages,
+    required this.pageSize,
+    required this.startIndex,
+    required this.endIndex,
+    required this.availableCategories,
+    required this.selectedCategory,
+    required this.searchController,
+    required this.hasActiveFilters,
+    required this.isTablet,
+    required this.isMobile,
+    required this.canUpload,
+    required this.canDelete,
+    required this.sort,
+    required this.scheme,
+    required this.strings,
+    required this.onSearchChanged,
+    required this.onCategoryChanged,
+    required this.onSortChanged,
+    required this.onPageChanged,
+    required this.onClearFilters,
+    required this.onUpload,
+    required this.onDelete,
+    required this.onRefresh,
+  });
 
-  final bool isAdminLevel;
-  final VoidCallback? onUploadPressed;
+  final List<DocumentSummary> allDocs;
+  final List<DocumentSummary> filteredDocs;
+  final List<DocumentSummary> pageDocs;
+  final int totalItems;
+  final int currentPage;
+  final int totalPages;
+  final int pageSize;
+  final int startIndex;
+  final int endIndex;
+  final List<String> availableCategories;
+  final String selectedCategory;
+  final TextEditingController searchController;
+  final bool hasActiveFilters;
+  final bool isTablet;
+  final bool isMobile;
+  final bool canUpload;
+  final bool canDelete;
+  final _SortOption sort;
+  final ColorScheme scheme;
   final AppStrings strings;
+  final VoidCallback onSearchChanged;
+  final ValueChanged<String> onCategoryChanged;
+  final ValueChanged<_SortOption> onSortChanged;
+  final ValueChanged<int> onPageChanged;
+  final VoidCallback onClearFilters;
+  final VoidCallback onUpload;
+  final void Function(String id, String title) onDelete;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    // ListView allows pull-to-refresh even when empty.
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
+    final listBody = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              strings.documentsTitle,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            if (isAdminLevel && onUploadPressed != null)
-              FilledButton.icon(
-                onPressed: onUploadPressed,
-                icon: const Icon(Icons.upload_file),
-                label: Text(strings.uploadNewDocument),
+        const _IngestProgressBannerList(),
+
+        // ── Search field ─────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          child: SizedBox(
+            height: 42,
+            child: TextField(
+              controller: searchController,
+              style: TextStyle(fontSize: 13, color: scheme.onSurface),
+              textAlignVertical: TextAlignVertical.center,
+              onChanged: (_) => onSearchChanged(),
+              decoration: InputDecoration(
+                hintText: strings.searchDocsPlaceholder,
+                hintStyle: TextStyle(fontSize: 13, color: scheme.outline),
+                prefixIcon: Icon(Icons.search, size: 18, color: scheme.outline),
+                suffixIcon: searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 16),
+                        onPressed: () {
+                          searchController.clear();
+                          onSearchChanged();
+                        },
+                      )
+                    : null,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: scheme.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: scheme.outlineVariant),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: scheme.primary, width: 1.5),
+                ),
               ),
-          ],
+            ),
+          ),
         ),
-        const SizedBox(height: 120),
-        Icon(Icons.folder_open,
-            size: 56, color: Theme.of(context).colorScheme.outline),
-        const SizedBox(height: 12),
-        Center(child: Text(strings.noDocsFound)),
+
+        // ── Category FilterChips row ──────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // "All" chip
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    label: Text(strings.allCategories,
+                        style: const TextStyle(fontSize: 12)),
+                    selected: selectedCategory.isEmpty,
+                    onSelected: (_) => onCategoryChanged(''),
+                    showCheckmark: false,
+                    visualDensity: VisualDensity.compact,
+                    selectedColor: scheme.primaryContainer,
+                    labelStyle: TextStyle(
+                      color: selectedCategory.isEmpty
+                          ? scheme.onPrimaryContainer
+                          : scheme.onSurface,
+                      fontWeight: selectedCategory.isEmpty
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                ...availableCategories.map((cat) {
+                  final selected =
+                      selectedCategory.toUpperCase() == cat.toUpperCase();
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      label: Text(cat, style: const TextStyle(fontSize: 12)),
+                      selected: selected,
+                      onSelected: (_) => onCategoryChanged(selected ? '' : cat),
+                      showCheckmark: false,
+                      visualDensity: VisualDensity.compact,
+                      selectedColor: scheme.primaryContainer,
+                      labelStyle: TextStyle(
+                        color: selected
+                            ? scheme.onPrimaryContainer
+                            : scheme.onSurface,
+                        fontWeight:
+                            selected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Sort bar ─────────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+          child: Row(
+            children: [
+              Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                '${strings.sortBy}:',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: scheme.primaryContainer,
+                    width: 1,
+                  ),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<_SortOption>(
+                    value: sort,
+                    isDense: true,
+                    icon: Icon(Icons.expand_more,
+                        size: 16, color: scheme.primary),
+                    borderRadius: BorderRadius.circular(12),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: scheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    items: _SortOption.values
+                        .map((opt) => DropdownMenuItem(
+                              value: opt,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(opt.icon,
+                                      size: 14, color: scheme.onSurface),
+                                  const SizedBox(width: 6),
+                                  Text(opt.localized(strings)),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) onSortChanged(v);
+                    },
+                  ),
+                ),
+              ),
+              if (hasActiveFilters) ...[
+                const SizedBox(width: 6),
+                IconButton(
+                  tooltip: strings.clearFilters,
+                  icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: onClearFilters,
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        // ── Document cards list ───────────────────────────────────────────────
+        Expanded(
+          child: totalItems == 0
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.folder_open,
+                            size: 48, color: scheme.outline),
+                        const SizedBox(height: 12),
+                        Text(
+                          strings.noDocsFound,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          strings.noDocsFoundDesc,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 12, color: scheme.onSurfaceVariant),
+                        ),
+                        if (hasActiveFilters) ...[
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: onClearFilters,
+                            icon: const Icon(Icons.refresh, size: 14),
+                            label: Text(strings.clearFilters),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  itemCount: pageDocs.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final doc = pageDocs[index];
+                    return RepaintBoundary(
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color:
+                                scheme.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => context.push('/documents/${doc.id}'),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      Icons.description_outlined,
+                                      color: scheme.primary,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        doc.title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    if (canDelete)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.red,
+                                          size: 18,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        tooltip: strings.deleteDocument,
+                                        onPressed: () => onDelete(
+                                            doc.id, doc.title),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  crossAxisAlignment:
+                                      WrapCrossAlignment.center,
+                                  children: [
+                                    _buildCategoryBadge(
+                                        doc.category, scheme),
+                                    if (doc.machineCode != null &&
+                                        doc.machineCode!.isNotEmpty)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: scheme.surfaceContainerHighest,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Code: ${doc.machineCode}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    if (doc.updatedAt != null &&
+                                        doc.updatedAt!.isNotEmpty)
+                                      Text(
+                                        _formatRelative(doc.updatedAt),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+
+        // ── Mobile/Tablet Pagination Footer ──────────────────────────────────
+        if (totalItems > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              border: Border(
+                top: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${startIndex + 1}–$endIndex / $totalItems',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left, size: 20),
+                      tooltip: strings.previousPage,
+                      onPressed: currentPage > 1
+                          ? () => onPageChanged(currentPage - 1)
+                          : null,
+                    ),
+                    Text(
+                      '$currentPage / $totalPages',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: scheme.primary,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right, size: 20),
+                      tooltip: strings.nextPage,
+                      onPressed: currentPage < totalPages
+                          ? () => onPageChanged(currentPage + 1)
+                          : null,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
       ],
     );
+
+    final refreshed = RefreshIndicator(
+      onRefresh: onRefresh,
+      child: listBody,
+    );
+
+    if (isTablet) {
+      return ConstrainedContent(
+        maxWidth: 840,
+        child: refreshed,
+      );
+    }
+    return refreshed;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Error state
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.onRetry, required this.strings});

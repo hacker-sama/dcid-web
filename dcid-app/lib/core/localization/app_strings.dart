@@ -127,6 +127,13 @@ abstract class AppStrings {
   String get docTableVersions;
   String get noDocsFound;
   String get noDocsFoundDesc;
+  String get rowsPerPage;
+  String showingDocsCount(int start, int end, int total);
+  String pageOf(int current, int total);
+  String get firstPage;
+  String get lastPage;
+  String get previousPage;
+  String get nextPage;
   String get uploadSuccessSnackbar;
   String get fileRequired;
   String get titleRequired;
@@ -538,6 +545,20 @@ class AppStringsVi implements AppStrings {
   String get noDocsFound => 'Không tìm thấy tài liệu nào';
   @override
   String get noDocsFoundDesc => 'Thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc danh mục/vai trò.';
+  @override
+  String get rowsPerPage => 'Số dòng mỗi trang:';
+  @override
+  String showingDocsCount(int start, int end, int total) => 'Hiển thị $start - $end trong $total tài liệu';
+  @override
+  String pageOf(int current, int total) => 'Trang $current / $total';
+  @override
+  String get firstPage => 'Trang đầu';
+  @override
+  String get lastPage => 'Trang cuối';
+  @override
+  String get previousPage => 'Trang trước';
+  @override
+  String get nextPage => 'Trang sau';
   @override
   String get uploadSuccessSnackbar => 'Đã tải lên — Tiến trình xử lý OCR đã bắt đầu...';
   @override
@@ -1079,6 +1100,20 @@ class AppStringsEn implements AppStrings {
   @override
   String get noDocsFoundDesc => 'Try adjusting your search query or role filters.';
   @override
+  String get rowsPerPage => 'Rows per page:';
+  @override
+  String showingDocsCount(int start, int end, int total) => 'Showing $start - $end of $total documents';
+  @override
+  String pageOf(int current, int total) => 'Page $current of $total';
+  @override
+  String get firstPage => 'First page';
+  @override
+  String get lastPage => 'Last page';
+  @override
+  String get previousPage => 'Previous page';
+  @override
+  String get nextPage => 'Next page';
+  @override
   String get uploadSuccessSnackbar => 'Uploaded — OCR processing started...';
   @override
   String get fileRequired => 'Please select a document file (PDF)';
@@ -1619,6 +1654,20 @@ class AppStringsHi implements AppStrings {
   @override
   String get noDocsFoundDesc => 'अपनी खोज या फ़िल्टर समायोजित करने का प्रयास करें।';
   @override
+  String get rowsPerPage => 'पंक्तियाँ प्रति पृष्ठ:';
+  @override
+  String showingDocsCount(int start, int end, int total) => '$total दस्तावेज़ों में से $start - $end दिखा रहा है';
+  @override
+  String pageOf(int current, int total) => 'पृष्ठ $current / $total';
+  @override
+  String get firstPage => 'पहला पृष्ठ';
+  @override
+  String get lastPage => 'अंतिम पृष्ठ';
+  @override
+  String get previousPage => 'पिछला पृष्ठ';
+  @override
+  String get nextPage => 'अगला पृष्ठ';
+  @override
   String get uploadSuccessSnackbar => 'अपलोड हो गया — ओसीआर प्रसंस्करण शुरू...';
   @override
   String get fileRequired => 'कृपया एक पीडीएफ दस्तावेज़ फ़ाइल चुनें';
@@ -2158,6 +2207,20 @@ class AppStringsJa implements AppStrings {
   String get noDocsFound => '文書が見つかりませんでした';
   @override
   String get noDocsFoundDesc => '検索キーワードやカテゴリ・権限フィルターを変更してお試しください。';
+  @override
+  String get rowsPerPage => 'ページごとの行数:';
+  @override
+  String showingDocsCount(int start, int end, int total) => '全 $total 件中 $start - $end 件を表示';
+  @override
+  String pageOf(int current, int total) => 'ページ $current / $total';
+  @override
+  String get firstPage => '最初のページ';
+  @override
+  String get lastPage => '最後のページ';
+  @override
+  String get previousPage => '前のページ';
+  @override
+  String get nextPage => '次のページ';
   @override
   String get uploadSuccessSnackbar => 'アップロード完了 — OCR処理を開始しました...';
   @override
