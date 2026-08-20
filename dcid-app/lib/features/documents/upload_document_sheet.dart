@@ -101,7 +101,11 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
           );
       try {
         if (detail.versions.isNotEmpty) {
-          ref.read(ingestProgressProvider.notifier).track(detail.versions.first.id);
+          ref.read(ingestProgressProvider.notifier).track(
+                detail.versions.first.id,
+                initialMessage:
+                    'Processing document pipeline for "${_titleController.text.trim()}"...',
+              );
         }
       } catch (stompError) {
         debugPrint('STOMP progress tracking init warning: $stompError');
@@ -120,12 +124,18 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
   String _friendlyError(Object e) {
     if (e is DioException) {
       final code = e.response?.statusCode;
+      if (code == 401) {
+        return 'Session expired. Please log in again.';
+      }
       if (code == 403) {
         return 'You do not have permission to upload documents (requires QA/Admin role).';
       }
-      if (code == 422) {
-        final data = e.response?.data;
-        if (data is Map && data['errors'] is List) {
+      if (code == 413) {
+        return 'File is too large. Please select a smaller PDF file (max 100MB).';
+      }
+      final data = e.response?.data;
+      if (data is Map) {
+        if (data['errors'] is List) {
           final details = (data['errors'] as List)
               .whereType<Map>()
               .map((err) => '• ${err['field']}: ${err['message']}')
@@ -134,7 +144,15 @@ class _UploadDocumentSheetState extends ConsumerState<UploadDocumentSheet> {
             return 'Invalid parameters:\n$details';
           }
         }
+        if (data['message'] is String && (data['message'] as String).isNotEmpty) {
+          return data['message'] as String;
+        }
+      }
+      if (code == 422) {
         return 'Invalid input parameters. Please check required fields.';
+      }
+      if (code == 500) {
+        return 'Server error processing upload. Please try again later.';
       }
     }
     return 'Upload failed. Please check backend connection.';
