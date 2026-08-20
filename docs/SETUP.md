@@ -24,7 +24,7 @@ Kafka, Zookeeper và Flower đã được loại khỏi stack 8 GB.
 
 Hai model Ollama:
 
-- `qwen2.5:1.5b`: câu hỏi văn bản/RAG.
+- `qwen2.5:3b`: câu hỏi văn bản/RAG.
 - `qwen2.5vl:3b`: hình ảnh và bản vẽ cần suy luận không gian.
 
 Hệ thống chỉ giữ một model trong RAM và chỉ chạy một tác vụ AI nặng
@@ -100,7 +100,7 @@ Tải hai model. Chỉ cần thực hiện một lần; model được lưu tron
 `ollama_data`:
 
 ```powershell
-docker compose exec ollama ollama pull qwen2.5:1.5b
+docker compose exec ollama ollama pull qwen2.5:3b
 docker compose exec ollama ollama pull qwen2.5vl:3b
 docker compose exec ollama ollama list
 ```
@@ -240,7 +240,7 @@ $env:QDRANT_PORT="6333"
 $env:REDIS_URL="redis://localhost:6379/0"
 $env:OCR_SERVICE_URL="http://localhost:8002"
 $env:LM_STUDIO_BASE_URL="http://localhost:11434/v1"
-$env:LM_STUDIO_MODEL="qwen2.5:1.5b"
+$env:LM_STUDIO_MODEL="qwen2.5:3b"
 $env:VISION_MODEL="qwen2.5vl:3b"
 $env:AI_RESOURCE_GATE_ENABLED="true"
 $env:AI_RESOURCE_GATE_FAIL_OPEN="false"
@@ -283,7 +283,7 @@ APP_BOOTSTRAP_ADMIN_PASSWORD=<mat-khau-admin>
 MINIO_ROOT_PASSWORD=<mat-khau-minio>
 AI_INTERNAL_TOKEN=<token-noi-bo-ngau-nhien>
 CORS_ALLOWED_ORIGINS=https://ten-mien-cua-ban
-LLM_MODEL=qwen2.5:1.5b
+LLM_MODEL=qwen2.5:3b
 VISION_MODEL=qwen2.5vl:3b
 AI_RESOURCE_GATE_ENABLED=true
 AI_RESOURCE_GATE_FAIL_OPEN=false
@@ -323,7 +323,7 @@ Xem thêm [VPS-8GB.md](VPS-8GB.md).
 2. Upload một PDF nhỏ.
 3. Xem trạng thái chuyển `PROCESSING_OCR` → `PROCESSING_EMBED` → `READY`.
 4. Chọn tài liệu và gửi câu hỏi văn bản.
-5. Xác nhận model phản hồi là `qwen2.5:1.5b`.
+5. Xác nhận model phản hồi là `qwen2.5:3b`.
 6. Hỏi về vị trí/kích thước trên bản vẽ.
 7. Xác nhận Vision chỉ nạp `qwen2.5vl:3b` khi có nhu cầu hình ảnh.
 8. Kiểm tra trích dẫn đúng trang và tài liệu đã chọn.
@@ -412,7 +412,7 @@ Xác nhận `ai-worker`, `ai-ocr`, Redis và MinIO đều `Up`.
 
 ```powershell
 docker compose exec ollama ollama list
-docker compose exec ollama ollama pull qwen2.5:1.5b
+docker compose exec ollama ollama pull qwen2.5:3b
 docker compose exec ollama ollama pull qwen2.5vl:3b
 ```
 

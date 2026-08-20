@@ -87,6 +87,25 @@ def _clamp_score(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
 
 
+def _minimum_answer_confidence() -> float:
+    """Return the configured confidence target, safely clamped to [0, 1]."""
+    return _clamp_score(getattr(get_settings(), "min_answer_confidence", 0.80))
+
+
+def _best_effort_answer(
+    answer: str,
+    *,
+    numeric_verified: bool | None = None,
+) -> str:
+    """Label a best-effort answer without exposing internal confidence scores."""
+    numeric_note = (
+        " Số liệu kỹ thuật trong câu trả lời chưa được OCR/tài liệu xác nhận đầy đủ."
+        if numeric_verified is False
+        else ""
+    )
+    return f"**Câu trả lời tham khảo.**{numeric_note}\n\n{answer.strip()}"
+
+
 def _ocr_quality_score(text: str) -> float:
     """Estimate whether OCR contains enough diverse, readable evidence.
 
@@ -196,7 +215,7 @@ def _calculate_confidence(
     )
 
     document_numeric_verified: bool | None = None
-    if image_score and answer_text is not None and hits:
+    if answer_text is not None and hits:
         answer_numbers = _numeric_values(answer_text, technical_only=True)
         if numeric_rule and not answer_numbers:
             answer_numbers = _numeric_values(answer_text)
@@ -205,9 +224,13 @@ def _calculate_confidence(
             document_numbers.update(
                 _numeric_values(str(hit.get("text") or hit.get("snippet") or ""))
             )
-        if answer_numbers and document_numbers:
+        if answer_numbers:
             document_support = len(answer_numbers & document_numbers) / len(answer_numbers)
             document_numeric_verified = document_support >= 0.80
+        elif numeric_rule:
+            # A numeric question whose answer contains no verifiable value must
+            # not be advertised as a high-confidence technical answer.
+            document_numeric_verified = False
 
     verification_results = [
         value
@@ -413,7 +436,7 @@ def run_query(req: QueryRequest) -> QueryResponse:
     if req.imageStorageKey and (image_base64 or _usable_ocr_text(image_text)):
         locked = False
 
-    if locked:
+    if locked and not hits and not (image_base64 or _usable_ocr_text(image_text)):
         logger.info(
             "Guardrail LOCKED: top_score=%.3f threshold=%.2f numeric=%s reasoning=%s",
             hits[0]["score"] if hits else 0.0,
@@ -428,6 +451,13 @@ def run_query(req: QueryRequest) -> QueryResponse:
             citations=_build_citations(hits, locked=True),   # trả hits để kỹ sư tự xem, nhưng ẩn snippet
             latencyMs=_elapsed_ms(start_ns),
             model="guardrail-locked",
+        )
+    if locked:
+        logger.info(
+            "Guardrail đánh dấu bằng chứng yếu nhưng tiếp tục best-effort: "
+            "top_score=%.3f threshold=%.2f",
+            hits[0]["score"] if hits else 0.0,
+            guardrails.THRESHOLD,
         )
 
     # Nếu chưa có image_base64 từ SnapAsk, tự động bốc/dựng ảnh trang PDF của kết quả top 1 từ MinIO
@@ -519,36 +549,38 @@ def run_query(req: QueryRequest) -> QueryResponse:
         numeric_rule=numeric_rule,
     )
 
-    if req.imageStorageKey and numeric_verified is False:
+    if numeric_verified is False:
         logger.warning(
-            "Vision answer bị khóa: số liệu trả lời không được OCR xác nhận "
-            "(confidence=%.3f)",
+            "Số liệu trong câu trả lời chưa được nguồn độc lập xác nhận "
+            "(confidence=%.3f); trả best-effort kèm cảnh báo",
             confidence,
         )
-        return QueryResponse(
-            answer=LOCKED_ANSWER,
-            confidence=confidence,
-            guard=Guard(locked=True, numericRule=numeric_rule, reasoningMode=reasoning_mode),
-            citations=_build_citations(hits, locked=True),
-            latencyMs=_elapsed_ms(start_ns),
-            model=model_name,
-        )
 
-    # Kiểm tra blank answer (model 1.5B đôi khi trả rỗng sau khi bóc thẻ <think>)
+    # Kiểm tra blank answer (model nhỏ đôi khi trả rỗng sau khi bóc thẻ <think>)
     if not answer_text.strip():
         logger.warning(
             "LLM trả blank answer (hallucination hoặc blank): model=%s confidence=%.3f — fall back message.",
             model_name, confidence,
         )
-        return QueryResponse(
-            answer="Tài liệu này chủ yếu chứa bản vẽ kỹ thuật scan, nội dung text OCR khó đọc. "
-                   "Vui lòng mở trực tiếp file tài liệu để xem bản vẽ gốc, "
-                   "hoặc đặt câu hỏi cụ thể hơn về thông số kỹ thuật cần tra cứu.",
-            confidence=min(confidence, LOCKED_CONFIDENCE),
-            guard=Guard(locked=True, numericRule=numeric_rule, reasoningMode=reasoning_mode),
-            citations=_build_citations(hits, locked=True),
-            latencyMs=_elapsed_ms(start_ns),
-            model=model_name,
+        answer_text = (
+            "Tài liệu này chủ yếu chứa bản vẽ kỹ thuật scan và phần chữ OCR khó đọc. "
+            "Từ dữ liệu hiện có, tôi chưa thể trích xuất thêm nội dung cụ thể; "
+            "hãy xem bản vẽ gốc hoặc cung cấp ảnh rõ hơn."
+        )
+        confidence = min(confidence, LOCKED_CONFIDENCE)
+
+    minimum_confidence = _minimum_answer_confidence()
+    if confidence < minimum_confidence or numeric_verified is False:
+        logger.warning(
+            "Answer dưới mục tiêu confidence nhưng vẫn trả best-effort: "
+            "confidence=%.3f target=%.3f model=%s",
+            confidence,
+            minimum_confidence,
+            model_name,
+        )
+        answer_text = _best_effort_answer(
+            answer_text,
+            numeric_verified=numeric_verified,
         )
 
     # ── 7. Build Response ────────────────────────────────────────────────────
@@ -632,7 +664,7 @@ def run_query_stream(req: QueryRequest):
     """Generator cho SSE streaming: Thực hiện RAG pipeline và yield từng SSE event.
 
     Luồng SSE protocol:
-        event: meta      → gửi metadata (citations, confidence, guard) TRƯỚC khi stream text
+        event: meta      → gửi metadata đã kiểm tra (citations, confidence, guard) trước nội dung
         event: delta     → gửi từng token text từ LLM
         event: done      → báo hiệu kết thúc stream
 
@@ -692,31 +724,39 @@ def run_query_stream(req: QueryRequest):
     locked = guardrails.is_locked(hits, original_question, reasoning_mode=reasoning_mode)
     if req.imageStorageKey and (image_base64 or _usable_ocr_text(image_text)):
         locked = False
-    confidence, _ = _calculate_confidence(
-        hits,
-        image_text=image_text,
-        has_pixels=bool(image_base64),
-        answer_text=None,
-        numeric_rule=numeric_rule,
-    )
-    citations_data = [
-        {
-            "versionId": str(c.versionId),
-            "pageNo": c.pageNo,
-            "bboxKey": c.bboxKey,
-            "snippet": c.snippet,
-        }
-        for c in _build_citations(hits, locked=locked)
-    ]
-    guard_data = {"locked": locked, "numericRule": numeric_rule, "reasoningMode": reasoning_mode}
-
-    # Gửi metadata TRƯỚC (citations, confidence) để client hiển thị ngay
-    yield _sse("meta", citations=citations_data, confidence=confidence, guard=guard_data)
-
-    if locked:
+    if locked and not hits and not (image_base64 or _usable_ocr_text(image_text)):
+        confidence, _ = _calculate_confidence(
+            hits,
+            image_text=image_text,
+            has_pixels=bool(image_base64),
+            answer_text=None,
+            numeric_rule=numeric_rule,
+        )
+        citations_data = [
+            {
+                "versionId": str(c.versionId),
+                "pageNo": c.pageNo,
+                "bboxKey": c.bboxKey,
+                "snippet": c.snippet,
+            }
+            for c in _build_citations(hits, locked=True)
+        ]
+        yield _sse(
+            "meta",
+            citations=citations_data,
+            confidence=confidence,
+            guard={"locked": True, "numericRule": numeric_rule, "reasoningMode": reasoning_mode},
+        )
         yield _sse("delta", text=LOCKED_ANSWER)
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="guardrail-locked")
         return
+    if locked:
+        logger.info(
+            "Guardrail stream đánh dấu bằng chứng yếu nhưng tiếp tục best-effort: "
+            "top_score=%.3f threshold=%.2f",
+            hits[0]["score"] if hits else 0.0,
+            guardrails.THRESHOLD,
+        )
 
     # Nếu chưa có image_base64 từ SnapAsk, tự động bốc/dựng ảnh trang PDF của kết quả top 1 từ MinIO (nếu có)
     if not req.imageStorageKey and not image_base64 and hits and _needs_visual_context(req.question):
@@ -747,25 +787,83 @@ def run_query_stream(req: QueryRequest):
     system_prompt = prompts.build_system_prompt(numeric_rule=numeric_rule, reasoning_mode=reasoning_mode, has_image=has_img)
     user_prompt = prompts.build_user_prompt(req.question, hits, reasoning_mode=reasoning_mode, history=req.history, has_image=has_img, machine_code=req.machineCode)
 
-    # ── 5. Stream từ LM Studio ──────────────────────────────────────────────
+    # ── 5. Sinh và giữ câu trả lời trong bộ đệm ─────────────────────────────
+    # Giữ token đến khi tính xong confidence để có thể thêm cảnh báo chính xác
+    # trước câu trả lời best-effort khi chưa đạt mục tiêu 80%.
     try:
         model_name = llm_client.get_model_name(image_base64)
-        for token in llm_client.generate_answer_stream(
-            system_prompt, user_prompt, history=req.history, image_base64=image_base64
-        ):
-            yield _sse("delta", text=token)
+        answer_parts = list(
+            llm_client.generate_answer_stream(
+                system_prompt, user_prompt, history=req.history, image_base64=image_base64
+            )
+        )
+        answer_text = "".join(answer_parts)
+        confidence, numeric_verified = _calculate_confidence(
+            hits,
+            image_text=image_text,
+            has_pixels=has_img,
+            answer_text=answer_text,
+            numeric_rule=numeric_rule,
+        )
+        if not answer_text.strip():
+            answer_text = (
+                "Tài liệu này chủ yếu chứa bản vẽ kỹ thuật scan và phần chữ OCR khó đọc. "
+                "Từ dữ liệu hiện có, tôi chưa thể trích xuất thêm nội dung cụ thể; "
+                "hãy xem bản vẽ gốc hoặc cung cấp ảnh rõ hơn."
+            )
+            confidence = min(confidence, LOCKED_CONFIDENCE)
+            answer_parts = [answer_text]
+
+        needs_warning = (
+            numeric_verified is False
+            or confidence < _minimum_answer_confidence()
+        )
+        citations_data = [
+            {
+                "versionId": str(c.versionId),
+                "pageNo": c.pageNo,
+                "bboxKey": c.bboxKey,
+                "snippet": c.snippet,
+            }
+            for c in _build_citations(hits, locked=False)
+        ]
+        yield _sse(
+            "meta",
+            citations=citations_data,
+            confidence=confidence,
+            guard={
+                "locked": False,
+                "numericRule": numeric_rule,
+                "reasoningMode": reasoning_mode,
+            },
+        )
+        if needs_warning:
+            yield _sse(
+                "delta",
+                text=_best_effort_answer(
+                    answer_text,
+                    numeric_verified=numeric_verified,
+                ),
+            )
+        else:
+            for token in answer_parts:
+                yield _sse("delta", text=token)
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model=model_name)
 
     except ResourceBusyError:
+        yield _sse("meta", citations=[], confidence=0.0, guard={"locked": True, "numericRule": numeric_rule, "reasoningMode": reasoning_mode})
         yield _sse("error", message="Hệ thống AI đang bận. Vui lòng thử lại sau ít phút.")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="busy-resource-gate")
     except llm_client.LLMConnectionError:
+        yield _sse("meta", citations=[], confidence=0.0, guard={"locked": True, "numericRule": numeric_rule, "reasoningMode": reasoning_mode})
         yield _sse("error", message="Ollama chưa sẵn sàng. Vui lòng liên hệ quản trị viên.")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-connection")
     except llm_client.LLMInferenceError as exc:
+        yield _sse("meta", citations=[], confidence=0.0, guard={"locked": True, "numericRule": numeric_rule, "reasoningMode": reasoning_mode})
         yield _sse("error", message=f"Lỗi LLM inference: {exc}")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-llm-inference")
     except Exception as exc:  # noqa: BLE001
         logger.error("Stream query lỗi không xác định: %s", exc)
+        yield _sse("meta", citations=[], confidence=0.0, guard={"locked": True, "numericRule": numeric_rule, "reasoningMode": reasoning_mode})
         yield _sse("error", message="Lỗi không xác định.")
         yield _sse("done", latencyMs=_elapsed_ms(start_ns), model="error-unknown")
