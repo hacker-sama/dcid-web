@@ -1,0 +1,47 @@
+{
+  "outputSlides": [
+    {
+      "outputSlide": 1,
+      "sourceSlide": 1,
+      "narrativeRole": "cover team label update",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeId": "sh/wn6dc7eh", "description": "Replace unresolved team placeholder" }
+      ]
+    },
+    {
+      "outputSlide": 2,
+      "sourceSlide": 2,
+      "narrativeRole": "team roster update",
+      "reuseMode": "duplicate-slide",
+      "editTargets": [
+        { "action": "rewrite", "shapeId": "sh/q5wjelsz", "description": "Member 1 name" },
+        { "action": "rewrite", "shapeId": "sh/ove9o7yd", "description": "Member 1 role" },
+        { "action": "rewrite", "shapeId": "sh/9wnqhczy", "description": "Member 1 output" },
+        { "action": "rewrite", "shapeId": "sh/nu58f2hs", "description": "Member 2 name" },
+        { "action": "rewrite", "shapeId": "sh/wjy9sry9", "description": "Member 2 role" },
+        { "action": "rewrite", "shapeId": "sh/xk7qlczu", "description": "Member 2 output" },
+        { "action": "rewrite", "shapeId": "sh/cnupgny5", "description": "Member 3 name" },
+        { "action": "rewrite", "shapeId": "sh/do3q9szq", "description": "Member 3 role" },
+        { "action": "rewrite", "shapeId": "sh/t8byxkn2", "description": "Member 3 output" },
+        { "action": "rewrite", "shapeId": "sh/76twva5c", "description": "Member 4 name" },
+        { "action": "rewrite", "shapeId": "sh/65kfmpor", "description": "Member 4 role" },
+        { "action": "rewrite", "shapeId": "sh/hcvy14ne", "description": "Member 4 output" },
+        { "action": "rewrite", "shapeId": "sh/u94fqp4n", "description": "Member 5 name" },
+        { "action": "rewrite", "shapeId": "sh/p0vy54na", "description": "Member 5 role" },
+        { "action": "rewrite", "shapeId": "sh/4zmxwzmp", "description": "Member 5 output" }
+      ]
+    },
+    { "outputSlide": 3, "sourceSlide": 3, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 4, "sourceSlide": 4, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 5, "sourceSlide": 5, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 6, "sourceSlide": 6, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 7, "sourceSlide": 7, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 8, "sourceSlide": 8, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 9, "sourceSlide": 9, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 10, "sourceSlide": 10, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 11, "sourceSlide": 11, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] },
+    { "outputSlide": 12, "sourceSlide": 12, "narrativeRole": "preserve-only", "reuseMode": "duplicate-slide", "editTargets": [] }
+  ],
+  "omittedSourceSlides": []
+}

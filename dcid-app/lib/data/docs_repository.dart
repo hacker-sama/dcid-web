@@ -164,22 +164,82 @@ class DocsRepository implements IDocsRepository {
     String fileName, {
     String? machineCode,
   }) async {
-    final form = FormData.fromMap({
+    FormData buildForm() => FormData.fromMap({
       'question': question,
       if (machineCode != null && machineCode.isNotEmpty)
         'machineCode': machineCode,
       'file': MultipartFile.fromBytes(imageBytes, filename: fileName),
     });
-    final res = await _api.dio.post<Map<String, dynamic>>(
+    try {
+      // The upload request now only enqueues work and returns immediately.
+      // Short status polls avoid holding a browser/proxy connection open while
+      // OCR and the vision model are waiting for the shared AI slot.
+      final created = await _api.dio.post<Map<String, dynamic>>(
+        '/api/query/vision/jobs',
+        data: buildForm(),
+      );
+      final job = created.data!['data'] as Map<String, dynamic>;
+      final jobId = job['jobId'] as String?;
+      if (jobId == null || jobId.isEmpty) {
+        throw StateError('Vision job response does not contain jobId');
+      }
+      return _waitForVisionJob(jobId);
+    } on DioException catch (error) {
+      // Rolling deployment compatibility: an older backend may be serving the
+      // new Flutter bundle briefly before the async endpoint is available.
+      if (error.response?.statusCode == 404 ||
+          error.response?.statusCode == 405) {
+        return _askWithImageSync(buildForm());
+      }
+      rethrow;
+    }
+  }
+
+  Future<AnswerResult> _waitForVisionJob(String jobId) async {
+    final deadline = DateTime.now().add(const Duration(minutes: 15));
+    while (DateTime.now().isBefore(deadline)) {
+      final response = await _api.dio.get<Map<String, dynamic>>(
+        '/api/query/vision/jobs/$jobId',
+      );
+      final job = response.data!['data'] as Map<String, dynamic>;
+      final status = job['status'] as String? ?? 'QUEUED';
+      if (status == 'SUCCEEDED') {
+        final result = job['result'] as Map<String, dynamic>?;
+        if (result == null) {
+          throw StateError('Completed vision job does not contain a result');
+        }
+        return AnswerResult.fromJson(result);
+      }
+      if (status == 'FAILED') {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: Response<Map<String, dynamic>>(
+            requestOptions: response.requestOptions,
+            statusCode: 503,
+            data: {'error': job['error'] ?? 'Vision processing failed'},
+          ),
+          type: DioExceptionType.badResponse,
+        );
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+
+    throw DioException(
+      requestOptions: RequestOptions(path: '/api/query/vision/jobs/$jobId'),
+      type: DioExceptionType.receiveTimeout,
+      message: 'Vision job exceeded the 15-minute client deadline',
+    );
+  }
+
+  Future<AnswerResult> _askWithImageSync(FormData form) async {
+    final response = await _api.dio.post<Map<String, dynamic>>(
       '/api/query/vision',
       data: form,
-      // Vision on CPU performs OCR, loads the 3B vision model, and then
-      // generates the answer. A cold request can legitimately exceed the
-      // global 180-second API timeout, so keep this endpoint aligned with the
-      // backend-to-AI timeout instead of reporting a false offline failure.
       options: Options(receiveTimeout: const Duration(minutes: 10)),
     );
-    return AnswerResult.fromJson(res.data!['data'] as Map<String, dynamic>);
+    return AnswerResult.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
   }
 
   /// `GET /api/documents` — PagedResponse: items live in `data.items`

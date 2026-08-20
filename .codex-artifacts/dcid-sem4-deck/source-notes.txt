@@ -1,0 +1,19 @@
+Primary content sources
+- C:\Users\HACOM\Downloads\report_presentation (1).md
+- C:\project\new\dcid-web\README.md
+- C:\project\new\dcid-web\docs\ARCHITECTURE.md
+- C:\project\new\dcid-web\docs\ERD.md
+- C:\project\new\dcid-web\docs\API-CONTRACT.md
+- C:\project\new\dcid-web\docs\ROADMAP.md
+- C:\project\new\dcid-web\docs\PLAN-THESIS.md
+
+Visual sources
+- C:\project\new\dcid-web\dcid-app\web\icons\Icon-512.png (project-owned app icon)
+- dcid-hero.png generated with OpenAI image generation for this deck. Prompt: premium editorial visualization of an engineer in a modern factory consulting a rugged tablet, with technical drawing pages and AI data connections; cool white/navy/cyan palette; no text, logos, or watermark.
+
+Content policy
+- The supplied report's unverified KPI claims (Recall@3 95.4%, OCR 98.5%, hallucination 0%, 1.8–3.2 s latency) are not presented as achieved results.
+- Verified implementation status is taken from docs/ROADMAP.md (updated 2026-08-06).
+- The only measured OCR baseline shown is the small spike documented in docs/PLAN-THESIS.md: EN 100%, VI 89.6%, explicitly labeled as a limited 8-sentence spike.
+- Team names were not present in the supplied report or repository, so editable placeholders are used.
+

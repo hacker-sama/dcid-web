@@ -1,0 +1,5 @@
+Source: DCID_SEM4_Defense_Deck_Team_Updated.pptx, 12 slides, 1280x720.
+Structure: flat editable shapes on a shared PowerPoint master/layout; Arial typography; white and deep-navy alternating backgrounds; cyan accents; fixed section headers and footers.
+Reusable source patterns: slide 5 architecture topology, slide 6 technology table, slide 8 five-step flow, slide 9 six-step guardrail flow, slide 10 relational/data diagram.
+Placeholder audit: no unresolved visible placeholders in the current source deck.
+Insertion contract: duplicate existing slides only; rewrite inherited text and speaker notes; preserve shapes, connectors, fonts, fills, positions, images, and master/layout structure. Update every footer to /17.

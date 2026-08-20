@@ -12,11 +12,14 @@ import vn.dcid.domain.enums.UserRole;
 import vn.dcid.domain.enums.VersionStatus;
 import vn.dcid.dto.request.QueryRequest;
 import vn.dcid.dto.response.AnswerDTO;
+import vn.dcid.exception.ServiceUnavailableException;
 import vn.dcid.repository.DocumentVersionRepository;
 import vn.dcid.repository.QueryLogRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -103,18 +106,40 @@ public class QueryService {
     }
 
     public AnswerDTO askWithVision(String question, String machineCode, boolean reasoningMode, org.springframework.web.multipart.MultipartFile file, UUID actorId, UserRole actorRole) {
+        try {
+            return askWithVision(
+                    question,
+                    machineCode,
+                    reasoningMode,
+                    file.getBytes(),
+                    file.getOriginalFilename(),
+                    file.getContentType(),
+                    actorId,
+                    actorRole);
+        } catch (IOException e) {
+            throw new IllegalStateException("Không thể đọc dữ liệu ảnh upload", e);
+        }
+    }
+
+    public AnswerDTO askWithVision(String question, String machineCode, boolean reasoningMode,
+                                   byte[] fileBytes, String originalFilename, String contentType,
+                                   UUID actorId, UserRole actorRole) {
         long start = System.nanoTime();
 
         List<UUID> allowed = resolveAllowedVersionIds(actorRole, machineCode);
+        // An uploaded image is an independent evidence source. Keep the
+        // allowed-version list (possibly empty) for optional RAG enrichment,
+        // but never block Snap & Ask solely because no ACTIVE document exists.
 
-        if (allowed.isEmpty()) {
-            AnswerDTO locked = AnswerDTO.locked(NO_ACCESS_MESSAGE);
-            saveLog(actorId, question, null, null, false, true, locked.answer(), elapsedMs(start));
-            return locked;
-        }
-
-        String imageStorageKey = "temp/vision/" + UUID.randomUUID() + "-" + file.getOriginalFilename();
-        minioService.upload(file, imageStorageKey);
+        String safeFilename = originalFilename == null || originalFilename.isBlank()
+                ? "image.bin"
+                : originalFilename.replaceAll(".*[\\\\/]", "");
+        String imageStorageKey = "temp/vision/" + UUID.randomUUID() + "-" + safeFilename;
+        minioService.upload(
+                imageStorageKey,
+                new ByteArrayInputStream(fileBytes),
+                fileBytes.length,
+                contentType != null ? contentType : "application/octet-stream");
 
         AiQueryResponse ai;
         try {
@@ -134,6 +159,11 @@ public class QueryService {
             } catch (Exception e) {
                 // Ignore cleanup error
             }
+        }
+
+        if ("busy-resource-gate".equals(ai.model())) {
+            throw new ServiceUnavailableException(
+                    "Hệ thống AI đang bận; vui lòng thử lại sau ít phút");
         }
 
         int latencyMs = elapsedMs(start);

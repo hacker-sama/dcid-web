@@ -1,0 +1,7 @@
+User-supplied screenshot: codex-clipboard-0043b69b-317f-472b-80bf-4d74ba4cefc2.png.
+Extracted team roster:
+- Phạm Hải Đông — Leader; project coordination, Backend, Governance.
+- Lê Nhật Huy — Deputy lead; AI/RAG, Backend–AI integration.
+- Phạm Anh Vũ — Backend / Full-stack.
+- Nguyễn Minh Hà — Data, Evaluation, Documentation.
+- Dương Anh Vũ — Flutter Frontend.

@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "checkedAt": "2026-08-19T13:46:38.752Z",
+  "workspace": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-team-edit",
+  "finalPptx": "C:\\project\\new\\dcid-web\\DCID_SEM4_Defense_Deck_Team_Updated.pptx",
+  "starterPptx": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-team-edit\\template-starter.pptx",
+  "mapPath": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-team-edit\\template-frame-map.json",
+  "starterLayoutDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-team-edit\\template-starter-layout",
+  "finalLayoutDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-team-edit\\final-layout",
+  "editDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-team-edit",
+  "issueCount": 0,
+  "issues": []
+}

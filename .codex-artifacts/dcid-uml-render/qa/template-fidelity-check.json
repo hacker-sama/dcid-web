@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "checkedAt": "2026-08-19T15:12:43.512Z",
+  "workspace": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-uml-render",
+  "finalPptx": "C:\\project\\new\\dcid-web\\DCID_SEM4_Defense_Deck_UML_Rendered.pptx",
+  "starterPptx": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-uml-render\\template-starter.pptx",
+  "mapPath": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-uml-render\\template-frame-map.json",
+  "starterLayoutDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-uml-render\\template-starter-layout",
+  "finalLayoutDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-uml-render\\final-layout",
+  "editDir": "C:\\project\\new\\dcid-web\\.codex-artifacts\\dcid-uml-render",
+  "issueCount": 0,
+  "issues": []
+}
