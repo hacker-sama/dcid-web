@@ -1,5 +1,0 @@
-Slides 7, 10, 12, 14 and 15 replace the inherited hand-built diagram bodies with deterministic PNG renders derived from the Mermaid/PlantUML relationships in the project report and docs.
-Slide 7 title is rewritten to identify the technology architecture view.
-Slide 15 title is rewritten to identify the document-version state machine.
-No new slides are added; all other slides remain unchanged.
-

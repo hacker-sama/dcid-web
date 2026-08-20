@@ -1,9 +1,0 @@
-Communication job: By the end, the SEM4 review panel should understand how DCID moves a document or question through governance, AI, and storage because each component has an explicit responsibility and source of truth.
-
-Narrative sequence (17 slides):
-1 cover; 2 team; 3 problem; 4 product promise; 5 architecture; 6 stack summary;
-7 technology responsibility map (new); 8 use cases; 9 ingest overview; 10 ingest sequence (new);
-11 query overview; 12 query/guardrail sequence (new); 13 database overview; 14 relational ERD (new);
-15 polyglot database topology (new); 16 delivery status; 17 lessons.
-
-Visual route: preserve and extend the existing DCID deck. New slides duplicate source slides 5, 6, 8, 9, and 10 and rewrite inherited elements in place.

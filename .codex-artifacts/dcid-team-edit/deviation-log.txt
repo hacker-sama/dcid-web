@@ -1,3 +1,0 @@
-Slide 1: replace the unresolved team placeholder with "DCID".
-Slide 2: replace five placeholder names, role labels, and responsibility summaries using the team information supplied in the user's screenshot.
-Slides 3-12: no intentional changes.
