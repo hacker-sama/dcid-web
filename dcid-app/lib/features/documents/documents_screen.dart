@@ -262,7 +262,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     final docsAsync = ref.watch(documentsProvider);
     final canUpload = ref.watch(canUploadProvider);
     final canDelete = ref.watch(canDeleteDocumentProvider);
-    final visibleCategories = ref.watch(visibleCategoriesProvider);
     final scheme = Theme.of(context).colorScheme;
     final strings = ref.watch(appStringsProvider);
 
@@ -284,14 +283,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                 onRetry: () => ref.invalidate(documentsProvider),
               ),
               data: (allDocs) {
-                // 1. Role-based filtering
-                final roleFiltered = visibleCategories.isEmpty
-                    ? allDocs
-                    : allDocs
-                        .where((d) =>
-                            d.category == null ||
-                            visibleCategories.contains(d.category))
-                        .toList();
+                // 1. Role-based filtering — handled by backend (GET /api/documents
+                //    returns only documents accessible to the current user's minRole).
+                //    Client-side category filtering was removed to avoid a double-filter
+                //    mismatch between minRole (backend) and category (client).
+                final roleFiltered = allDocs;
 
                 // Build category list dynamically from available docs
                 final extractedCategories = <String>{};
@@ -299,7 +295,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   final cat = (d.category ?? '').trim().toUpperCase();
                   if (cat.isNotEmpty) extractedCategories.add(cat);
                 }
-                final standardCats = {'SOP', 'CIRCUIT', 'SAFETY', 'OTHER'};
+                final standardCats = {'SOP', 'DRAWING', 'CIRCUIT', 'SAFETY', 'MAINTENANCE_LOG', 'OTHER'};
                 final availableCategories =
                     {...standardCats, ...extractedCategories}.toList()..sort();
 
