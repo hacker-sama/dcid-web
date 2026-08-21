@@ -74,6 +74,7 @@ public class IngestService {
         // READY: ghi lại pages (idempotent — xóa cũ trước)
         pageRepository.deleteByVersionId(version.getId());
         List<IngestCallbackRequest.PageInfo> pages = req.pages() != null ? req.pages() : List.of();
+        List<DocumentPage> pageEntities = new java.util.ArrayList<>(pages.size());
         for (IngestCallbackRequest.PageInfo p : pages) {
             DocumentPage page = new DocumentPage();
             page.setVersionId(version.getId());
@@ -82,8 +83,9 @@ public class IngestService {
             page.setWidth(p.width());
             page.setHeight(p.height());
             page.setOcrText(p.ocrText());
-            pageRepository.save(page);
+            pageEntities.add(page);
         }
+        pageRepository.saveAll(pageEntities); // batch INSERT — tránh N+1 khi có 200+ trang
 
         // Auto-publish: ACTIVE cũ của cùng document → SUPERSEDED
         versionRepository.findFirstByDocumentIdAndStatus(version.getDocumentId(), VersionStatus.ACTIVE)

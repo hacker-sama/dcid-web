@@ -19,6 +19,11 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 50          # Gom INSERT/UPDATE thành batch 50 rows — tránh N+1 khi lưu 200+ trang
+          fetch_size: 50
+        order_inserts: true       # Sắp xếp INSERT theo entity type để batch hiệu quả
+        order_updates: true
     open-in-view: false
   data:
     redis:
