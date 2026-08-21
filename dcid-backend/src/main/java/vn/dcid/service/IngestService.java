@@ -82,7 +82,9 @@ public class IngestService {
             page.setImageKey(p.imageKey());
             page.setWidth(p.width());
             page.setHeight(p.height());
-            page.setOcrText(p.ocrText());
+            // Strip null bytes (\x00) — PaddleOCR đôi khi trả về null byte
+            // trong kết quả OCR; PostgreSQL UTF8 reject toàn bộ batch nếu có.
+            page.setOcrText(p.ocrText() != null ? p.ocrText().replace("\u0000", "") : null);
             pageEntities.add(page);
         }
         pageRepository.saveAll(pageEntities); // batch INSERT — tránh N+1 khi có 200+ trang
