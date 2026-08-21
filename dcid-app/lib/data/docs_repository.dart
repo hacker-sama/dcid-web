@@ -249,7 +249,10 @@ class DocsRepository implements IDocsRepository {
   /// (docs/PLAN-FLUTTER-DOCS.md §3.1).
   @override
   Future<List<DocumentSummary>> listDocuments() async {
-    final res = await _api.dio.get<Map<String, dynamic>>('/api/documents');
+    final res = await _api.dio.get<Map<String, dynamic>>(
+      '/api/documents',
+      queryParameters: {'size': 500, 'sort': 'createdAt,desc'},
+    );
     return parseDocumentList(res.data!);
   }
 

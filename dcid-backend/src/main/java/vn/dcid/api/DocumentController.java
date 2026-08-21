@@ -87,8 +87,9 @@ public class DocumentController {
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<DocumentDTO>>> list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.of(documentService.list(PageRequest.of(page, size), currentRole())));
+            @RequestParam(defaultValue = "100") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+        return ResponseEntity.ok(ApiResponse.of(documentService.list(PageRequest.of(page, size, sort), currentRole())));
     }
 
     /** Chi tiết tài liệu + danh sách version (lọc RBAC). */

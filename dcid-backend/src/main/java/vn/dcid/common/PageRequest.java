@@ -10,8 +10,8 @@ public record PageRequest(
         if (page < 0) {
             page = 0;
         }
-        if (size <= 0 || size > 100) {
-            size = 20;
+        if (size <= 0 || size > 500) {
+            size = 100;
         }
     }
 
@@ -25,9 +25,16 @@ public record PageRequest(
 
     public org.springframework.data.domain.PageRequest toSpringPageRequest() {
         if (sort != null && !sort.isBlank()) {
+            String[] parts = sort.split(",");
+            String property = parts[0].trim();
+            org.springframework.data.domain.Sort.Direction direction =
+                    (parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim()))
+                            ? org.springframework.data.domain.Sort.Direction.DESC
+                            : org.springframework.data.domain.Sort.Direction.ASC;
             return org.springframework.data.domain.PageRequest.of(page, size,
-                    org.springframework.data.domain.Sort.by(sort));
+                    org.springframework.data.domain.Sort.by(direction, property));
         }
-        return org.springframework.data.domain.PageRequest.of(page, size);
+        return org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
     }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/locale_controller.dart';
 import '../../../core/theme.dart';
 import '../../../data/models/document_summary.dart';
+import 'document_scope_dialog.dart';
 
 /// Scope selection banner, document filter chips, and chat actions.
 class SearchScopeHeader extends ConsumerWidget {
@@ -29,6 +30,19 @@ class SearchScopeHeader extends ConsumerWidget {
   final VoidCallback onClearDocSelection;
   final VoidCallback onClearChat;
 
+  void _openScopeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => DocumentScopeDialog(
+        availableDocs: availableDocs,
+        selectedVersionIdsByDocId: selectedVersionIdsByDocId,
+        resolvingDocIds: resolvingDocIds,
+        onSetDocumentSelected: onSetDocumentSelected,
+        onClearDocSelection: onClearDocSelection,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -51,44 +65,76 @@ class SearchScopeHeader extends ConsumerWidget {
     Color accent,
     dynamic strings,
   ) {
+    final hasSelection = selectedVersionIdsByDocId.isNotEmpty;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
           Icon(
-            selectedVersionIdsByDocId.isEmpty
-                ? Icons.language_outlined
-                : Icons.my_location_outlined,
+            hasSelection ? Icons.my_location_outlined : Icons.language_outlined,
             size: 15,
             color: accent,
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              selectedVersionIdsByDocId.isEmpty
-                  ? strings.scopeAllDocs
-                  : strings.scopeSelectedDocs(selectedVersionIdsByDocId.length),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface.withValues(alpha: 0.6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: availableDocs.isEmpty ? null : () => _openScopeDialog(context),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      hasSelection
+                          ? strings.scopeSelectedDocs(selectedVersionIdsByDocId.length)
+                          : strings.scopeAllDocs,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: hasSelection
+                            ? accent
+                            : colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_drop_down_rounded,
+                    size: 18,
+                    color: colorScheme.outline,
+                  ),
+                ],
               ),
             ),
           ),
-          if (selectedVersionIdsByDocId.isNotEmpty)
+          if (availableDocs.isNotEmpty)
+            _SmallAction(
+              icon: Icons.tune_rounded,
+              label: hasSelection ? 'Đổi phạm vi' : 'Chọn (${availableDocs.length})',
+              colorScheme: colorScheme,
+              onTap: () => _openScopeDialog(context),
+            ),
+          if (hasSelection) ...[
+            const SizedBox(width: 4),
             _SmallAction(
               icon: Icons.close_rounded,
               label: strings.clear,
               colorScheme: colorScheme,
               onTap: onClearDocSelection,
             ),
-          if (hasChatMessages)
+          ],
+          if (hasChatMessages) ...[
+            const SizedBox(width: 4),
             _SmallAction(
               icon: Icons.refresh_rounded,
               label: strings.newChat,
               colorScheme: colorScheme,
               onTap: loading ? null : onClearChat,
             ),
+          ],
         ],
       ),
     );
@@ -99,17 +145,59 @@ class SearchScopeHeader extends ConsumerWidget {
     ColorScheme colorScheme,
     Color accent,
   ) {
+    // If documents are selected, show ONLY selected chips for clean UI
+    final hasSelection = selectedVersionIdsByDocId.isNotEmpty;
+    final docsToShow = hasSelection
+        ? availableDocs
+            .where((d) => selectedVersionIdsByDocId.containsKey(d.id))
+            .toList()
+        : (availableDocs.length <= 6
+            ? availableDocs
+            : availableDocs.take(5).toList());
+
     return SizedBox(
-      height: 56, // increased height to accommodate vertical padding
+      height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        itemCount: availableDocs.length,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        itemCount: docsToShow.length + (hasSelection || availableDocs.length > 5 ? 1 : 0),
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final doc = availableDocs[index];
+          if (index == docsToShow.length) {
+            // "More / Add" action button
+            return ActionChip(
+              avatar: Icon(
+                hasSelection ? Icons.add_rounded : Icons.more_horiz_rounded,
+                size: 15,
+                color: accent,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: accent.withValues(alpha: 0.4),
+                  style: BorderStyle.solid,
+                ),
+              ),
+              backgroundColor: accent.withValues(alpha: 0.08),
+              label: Text(
+                hasSelection
+                    ? 'Thêm tài liệu...'
+                    : 'Xem tất cả (${availableDocs.length})',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: accent,
+                ),
+              ),
+              onPressed: () => _openScopeDialog(context),
+              visualDensity: VisualDensity.compact,
+            );
+          }
+
+          final doc = docsToShow[index];
           final isSelected = selectedVersionIdsByDocId.containsKey(doc.id);
           final isResolving = resolvingDocIds.contains(doc.id);
+
           return FilterChip(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
@@ -145,8 +233,8 @@ class SearchScopeHeader extends ConsumerWidget {
                     ),
                   )
                 : isSelected
-                ? Icon(Icons.check_rounded, size: 14, color: accent)
-                : null,
+                    ? Icon(Icons.check_rounded, size: 14, color: accent)
+                    : null,
             visualDensity: VisualDensity.compact,
           );
         },
