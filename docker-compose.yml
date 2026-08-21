@@ -117,7 +117,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       AI_RESOURCE_GATE_ENABLED: "true"
       AI_RESOURCE_GATE_FAIL_OPEN: "false"
-      AI_RESOURCE_LOCK_WAIT_SECONDS: "60"
+      AI_RESOURCE_LOCK_WAIT_SECONDS: "600"
       MIN_ANSWER_CONFIDENCE: ${MIN_ANSWER_CONFIDENCE:-0.80}
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
       LM_STUDIO_API_KEY: ollama
@@ -151,7 +151,7 @@ services:
     container_name: dcid-ai-worker
     # Worker chạy Celery thay vì uvicorn
     command: ["celery", "-A", "app.celery_app.celery_app", "worker",
-              "--loglevel=info", "--concurrency=1", "--prefetch-multiplier=1",
+              "--loglevel=info", "--concurrency=2", "--prefetch-multiplier=1",
               "--max-tasks-per-child=1", "-Q", "ingest,default"]
     environment:
       AI_INTERNAL_TOKEN: change-me-internal-token
@@ -170,7 +170,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       AI_RESOURCE_GATE_ENABLED: "true"
       AI_RESOURCE_GATE_FAIL_OPEN: "false"
-      AI_RESOURCE_LOCK_WAIT_SECONDS: "60"
+      AI_RESOURCE_LOCK_WAIT_SECONDS: "600"
       MIN_ANSWER_CONFIDENCE: ${MIN_ANSWER_CONFIDENCE:-0.80}
       LM_STUDIO_BASE_URL: http://ollama:11434/v1
       LM_STUDIO_API_KEY: ollama
@@ -191,7 +191,7 @@ services:
       - qdrant
       - ai-ocr
       - ollama
-    mem_limit: 896m
+    mem_limit: 1792m  # 2 workers × ~896m — đủ cho 2 embed model (470MB each)
     restart: unless-stopped
 
   # ── Flower: Celery monitoring UI (http://localhost:5555) ─────────────────
